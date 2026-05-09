@@ -79,6 +79,7 @@ func (r *ExpertRepository) LookupScoreRank(ctx context.Context, province string,
 		Province:   province,
 		Year:       year,
 		Subject:    subject,
+		LookupType: "score",
 		QueryScore: score,
 	}
 	query := `
@@ -117,7 +118,59 @@ LIMIT 1`
 		return model.ScoreRankLookup{}, err
 	}
 	result.Available = true
+	result.MatchedRank = result.Rank
 	result.Diff = int(math.Abs(float64(result.MatchedScore - score)))
+	return result, nil
+}
+
+func (r *ExpertRepository) LookupRankScore(ctx context.Context, province string, year int, subject string, rank int) (model.ScoreRankLookup, error) {
+	result := model.ScoreRankLookup{
+		Province:   province,
+		Year:       year,
+		Subject:    subject,
+		LookupType: "rank",
+		QueryRank:  rank,
+	}
+	query := `
+SELECT province, year, subject, score, ` + "`rank`" + ` AS rank_value, ` + "`count`" + ` AS count_value,
+	   CASE WHEN ` + "`rank`" + ` = ? THEN TRUE ELSE FALSE END AS exact,
+	   ABS(` + "`rank`" + ` - ?) AS diff
+FROM score_rank
+WHERE province = ?
+  AND year = ?
+  AND subject = ?
+ORDER BY
+  CASE
+	WHEN ` + "`rank`" + ` = ? THEN 0
+	WHEN ` + "`rank`" + ` > ? THEN 1
+    ELSE 2
+  END,
+	ABS(` + "`rank`" + ` - ?) ASC,
+  score DESC,
+  ` + "`rank`" + ` ASC
+LIMIT 1`
+
+	err := r.db.QueryRowContext(ctx, query, rank, rank, province, year, subject, rank, rank, rank).Scan(
+		&result.Province,
+		&result.Year,
+		&result.Subject,
+		&result.MatchedScore,
+		&result.Rank,
+		&result.Count,
+		&result.Exact,
+		&result.Diff,
+	)
+	if err == sql.ErrNoRows {
+		result.Available = false
+		return result, nil
+	}
+	if err != nil {
+		return model.ScoreRankLookup{}, err
+	}
+	result.Available = true
+	result.MatchedRank = result.Rank
+	result.QueryScore = result.MatchedScore
+	result.Diff = int(math.Abs(float64(result.Rank - rank)))
 	return result, nil
 }
 

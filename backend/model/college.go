@@ -35,8 +35,11 @@ type ScoreRankLookup struct {
 	Province     string `json:"province"`
 	Year         int    `json:"year"`
 	Subject      string `json:"subject"`
+	LookupType   string `json:"lookup_type,omitempty"`
 	QueryScore   int    `json:"query_score"`
+	QueryRank    int    `json:"query_rank,omitempty"`
 	MatchedScore int    `json:"matched_score"`
+	MatchedRank  int    `json:"matched_rank,omitempty"`
 	Rank         int    `json:"rank"`
 	Count        int    `json:"count"`
 	Diff         int    `json:"diff"`

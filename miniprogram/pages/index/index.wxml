@@ -98,7 +98,7 @@
       <view class="row-between">
         <view>
           <view class="section-title section-title-small">查分位次</view>
-          <view class="knowledge-sub">输入分数后自动匹配 {{form.analysisYear}} 年 {{form.subject}} 一分一段</view>
+          <view class="knowledge-sub">填写分数或排名后，自动匹配 {{form.analysisYear}} 年 {{form.subject}} 一分一段并回填另一项</view>
         </view>
         <view class="link-btn" bindtap="openScoreRankPage">进入查分页</view>
       </view>
@@ -131,7 +131,7 @@
         <view class="rank-status rank-status-{{scoreRankDashboard.status}}">{{scoreRankDashboard.status === 'exact' ? '精确命中' : scoreRankDashboard.status === 'near' ? '近似命中' : '参考结果'}}</view>
         <view class="rank-meta">{{scoreRankDashboard.message}}</view>
       </view>
-      <view class="empty-tip" wx:if="{{!rankLoading && (!scoreRankPreview || !scoreRankPreview.available)}}">输入分数后可直接查看黑龙江全省位次</view>
+      <view class="empty-tip" wx:if="{{!rankLoading && (!scoreRankPreview || !scoreRankPreview.available)}}">输入分数或排名后，可自动带出对应位次或分数</view>
     </view>
   </view>
 

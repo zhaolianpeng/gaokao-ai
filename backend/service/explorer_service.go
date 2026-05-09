@@ -39,6 +39,13 @@ func (s *ExplorerService) LookupScoreRank(ctx context.Context, province string, 
 	})
 }
 
+func (s *ExplorerService) LookupRankScore(ctx context.Context, province string, year int, subject string, rank int) (model.ScoreRankLookup, error) {
+	key := fmt.Sprintf("rank-score:%s:%d:%s:%d", strings.TrimSpace(province), year, strings.TrimSpace(subject), rank)
+	return rememberJSON(ctx, s.cache, key, func() (model.ScoreRankLookup, error) {
+		return s.repo.LookupRankScore(ctx, province, year, subject, rank)
+	})
+}
+
 func (s *ExplorerService) ListColleges(ctx context.Context, filter model.CollegeListFilter) (model.CollegeListResponse, error) {
 	key := fmt.Sprintf("colleges:%s:%d:%s:%s:%s:%d:%d", strings.TrimSpace(filter.Province), filter.Year, strings.TrimSpace(filter.Subject), strings.TrimSpace(filter.Keyword), strings.TrimSpace(filter.SortMode), filter.Page, filter.Limit)
 	return rememberJSON(ctx, s.cache, key, func() (model.CollegeListResponse, error) {

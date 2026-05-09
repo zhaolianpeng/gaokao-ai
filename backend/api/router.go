@@ -420,6 +420,41 @@ func NewRouter(recommendService *service.RecommendService, aiService *service.AI
 		c.JSON(http.StatusOK, result)
 	})
 
+	r.POST("/api/rank-score", func(c *gin.Context) {
+		var req struct {
+			Province string `json:"province"`
+			Year     int    `json:"year"`
+			Subject  string `json:"subject"`
+			Rank     int    `json:"rank"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		if req.Year == 0 {
+			req.Year = 2025
+		}
+		if req.Rank <= 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid rank"})
+			return
+		}
+		province := strings.TrimSpace(req.Province)
+		if province == "" {
+			province = "黑龙江"
+		}
+		subject := normalizeLookupSubject(req.Year, req.Subject)
+		if subject == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid subject"})
+			return
+		}
+		result, err := explorerService.LookupRankScore(c.Request.Context(), province, req.Year, subject, req.Rank)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, result)
+	})
+
 	r.GET("/api/colleges", func(c *gin.Context) {
 		year, _ := strconv.Atoi(c.DefaultQuery("year", "2025"))
 		limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))

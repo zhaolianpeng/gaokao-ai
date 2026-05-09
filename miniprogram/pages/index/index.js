@@ -56,24 +56,34 @@ function buildRankDisplay(result, form) {
   if (!result || !result.available) {
     return null
   }
+  const lookupType = result.lookup_type || 'score'
   const queryScore = Number(form.score || 0)
+  const queryRank = Number(form.rank || 0)
   const diff = Number(result.diff || 0)
   const exact = !!result.exact
   const legacyMapped = isLegacyMappedYear(form.analysisYear)
   let status = 'exact'
-  let message = `命中同分段，当前分数人数 ${result.count}`
+  let message = lookupType === 'rank'
+    ? `命中对应位次分段，当前分数人数 ${result.count}`
+    : `命中同分段，当前分数人数 ${result.count}`
 
   if (exact && legacyMapped) {
-    message = `命中精确分值，当前分数人数 ${result.count}。`
+    message = lookupType === 'rank'
+      ? `命中精确位次，当前分数人数 ${result.count}。`
+      : `命中精确分值，当前分数人数 ${result.count}。`
   }
 
   if (!exact) {
     if (diff <= 5) {
       status = 'near'
-      message = `未命中精确分值，已回退到最近的 ${result.matched_score} 分分段。`
+      message = lookupType === 'rank'
+        ? `未命中精确位次，已回退到最近的 ${result.rank} 名分段。`
+        : `未命中精确分值，已回退到最近的 ${result.matched_score} 分分段。`
     } else {
       status = 'approx'
-      message = `当前仅命中 ${result.matched_score} 分分段，和输入分数相差 ${diff} 分，结果仅供参考。`
+      message = lookupType === 'rank'
+        ? `当前仅命中 ${result.rank} 名分段，和输入排名相差 ${diff} 名，结果仅供参考。`
+        : `当前仅命中 ${result.matched_score} 分分段，和输入分数相差 ${diff} 分，结果仅供参考。`
     }
   }
 
@@ -83,7 +93,9 @@ function buildRankDisplay(result, form) {
 
   return {
     ...result,
+    lookupType,
     queryScore,
+    queryRank,
     status,
     message
   }
@@ -197,6 +209,7 @@ Page({
 
   onRankInput(e) {
     this.setData({ 'form.rank': e.detail.value })
+    this.scheduleRankScoreLookup()
   },
 
   onTargetMajorInput(e) {
@@ -291,16 +304,29 @@ Page({
   },
 
   scheduleScoreRankLookup() {
+    if (this.rankScoreTimer) {
+      clearTimeout(this.rankScoreTimer)
+    }
     if (this.scoreRankTimer) {
       clearTimeout(this.scoreRankTimer)
     }
     this.scoreRankTimer = setTimeout(() => this.lookupScoreRank(), 250)
   },
 
+  scheduleRankScoreLookup() {
+    if (this.scoreRankTimer) {
+      clearTimeout(this.scoreRankTimer)
+    }
+    if (this.rankScoreTimer) {
+      clearTimeout(this.rankScoreTimer)
+    }
+    this.rankScoreTimer = setTimeout(() => this.lookupRankScore(), 250)
+  },
+
   async lookupScoreRank() {
     const { province, subject, analysisYear, score } = this.data.form
     if (!score || Number(score) <= 0) {
-      this.setData({ scoreRankPreview: null })
+      this.setData({ scoreRankPreview: null, scoreRankDashboard: null })
       return
     }
     this.setData({ rankLoading: true })
@@ -316,7 +342,46 @@ Page({
         }
       })
       const scoreRankPreview = buildRankDisplay(result, this.data.form)
+      const nextRank = result && result.available && Number(result.rank || 0) > 0 ? String(result.rank) : this.data.form.rank
       this.setData({
+        'form.rank': nextRank,
+        scoreRankPreview,
+        scoreRankDashboard: buildRankDashboard(scoreRankPreview)
+      })
+    } catch (err) {
+      this.setData({ scoreRankPreview: null, scoreRankDashboard: null })
+    } finally {
+      this.setData({ rankLoading: false })
+    }
+  },
+
+  async lookupRankScore() {
+    const { province, subject, analysisYear, rank } = this.data.form
+    if (!rank || Number(rank) <= 0) {
+      this.setData({ scoreRankPreview: null, scoreRankDashboard: null })
+      return
+    }
+    this.setData({ rankLoading: true })
+    try {
+      const result = await request({
+        url: '/api/rank-score',
+        method: 'POST',
+        data: {
+          province,
+          subject: normalizeLookupSubject(subject),
+          year: Number(analysisYear),
+          rank: Number(rank)
+        }
+      })
+      const nextForm = {
+        ...this.data.form,
+        score: result && result.available && Number(result.matched_score || 0) > 0 ? String(result.matched_score) : this.data.form.score,
+        rank: result && result.available && Number(result.rank || 0) > 0 ? String(result.rank) : this.data.form.rank
+      }
+      const scoreRankPreview = buildRankDisplay(result, nextForm)
+      this.setData({
+        'form.score': nextForm.score,
+        'form.rank': nextForm.rank,
         scoreRankPreview,
         scoreRankDashboard: buildRankDashboard(scoreRankPreview)
       })
@@ -330,7 +395,16 @@ Page({
   loadInsightData() {
     this.loadDashboard()
     this.loadBatchLines()
-    this.lookupScoreRank()
+    const { score, rank } = this.data.form
+    if (score && Number(score) > 0) {
+      this.lookupScoreRank()
+      return
+    }
+    if (rank && Number(rank) > 0) {
+      this.lookupRankScore()
+      return
+    }
+    this.setData({ scoreRankPreview: null, scoreRankDashboard: null })
   },
 
   useHistory(e) {
