@@ -74,12 +74,6 @@
     </view>
 
     <view class="card my-form-card">
-      <view class="my-form-title">VIP 服务</view>
-      <view class="my-form-desc">服务端支付已经迁移到独立后端，购买前请先完成微信手机号登录。</view>
-      <view class="primary-btn my-primary-btn my-action-btn" hover-class="my-btn-hover" bindtap="openVip">打开 VIP 中心</view>
-    </view>
-
-    <view class="card my-form-card">
       <view class="my-form-title">关于我们</view>
       <view class="my-form-desc">查看产品定位、适用人群、联系方式，以及后端切换与网络诊断相关设置。</view>
       <view class="primary-btn my-primary-btn my-action-btn" hover-class="my-btn-hover" bindtap="openAboutPage">打开关于我们</view>
