@@ -112,7 +112,7 @@ Page({
         phone: authUser.phone || ''
       })
 
-      if (mergedUser.avatarUrl) {
+      if (mergedUser.nickname || mergedUser.avatarUrl) {
         try {
           const profileUser = await request({
             url: '/api/auth/wx-profile',
@@ -121,7 +121,7 @@ Page({
               userId: authUser.id,
               phone: authUser.phone || '',
               nickname: mergedUser.nickname || authUser.nickname || '',
-              avatarUrl: mergedUser.avatarUrl
+              avatarUrl: mergedUser.avatarUrl || ''
             }
           })
           const normalizedProfileUser = normalizeAuthUser(profileUser) || mergedUser

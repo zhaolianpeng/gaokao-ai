@@ -1,6 +1,16 @@
 const { getAuthUser, saveAuthUser, clearAuthUser, getUserProfile, saveUserProfile, clearUserProfile } = require('../../utils/storage')
 const { request } = require('../../utils/request')
 
+function wxGetUserProfile() {
+  return new Promise((resolve, reject) => {
+    wx.getUserProfile({
+      desc: '用于补全头像和昵称',
+      success: (res) => resolve((res && res.userInfo) || {}),
+      fail: reject
+    })
+  })
+}
+
 function cacheRemoteAvatar(url) {
   return new Promise((resolve) => {
     if (!url) {
@@ -26,7 +36,6 @@ Page({
     userInitial: '考',
     avatarDisplayUrl: '',
     syncDraftNickname: '',
-    syncDraftAvatarPath: '',
     syncSubmitting: false,
     profile: {
       province: '黑龙江',
@@ -50,7 +59,6 @@ Page({
       userInitial: this.getUserInitial(user),
       avatarDisplayUrl: this.getDisplayAvatarUrl(user),
       syncDraftNickname: (user && user.nickname) || '',
-      syncDraftAvatarPath: (user && user.avatarLocalPath) || '',
       profile
     })
   },
@@ -76,18 +84,6 @@ Page({
     this.setData({ syncDraftNickname: e.detail.value })
   },
 
-  onChooseAvatar(e) {
-    const avatarUrl = e && e.detail ? e.detail.avatarUrl : ''
-    if (!avatarUrl) {
-      wx.showToast({ title: '未获取到头像', icon: 'none' })
-      return
-    }
-    this.setData({
-      syncDraftAvatarPath: avatarUrl,
-      avatarDisplayUrl: avatarUrl
-    })
-  },
-
   async syncWechatProfile() {
     const user = getAuthUser()
     if (!user || !user.id || user.storageMode !== 'server') {
@@ -96,18 +92,28 @@ Page({
     }
 
     const nextNickname = String(this.data.syncDraftNickname || '').trim()
-    const nextAvatarPath = String(this.data.syncDraftAvatarPath || '').trim()
-    if (!nextNickname && !nextAvatarPath) {
-      wx.showToast({ title: '请先填写昵称或选择头像', icon: 'none' })
+    if (!nextNickname && !user.nickname) {
+      wx.showToast({ title: '请先填写昵称', icon: 'none' })
       return
     }
 
     try {
       this.setData({ syncSubmitting: true })
 
-      let avatarLocalPath = nextAvatarPath
-      if (nextAvatarPath && /^https?:\/\//.test(nextAvatarPath)) {
-        avatarLocalPath = await cacheRemoteAvatar(nextAvatarPath)
+      let profile = {}
+      try {
+        profile = await wxGetUserProfile()
+      } catch (profileErr) {
+      }
+
+      const autoNickname = !isAnonymousWechatNickname(profile.nickName) ? profile.nickName : ''
+      const finalNickname = autoNickname || nextNickname || user.nickname || '考生用户'
+      const autoAvatarUrl = String(profile.avatarUrl || '').trim()
+      const effectiveAvatarUrl = autoAvatarUrl || user.avatarUrl || ''
+
+      let avatarLocalPath = user.avatarLocalPath || ''
+      if (effectiveAvatarUrl) {
+        avatarLocalPath = await cacheRemoteAvatar(effectiveAvatarUrl)
       }
 
       const payload = await request({
@@ -116,21 +122,21 @@ Page({
         data: {
           userId: user.id,
           phone: user.phone || '',
-          nickname: nextNickname || user.nickname || '考生用户',
-          avatarUrl: user.avatarUrl || ''
+          nickname: finalNickname,
+          avatarUrl: effectiveAvatarUrl
         }
       })
 
-      const serverAvatarUrl = (payload && payload.avatarUrl) || (payload && payload.user && payload.user.avatarUrl) || user.avatarUrl || ''
+      const serverAvatarUrl = (payload && payload.avatarUrl) || (payload && payload.user && payload.user.avatarUrl) || effectiveAvatarUrl
       const finalAvatarLocalPath = avatarLocalPath || user.avatarLocalPath || ''
-      const finalNickname = !isAnonymousWechatNickname((payload && payload.nickname) || (payload && payload.user && payload.user.nickname) || nextNickname)
-        ? ((payload && payload.nickname) || (payload && payload.user && payload.user.nickname) || nextNickname)
-        : (user.nickname || nextNickname || '考生用户')
+      const syncedNickname = !isAnonymousWechatNickname((payload && payload.nickname) || (payload && payload.user && payload.user.nickname) || finalNickname)
+        ? ((payload && payload.nickname) || (payload && payload.user && payload.user.nickname) || finalNickname)
+        : (user.nickname || finalNickname || '考生用户')
 
       const nextUser = saveAuthUser({
         ...user,
         ...(payload && payload.user ? payload.user : payload),
-        nickname: finalNickname,
+        nickname: syncedNickname,
         avatarUrl: serverAvatarUrl,
         avatarLocalPath: finalAvatarLocalPath,
         storageMode: 'server'
@@ -141,8 +147,7 @@ Page({
         user: nextUser,
         userInitial: this.getUserInitial(nextUser),
         avatarDisplayUrl: this.getDisplayAvatarUrl(nextUser),
-        syncDraftNickname: nextUser.nickname || '',
-        syncDraftAvatarPath: nextUser.avatarLocalPath || ''
+        syncDraftNickname: nextUser.nickname || ''
       })
       wx.showToast({ title: '头像昵称已同步', icon: 'success' })
     } catch (err) {
