@@ -20,6 +20,17 @@ function isAnonymousWechatNickname(nickname) {
   return text === '微信用户' || /^微信用户\d*$/.test(text)
 }
 
+function normalizeDisplayUser(user) {
+  if (!user) {
+    return null
+  }
+
+  return {
+    ...user,
+    nickname: isAnonymousWechatNickname(user.nickname) ? '考生用户' : user.nickname
+  }
+}
+
 Page({
   data: {
     user: null,
@@ -41,7 +52,7 @@ Page({
 
   onShow() {
     const app = getApp()
-    const user = getAuthUser()
+    const user = normalizeDisplayUser(getAuthUser())
     const profile = getUserProfile() || this.data.profile
     app.setUser(user)
     app.setProfile(profile)
@@ -78,7 +89,7 @@ Page({
   async onChooseAvatar(e) {
     const user = getAuthUser()
     if (!user || !user.id || user.storageMode !== 'server') {
-      wx.showToast({ title: '请先完成微信手机号登录', icon: 'none' })
+      wx.showToast({ title: '请先完成手机号快捷登录', icon: 'none' })
       return
     }
 

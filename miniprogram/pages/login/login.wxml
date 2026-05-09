@@ -1,26 +1,26 @@
 <view class="login-page">
   <view class="login-shell">
     <view class="login-hero">
-      <view class="login-badge">微信登录</view>
+      <view class="login-badge">快捷登录</view>
       <view class="login-title">创建你的报考档案</view>
-      <view class="login-subtitle">使用微信手机号授权登录后，可把账号与服务端支付、报告和个人资料打通。</view>
+      <view class="login-subtitle">使用手机号快捷登录后，可把账号与服务端支付、报告和个人资料打通。</view>
     </view>
 
     <form class="card login-card" bindsubmit="onLoginFormSubmit">
       <view class="login-card-title">欢迎回来</view>
-      <view class="login-card-desc">昵称使用微信官方昵称输入能力，手机号授权用于绑定服务端账号和微信支付。</view>
+      <view class="login-card-desc">完成手机号快捷登录后，可绑定服务端账号并使用支付、报告和资料同步能力。</view>
 
       <view class="login-field">
         <view class="login-label">昵称</view>
-        <input class="input login-input" name="nickname" type="nickname" placeholder="请输入或确认微信昵称" value="{{nickname}}" data-field="nickname" bindinput="onInput" bindnicknamereview="onNicknameReview" />
+        <input class="input login-input" name="nickname" type="nickname" placeholder="请输入或确认昵称" value="{{nickname}}" data-field="nickname" bindinput="onInput" bindnicknamereview="onNicknameReview" />
       </view>
 
       <view class="login-field">
         <view class="login-label">登录方式</view>
-        <view class="login-tip">点击下方按钮，使用微信手机号授权完成登录。</view>
+        <view class="login-tip">点击下方按钮，使用手机号快捷登录完成登录。</view>
       </view>
 
-      <button class="primary-btn login-submit" form-type="submit" open-type="getPhoneNumber" bindgetphonenumber="onGetPhoneNumber" loading="{{loading}}">微信手机号登录</button>
+      <button class="primary-btn login-submit" form-type="submit" open-type="getPhoneNumber" bindgetphonenumber="onGetPhoneNumber" loading="{{loading}}">手机号快捷登录</button>
       <button class="ghost-btn login-demo-btn" bindtap="submitDemo">先用体验模式进入</button>
       <view class="login-footnote">体验模式只保存在当前设备，无法使用服务端支付。</view>
     </form>

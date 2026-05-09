@@ -3,7 +3,7 @@
     <view class="card vip-hero-card">
       <view class="vip-badge">VIP 中心</view>
       <view class="vip-title">把免费体验和深度服务分开讲清楚</view>
-      <view class="vip-desc">免费版先解决“能不能快速出结果”，VIP 更适合需要反复比较方案、生成深度 AI 报告、和家长老师多轮讨论的人。购买前需要先完成微信手机号登录，这样服务端才能绑定 openid 并创建微信支付订单。</view>
+      <view class="vip-desc">免费版先解决“能不能快速出结果”，VIP 更适合需要反复比较方案、生成深度 AI 报告、和家长老师多轮讨论的人。购买前需要先完成手机号快捷登录，这样服务端才能绑定账号并创建支付订单。</view>
       <button wx:if="{{!user}}" class="primary-btn vip-login-btn" bindtap="goLogin">先去登录</button>
       <view wx:if="{{user}}" class="vip-user">当前账号：{{user.nickname}}{{user.phone ? '（' + user.phone + '）' : ''}}</view>
       <view class="vip-status {{canPay ? 'vip-status-ok' : 'vip-status-warn'}}">{{loginHint}}</view>

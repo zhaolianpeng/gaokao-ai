@@ -28,6 +28,10 @@
   overflow: hidden;
 }
 
+.my-profile-card .primary-btn {
+  margin-top: 20rpx;
+}
+
 .my-hero-card {
   text-align: center;
 }
@@ -115,6 +119,7 @@
   display: flex;
   align-items: center;
   gap: 20rpx;
+  margin-bottom: 18rpx;
 }
 
 .profile-avatar-shell {
@@ -167,6 +172,7 @@
 
 .profile-meta {
   min-width: 0;
+  flex: 1;
 }
 
 .profile-title {
@@ -180,7 +186,14 @@
 .profile-subtitle {
   font-size: 26rpx;
   color: #607389;
-  margin-bottom: 10rpx;
+  margin-bottom: 0;
+}
+
+.login-footnote {
+  margin-top: 12rpx;
+  font-size: 26rpx;
+  line-height: 1.7;
+  color: #50657f;
 }
 
 .my-form-title {

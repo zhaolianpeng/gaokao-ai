@@ -24,12 +24,8 @@
       </view>
       <view class="login-footnote">登录后保存的考分和偏好会在首页自动带出。</view>
       <view class="my-sync-card">
-        <view class="my-sync-title">同步微信昵称和头像</view>
+        <view class="my-sync-title">管理昵称、头像和档案</view>
         <view class="my-sync-desc">头像请直接点击上方头像更新。昵称和报考档案请进入编辑页统一修改并保存。</view>
-        <view class="my-inline-summary">
-          <view class="my-inline-label">当前昵称</view>
-          <view class="my-inline-value">{{user.nickname}}</view>
-        </view>
         <view class="ghost-btn my-ghost-btn my-action-btn" hover-class="my-btn-hover" bindtap="openProfileEditor">编辑昵称和档案</view>
       </view>
       <view class="primary-btn my-primary-btn my-action-btn" hover-class="my-btn-hover" bindtap="openVip">进入 VIP 中心</view>

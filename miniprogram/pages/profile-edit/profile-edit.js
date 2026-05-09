@@ -53,7 +53,7 @@ Page({
   async syncNickname() {
     const user = getAuthUser()
     if (!user || !user.id || user.storageMode !== 'server') {
-      wx.showToast({ title: '请先完成微信手机号登录', icon: 'none' })
+      wx.showToast({ title: '请先完成手机号快捷登录', icon: 'none' })
       return
     }
 

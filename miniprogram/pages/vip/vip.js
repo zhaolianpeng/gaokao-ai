@@ -85,7 +85,7 @@ Page({
 
   buildLoginHint(user) {
     if (!user) {
-      return '未检测到登录信息，请先完成微信手机号登录。'
+      return '未检测到登录信息，请先完成手机号快捷登录。'
     }
     if (user.storageMode !== 'server') {
       return '当前是体验模式账号，无法发起服务端支付。'
