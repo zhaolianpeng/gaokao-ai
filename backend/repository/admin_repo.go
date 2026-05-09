@@ -33,6 +33,23 @@ func NewAdminRepository(db *sql.DB) *AdminRepository {
 	return &AdminRepository{db: observeDB(db)}
 }
 
+func appendAdminTextLikeFilter(clauses *[]string, args *[]any, column string, value string) {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return
+	}
+	*clauses = append(*clauses, fmt.Sprintf("%s LIKE ?", column))
+	*args = append(*args, buildLike(trimmed))
+}
+
+func appendAdminIntFilter(clauses *[]string, args *[]any, column string, value int) {
+	if value <= 0 {
+		return
+	}
+	*clauses = append(*clauses, fmt.Sprintf("%s = ?", column))
+	*args = append(*args, value)
+}
+
 func (r *AdminRepository) EnsureBootstrap(ctx context.Context, defaultPasswordHash string) error {
 	statements := []string{
 		`CREATE TABLE IF NOT EXISTS mis_admin_user (
@@ -410,19 +427,29 @@ func (r *AdminRepository) SaveCollege(ctx context.Context, item model.AdminColle
 	return int(id), nil
 }
 
-func (r *AdminRepository) ListProvinceScoreLines(ctx context.Context, keyword string, page, limit int) ([]model.AdminProvinceScoreLine, int, error) {
+func (r *AdminRepository) ListProvinceScoreLines(ctx context.Context, keyword, province string, year int, subject, batch string, page, limit int) ([]model.AdminProvinceScoreLine, int, error) {
 	page, limit = normalizePage(page, limit)
 	like := buildLike(keyword)
+	clauses := []string{"(province LIKE ? OR subject LIKE ? OR batch LIKE ?)"}
+	args := []any{like, like, like}
+	appendAdminTextLikeFilter(&clauses, &args, "province", province)
+	appendAdminIntFilter(&clauses, &args, "year", year)
+	appendAdminTextLikeFilter(&clauses, &args, "subject", subject)
+	appendAdminTextLikeFilter(&clauses, &args, "batch", batch)
+	whereSQL := strings.Join(clauses, " AND ")
 	var total int
-	if err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM province_score_line WHERE province LIKE ? OR subject LIKE ? OR batch LIKE ?`, like, like, like).Scan(&total); err != nil {
+	countQuery := fmt.Sprintf(`SELECT COUNT(*) FROM province_score_line WHERE %s`, whereSQL)
+	if err := r.db.QueryRowContext(ctx, countQuery, args...).Scan(&total); err != nil {
 		return nil, 0, err
 	}
-	rows, err := r.db.QueryContext(ctx, `
+	listArgs := append(append([]any{}, args...), limit, (page-1)*limit)
+	listQuery := fmt.Sprintf(`
 		SELECT id, province, year, subject, batch, score, COALESCE(source_name, ''), COALESCE(source_url, ''), updated_at
 		FROM province_score_line
-		WHERE province LIKE ? OR subject LIKE ? OR batch LIKE ?
-		ORDER BY year DESC, id DESC LIMIT ? OFFSET ?
-	`, like, like, like, limit, (page-1)*limit)
+		WHERE %s
+		ORDER BY year DESC, province ASC, subject ASC, batch ASC, score DESC, id DESC LIMIT ? OFFSET ?
+	`, whereSQL)
+	rows, err := r.db.QueryContext(ctx, listQuery, listArgs...)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -461,19 +488,29 @@ func (r *AdminRepository) DeleteProvinceScoreLine(ctx context.Context, id int) e
 	return err
 }
 
-func (r *AdminRepository) ListScoreRanks(ctx context.Context, keyword string, page, limit int) ([]model.AdminScoreRank, int, error) {
+func (r *AdminRepository) ListScoreRanks(ctx context.Context, keyword, province string, year int, subject string, score int, page, limit int) ([]model.AdminScoreRank, int, error) {
 	page, limit = normalizePage(page, limit)
 	like := buildLike(keyword)
+	clauses := []string{"(province LIKE ? OR subject LIKE ? OR CAST(score AS CHAR) LIKE ? OR CAST(rank AS CHAR) LIKE ?)"}
+	args := []any{like, like, like, like}
+	appendAdminTextLikeFilter(&clauses, &args, "province", province)
+	appendAdminIntFilter(&clauses, &args, "year", year)
+	appendAdminTextLikeFilter(&clauses, &args, "subject", subject)
+	appendAdminIntFilter(&clauses, &args, "score", score)
+	whereSQL := strings.Join(clauses, " AND ")
 	var total int
-	if err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM score_rank WHERE province LIKE ? OR subject LIKE ?`, like, like).Scan(&total); err != nil {
+	countQuery := fmt.Sprintf(`SELECT COUNT(*) FROM score_rank WHERE %s`, whereSQL)
+	if err := r.db.QueryRowContext(ctx, countQuery, args...).Scan(&total); err != nil {
 		return nil, 0, err
 	}
-	rows, err := r.db.QueryContext(ctx, `
+	listArgs := append(append([]any{}, args...), limit, (page-1)*limit)
+	listQuery := fmt.Sprintf(`
 		SELECT id, province, year, subject, score, rank, count, updated_at
 		FROM score_rank
-		WHERE province LIKE ? OR subject LIKE ?
-		ORDER BY year DESC, score DESC, id DESC LIMIT ? OFFSET ?
-	`, like, like, limit, (page-1)*limit)
+		WHERE %s
+		ORDER BY year DESC, province ASC, subject ASC, score DESC, rank ASC, id DESC LIMIT ? OFFSET ?
+	`, whereSQL)
+	rows, err := r.db.QueryContext(ctx, listQuery, listArgs...)
 	if err != nil {
 		return nil, 0, err
 	}

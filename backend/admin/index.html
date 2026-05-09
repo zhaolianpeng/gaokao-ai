@@ -144,7 +144,8 @@
       gap: 8px;
     }
 
-    .nav button {
+    .nav button,
+    .nav a {
       text-align: left;
       padding: 12px 14px;
       border-radius: 14px;
@@ -152,9 +153,12 @@
       background: transparent;
       color: var(--text);
       cursor: pointer;
+      text-decoration: none;
+      display: block;
     }
 
-    .nav button.active {
+    .nav button.active,
+    .nav a.active {
       background: rgba(11,107,203,0.1);
       border-color: rgba(11,107,203,0.16);
       color: var(--brand-strong);
@@ -262,6 +266,21 @@
 
     .badge.danger { background: rgba(192,57,43,0.1); color: var(--danger); }
     .badge.success { background: rgba(16,185,129,0.12); color: #0a7a57; }
+
+    .source-link {
+      color: var(--brand-strong);
+      font-weight: 600;
+      text-decoration: none;
+    }
+
+    .source-link:hover {
+      text-decoration: underline;
+    }
+
+    .source-link::after {
+      content: ' ↗';
+      font-size: 12px;
+    }
 
     .table-actions {
       display: flex;
@@ -456,7 +475,7 @@
       },
       provinceLines: {
         label: '省控线管理',
-        desc: '维护各省份批次线和来源信息。',
+        desc: '维护各省各科类各批次最低控制线及其来源口径。',
         endpoint: '/api/admin/province-lines',
         type: 'crud',
         searchable: true,
@@ -478,7 +497,7 @@
       },
       scoreRanks: {
         label: '一分一段管理',
-        desc: '维护分数位次映射数据。',
+        desc: '维护分数、位次、同分人数之间的映射关系。',
         endpoint: '/api/admin/score-ranks',
         type: 'crud',
         searchable: true,
@@ -588,11 +607,65 @@
     }
 
     const navOrder = ['dashboard', 'colleges', 'provinceLines', 'scoreRanks', 'students', 'orders', 'staff', 'volunteers', 'aiTasks', 'paymentItems']
+    const SECTION_PATHS = {
+      dashboard: '/mis/dashboard',
+      colleges: '/mis/colleges',
+      provinceLines: '/mis/province-lines',
+      scoreRanks: '/mis/score-ranks',
+      students: '/mis/students',
+      orders: '/mis/orders',
+      staff: '/mis/staff',
+      volunteers: '/mis/volunteers',
+      aiTasks: '/mis/ai-tasks',
+      paymentItems: '/mis/payment-items'
+    }
+    const PATH_SECTION_MAP = {
+      'dashboard': 'dashboard',
+      'colleges': 'colleges',
+      'province-lines': 'provinceLines',
+      'score-ranks': 'scoreRanks',
+      'students': 'students',
+      'orders': 'orders',
+      'staff': 'staff',
+      'volunteers': 'volunteers',
+      'ai-tasks': 'aiTasks',
+      'payment-items': 'paymentItems'
+    }
     const DEFAULT_PAGE_LIMIT = 20
     const PAGE_SIZE_OPTIONS = [20, 50, 100]
     const ORDER_STATUS_OPTIONS = ['', 'created', 'paid', 'closed', 'refunded']
     const emptyCollegeFilters = () => ({ keyword: '', name: '', level: '', schoolType: '', ownershipType: '', province: '', city: '', is985: '', is211: '', isDoubleFirst: '' })
-    const state = { currentUser: null, active: 'dashboard', cache: {}, keyword: '', paging: {}, pageSize: {}, orderProductId: '', orderStatus: '', collegeFilters: emptyCollegeFilters() }
+    const emptyProvinceLineFilters = () => ({ keyword: '', province: '', year: '', subject: '', batch: '' })
+    const emptyScoreRankFilters = () => ({ keyword: '', province: '', year: '', subject: '', score: '' })
+    const state = { currentUser: null, active: 'dashboard', cache: {}, keyword: '', paging: {}, pageSize: {}, orderProductId: '', orderStatus: '', collegeFilters: emptyCollegeFilters(), provinceLineFilters: emptyProvinceLineFilters(), scoreRankFilters: emptyScoreRankFilters() }
+
+    function getSectionPath(sectionKey, params = {}) {
+      const basePath = SECTION_PATHS[sectionKey] || SECTION_PATHS.dashboard
+      const query = new URLSearchParams()
+      Object.entries(params).forEach(([key, value]) => {
+        if (value == null || value === '') return
+        query.set(key, String(value))
+      })
+      const search = query.toString()
+      return search ? `${basePath}?${search}` : basePath
+    }
+
+    function resolveActiveSectionFromLocation() {
+      const pathname = window.location.pathname.replace(/\/+$/, '')
+      const segment = pathname.split('/').filter(Boolean).pop() || 'dashboard'
+      return PATH_SECTION_MAP[segment] || 'dashboard'
+    }
+
+    function hydrateStateFromLocation() {
+      state.active = resolveActiveSectionFromLocation()
+      const searchParams = new URLSearchParams(window.location.search)
+      state.orderProductId = searchParams.get('productId') || ''
+      state.orderStatus = searchParams.get('status') || ''
+    }
+
+    function navigateToSection(sectionKey, params = {}) {
+      window.location.href = getSectionPath(sectionKey, params)
+    }
 
     function escapeHtml(value) {
       return String(value == null ? '' : value)
@@ -673,21 +746,16 @@
     function renderNav() {
       document.getElementById('nav').innerHTML = navOrder.map((key) => {
         const item = SECTION_DEFS[key]
-        return `<button data-key="${key}" class="${state.active === key ? 'active' : ''}">${item.label}</button>`
+        return `<a href="${getSectionPath(key)}" data-key="${key}" class="${state.active === key ? 'active' : ''}">${item.label}</a>`
       }).join('')
     }
 
     function bindNav() {
-      document.getElementById('nav').querySelectorAll('button').forEach((button) => {
-        button.addEventListener('click', () => {
-          state.active = button.dataset.key
-          state.keyword = ''
-          if (state.active !== 'orders') {
-            state.orderProductId = ''
-            state.orderStatus = ''
-          }
-          resetCurrentPage(state.active)
-          renderApp()
+      document.getElementById('nav').querySelectorAll('a').forEach((link) => {
+        link.addEventListener('click', (event) => {
+          if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+          const nextKey = link.dataset.key
+          if (!nextKey || nextKey === state.active) return
         })
       })
     }
@@ -1016,6 +1084,259 @@
       })
     }
 
+    async function renderProvinceLines() {
+      const section = SECTION_DEFS.provinceLines
+      const currentPage = getCurrentPage('provinceLines')
+      const currentLimit = getCurrentPageSize('provinceLines')
+      const hasProvinceLineFilters = Object.values(state.provinceLineFilters).some((value) => String(value || '').trim())
+      const query = new URLSearchParams({
+        keyword: state.provinceLineFilters.keyword || '',
+        province: state.provinceLineFilters.province || '',
+        year: state.provinceLineFilters.year || '',
+        subject: state.provinceLineFilters.subject || '',
+        batch: state.provinceLineFilters.batch || '',
+        page: String(currentPage),
+        limit: String(currentLimit)
+      }).toString()
+      const data = await api(`${section.endpoint}/list?${query}`, { method: 'POST' })
+      const items = data.items || []
+      const page = Math.max(1, Number(data.page || currentPage))
+      const limit = Math.max(1, Number(data.limit || currentLimit))
+      const total = Math.max(0, Number(data.total || items.length))
+      const totalPages = Math.max(1, Math.ceil(total / limit))
+      const provinceLineEmptyText = hasProvinceLineFilters
+        ? '当前筛选条件下没有命中的省控线记录，请调整省份、年份、科类或批次。'
+        : '暂无省控线数据，请先录入各省批次最低控制线和来源信息。'
+      if (total > 0 && page > totalPages) {
+        setCurrentPage('provinceLines', totalPages)
+        return renderProvinceLines()
+      }
+      setCurrentPage('provinceLines', page)
+      document.getElementById('contentPanel').innerHTML = `
+        <div class="toolbar">
+          <div class="toolbar-actions">
+            <input id="provinceLineKeywordFilter" placeholder="先按省份/科类/批次定位控制线" value="${escapeHtml(state.provinceLineFilters.keyword)}" style="width:260px;" />
+            <input id="provinceLineProvinceFilter" placeholder="如 山东" value="${escapeHtml(state.provinceLineFilters.province)}" style="width:120px;" />
+            <input id="provinceLineYearFilter" placeholder="如 2025" value="${escapeHtml(state.provinceLineFilters.year)}" style="width:120px;" />
+            <input id="provinceLineSubjectFilter" placeholder="如 物理类" value="${escapeHtml(state.provinceLineFilters.subject)}" style="width:120px;" />
+            <input id="provinceLineBatchFilter" placeholder="如 本科批" value="${escapeHtml(state.provinceLineFilters.batch)}" style="width:160px;" />
+          </div>
+          <div class="toolbar-actions">
+            <button id="queryProvinceLinesBtn" class="btn btn-primary">查询</button>
+            <button id="resetProvinceLineFiltersBtn" class="btn btn-secondary">重置</button>
+            <button id="createProvinceLineBtn" class="btn btn-secondary">新增</button>
+            <button id="refreshProvinceLinesBtn" class="btn btn-secondary">刷新</button>
+            <span class="badge">共 ${total} 条</span>
+          </div>
+        </div>
+        <div class="tip">表头口径：默认按年份倒序、省份正序、科类正序、批次正序展示；分数线表示对应省份、科类、批次的最低控制线；来源支持直接跳转到公告或人工核验链接。</div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                ${section.columns.map(([, label]) => `<th>${label}</th>`).join('')}
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${items.map((item) => `
+                <tr>
+                  ${section.columns.map(([key]) => `<td>${renderResourceCell(key, item[key], item)}</td>`).join('')}
+                  <td>
+                    <div class="table-actions">
+                      <button class="btn btn-secondary" data-action="edit" data-id="${item.id}">编辑</button>
+                      <button class="btn btn-danger" data-action="delete" data-id="${item.id}">删除</button>
+                    </div>
+                  </td>
+                </tr>
+              `).join('') || `<tr><td class="empty" colspan="${section.columns.length + 1}">${provinceLineEmptyText}</td></tr>`}
+            </tbody>
+          </table>
+        </div>
+        ${buildPagination(total, page, limit)}
+      `
+      bindPagination('provinceLines', () => renderProvinceLines(), total, limit)
+      const syncProvinceLineFilters = () => {
+        state.provinceLineFilters = {
+          keyword: document.getElementById('provinceLineKeywordFilter')?.value.trim() || '',
+          province: document.getElementById('provinceLineProvinceFilter')?.value.trim() || '',
+          year: document.getElementById('provinceLineYearFilter')?.value.trim() || '',
+          subject: document.getElementById('provinceLineSubjectFilter')?.value.trim() || '',
+          batch: document.getElementById('provinceLineBatchFilter')?.value.trim() || ''
+        }
+      }
+      const submitProvinceLineFilters = () => {
+        syncProvinceLineFilters()
+        resetCurrentPage('provinceLines')
+        renderProvinceLines()
+      }
+      ;['provinceLineKeywordFilter', 'provinceLineProvinceFilter', 'provinceLineYearFilter', 'provinceLineSubjectFilter', 'provinceLineBatchFilter'].forEach((id) => {
+        const input = document.getElementById(id)
+        if (!input) return
+        input.addEventListener('change', syncProvinceLineFilters)
+        input.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter') {
+            submitProvinceLineFilters()
+          }
+        })
+      })
+      document.getElementById('queryProvinceLinesBtn')?.addEventListener('click', submitProvinceLineFilters)
+      document.getElementById('refreshProvinceLinesBtn')?.addEventListener('click', () => {
+        syncProvinceLineFilters()
+        renderProvinceLines()
+      })
+      document.getElementById('resetProvinceLineFiltersBtn')?.addEventListener('click', () => {
+        state.provinceLineFilters = emptyProvinceLineFilters()
+        resetCurrentPage('provinceLines')
+        renderProvinceLines()
+      })
+      document.getElementById('createProvinceLineBtn')?.addEventListener('click', () => openForm('provinceLines', {}))
+      document.querySelectorAll('[data-action="edit"]').forEach((button) => {
+        button.addEventListener('click', () => {
+          const item = items.find((entry) => String(entry.id) === String(button.dataset.id))
+          openForm('provinceLines', item || {})
+        })
+      })
+      document.querySelectorAll('[data-action="delete"]').forEach((button) => {
+        button.addEventListener('click', async () => {
+          if (!confirm('确认删除这条省控线记录？')) return
+          try {
+            await api(`${section.endpoint}/${button.dataset.id}`, { method: 'DELETE' })
+            renderProvinceLines()
+          } catch (error) {
+            alert(error.message)
+          }
+        })
+      })
+    }
+
+    async function renderScoreRanks() {
+      const section = SECTION_DEFS.scoreRanks
+      const currentPage = getCurrentPage('scoreRanks')
+      const currentLimit = getCurrentPageSize('scoreRanks')
+      const hasScoreRankFilters = Object.values(state.scoreRankFilters).some((value) => String(value || '').trim())
+      const query = new URLSearchParams({
+        keyword: state.scoreRankFilters.keyword || '',
+        province: state.scoreRankFilters.province || '',
+        year: state.scoreRankFilters.year || '',
+        subject: state.scoreRankFilters.subject || '',
+        score: state.scoreRankFilters.score || '',
+        page: String(currentPage),
+        limit: String(currentLimit)
+      }).toString()
+      const data = await api(`${section.endpoint}/list?${query}`, { method: 'POST' })
+      const items = data.items || []
+      const page = Math.max(1, Number(data.page || currentPage))
+      const limit = Math.max(1, Number(data.limit || currentLimit))
+      const total = Math.max(0, Number(data.total || items.length))
+      const totalPages = Math.max(1, Math.ceil(total / limit))
+      const scoreRankEmptyText = hasScoreRankFilters
+        ? '当前筛选条件下没有命中的一分一段记录，请调整省份、年份、科类或分数。'
+        : '暂无一分一段数据，请先录入分数、位次与同分人数映射。'
+      if (total > 0 && page > totalPages) {
+        setCurrentPage('scoreRanks', totalPages)
+        return renderScoreRanks()
+      }
+      setCurrentPage('scoreRanks', page)
+      document.getElementById('contentPanel').innerHTML = `
+        <div class="toolbar">
+          <div class="toolbar-actions">
+            <input id="scoreRankKeywordFilter" placeholder="先按省份/分数定位位次分段" value="${escapeHtml(state.scoreRankFilters.keyword)}" style="width:260px;" />
+            <input id="scoreRankProvinceFilter" placeholder="如 山东" value="${escapeHtml(state.scoreRankFilters.province)}" style="width:120px;" />
+            <input id="scoreRankYearFilter" placeholder="如 2025" value="${escapeHtml(state.scoreRankFilters.year)}" style="width:120px;" />
+            <input id="scoreRankSubjectFilter" placeholder="如 物理类" value="${escapeHtml(state.scoreRankFilters.subject)}" style="width:120px;" />
+            <input id="scoreRankScoreFilter" placeholder="如 600" value="${escapeHtml(state.scoreRankFilters.score)}" style="width:120px;" />
+          </div>
+          <div class="toolbar-actions">
+            <button id="queryScoreRanksBtn" class="btn btn-primary">查询</button>
+            <button id="resetScoreRankFiltersBtn" class="btn btn-secondary">重置</button>
+            <button id="createScoreRankBtn" class="btn btn-secondary">新增</button>
+            <button id="refreshScoreRanksBtn" class="btn btn-secondary">刷新</button>
+            <span class="badge">共 ${total} 条</span>
+          </div>
+        </div>
+        <div class="tip">表头口径：默认按年份倒序、省份正序、科类正序、分数倒序、位次正序展示；分数表示考生成绩档位；位次表示该分数对应的全省排名；同分人数表示该分数档的并列人数。</div>
+        <div class="tip">${escapeHtml(buildScoreRankTrendHint(items))}</div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                ${section.columns.map(([, label]) => `<th>${label}</th>`).join('')}
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${items.map((item) => `
+                <tr>
+                  ${section.columns.map(([key]) => `<td>${renderCell(key, item[key], item)}</td>`).join('')}
+                  <td>
+                    <div class="table-actions">
+                      <button class="btn btn-secondary" data-action="edit" data-id="${item.id}">编辑</button>
+                      <button class="btn btn-danger" data-action="delete" data-id="${item.id}">删除</button>
+                    </div>
+                  </td>
+                </tr>
+              `).join('') || `<tr><td class="empty" colspan="${section.columns.length + 1}">${scoreRankEmptyText}</td></tr>`}
+            </tbody>
+          </table>
+        </div>
+        ${buildPagination(total, page, limit)}
+      `
+      bindPagination('scoreRanks', () => renderScoreRanks(), total, limit)
+      const syncScoreRankFilters = () => {
+        state.scoreRankFilters = {
+          keyword: document.getElementById('scoreRankKeywordFilter')?.value.trim() || '',
+          province: document.getElementById('scoreRankProvinceFilter')?.value.trim() || '',
+          year: document.getElementById('scoreRankYearFilter')?.value.trim() || '',
+          subject: document.getElementById('scoreRankSubjectFilter')?.value.trim() || '',
+          score: document.getElementById('scoreRankScoreFilter')?.value.trim() || ''
+        }
+      }
+      const submitScoreRankFilters = () => {
+        syncScoreRankFilters()
+        resetCurrentPage('scoreRanks')
+        renderScoreRanks()
+      }
+      ;['scoreRankKeywordFilter', 'scoreRankProvinceFilter', 'scoreRankYearFilter', 'scoreRankSubjectFilter', 'scoreRankScoreFilter'].forEach((id) => {
+        const input = document.getElementById(id)
+        if (!input) return
+        input.addEventListener('change', syncScoreRankFilters)
+        input.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter') {
+            submitScoreRankFilters()
+          }
+        })
+      })
+      document.getElementById('queryScoreRanksBtn')?.addEventListener('click', submitScoreRankFilters)
+      document.getElementById('refreshScoreRanksBtn')?.addEventListener('click', () => {
+        syncScoreRankFilters()
+        renderScoreRanks()
+      })
+      document.getElementById('resetScoreRankFiltersBtn')?.addEventListener('click', () => {
+        state.scoreRankFilters = emptyScoreRankFilters()
+        resetCurrentPage('scoreRanks')
+        renderScoreRanks()
+      })
+      document.getElementById('createScoreRankBtn')?.addEventListener('click', () => openForm('scoreRanks', {}))
+      document.querySelectorAll('[data-action="edit"]').forEach((button) => {
+        button.addEventListener('click', () => {
+          const item = items.find((entry) => String(entry.id) === String(button.dataset.id))
+          openForm('scoreRanks', item || {})
+        })
+      })
+      document.querySelectorAll('[data-action="delete"]').forEach((button) => {
+        button.addEventListener('click', async () => {
+          if (!confirm('确认删除这条一分一段记录？')) return
+          try {
+            await api(`${section.endpoint}/${button.dataset.id}`, { method: 'DELETE' })
+            renderScoreRanks()
+          } catch (error) {
+            alert(error.message)
+          }
+        })
+      })
+    }
+
     function defaultBackfillDates() {
       const end = new Date()
       end.setDate(end.getDate() - 1)
@@ -1312,11 +1633,7 @@
       })
       document.querySelectorAll('[data-action="view-orders"]').forEach((button) => {
         button.addEventListener('click', () => {
-          state.active = 'orders'
-          state.keyword = ''
-          state.orderProductId = button.dataset.productId || ''
-          resetCurrentPage('orders')
-          renderApp()
+          navigateToSection('orders', { productId: button.dataset.productId || '' })
         })
       })
     }
@@ -1326,6 +1643,34 @@
       if (typeof value === 'boolean') return value ? renderStatus('enabled') : renderStatus('disabled')
       if (key === 'status') return renderStatus(value)
       return escapeHtml(value == null || value === '' ? '-' : value)
+    }
+
+    function renderResourceCell(key, value, item) {
+      if (key === 'sourceName' && item && item.sourceUrl) {
+        const linkText = value == null || value === '' ? '查看来源' : value
+        return `<a class="source-link" href="${escapeHtml(item.sourceUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(linkText)}</a>`
+      }
+      return renderCell(key, value)
+    }
+
+    function buildScoreRankTrendHint(items) {
+      if (!Array.isArray(items) || items.length < 2) {
+        return '趋势提示：录入同一省份、年份、科类下的连续分数段后，这里会提示高分到低分的位次变化。'
+      }
+      const rankedItems = items
+        .filter((item) => Number.isFinite(Number(item.score)) && Number.isFinite(Number(item.rank)))
+        .map((item) => ({ ...item, score: Number(item.score), rank: Number(item.rank), count: Number(item.count || 0) }))
+        .sort((left, right) => right.score - left.score || left.rank - right.rank)
+      if (rankedItems.length < 2) {
+        return '趋势提示：当前结果缺少可比较的分数和位次数据，无法生成分数段趋势。'
+      }
+      const highest = rankedItems[0]
+      const lowest = rankedItems[rankedItems.length - 1]
+      const rankDelta = lowest.rank - highest.rank
+      const scoreDelta = highest.score - lowest.score
+      const monotonic = rankedItems.every((item, index) => index === 0 || item.rank >= rankedItems[index - 1].rank)
+      const trendText = monotonic ? '分数越高，位次越靠前' : '当前页存在位次波动，请重点核对异常分段'
+      return `趋势提示：当前页最高分 ${highest.score} 分对应位次 ${highest.rank}，最低分 ${lowest.score} 分对应位次 ${lowest.rank}，分差 ${scoreDelta} 分，位次跨度 ${rankDelta}。${trendText}。`
     }
 
     function renderValidity(item) {
@@ -1542,6 +1887,8 @@
       setHeader()
       if (state.active === 'dashboard') return renderDashboard()
       if (state.active === 'colleges') return renderColleges()
+      if (state.active === 'provinceLines') return renderProvinceLines()
+      if (state.active === 'scoreRanks') return renderScoreRanks()
       if (state.active === 'orders') return renderOrders()
       if (state.active === 'volunteers' || state.active === 'aiTasks') return renderTasks(state.active)
       if (state.active === 'vipProducts' || state.active === 'paymentItems') return renderVIP('paymentItems')
@@ -1552,6 +1899,7 @@
       try {
         const data = await api('/api/admin/me', { method: 'POST' })
         state.currentUser = data.user
+        hydrateStateFromLocation()
         document.getElementById('loginShell').classList.add('hidden')
         document.getElementById('appShell').classList.remove('hidden')
         renderApp()
@@ -1570,6 +1918,7 @@
         }
         const data = await api('/api/admin/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
         state.currentUser = data.user
+        hydrateStateFromLocation()
         document.getElementById('loginShell').classList.add('hidden')
         document.getElementById('appShell').classList.remove('hidden')
         renderApp()

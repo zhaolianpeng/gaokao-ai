@@ -15,19 +15,44 @@ import (
 
 const adminCookieName = "gaokao_mis_session"
 
+var misPageRoutes = map[string]struct{}{
+	"dashboard":      {},
+	"colleges":       {},
+	"province-lines": {},
+	"score-ranks":    {},
+	"students":       {},
+	"orders":         {},
+	"staff":          {},
+	"volunteers":     {},
+	"ai-tasks":       {},
+	"payment-items":  {},
+}
+
+func serveMISPage(c *gin.Context) {
+	page := strings.TrimSpace(c.Param("page"))
+	if page != "" {
+		if _, ok := misPageRoutes[page]; !ok {
+			c.JSON(http.StatusNotFound, gin.H{"error": "page not found"})
+			return
+		}
+	}
+	c.File(filepath.Join("admin", "index.html"))
+}
+
 func registerAdminRoutes(r *gin.Engine, adminService *service.AdminService, payService *service.PayService) {
 	if adminService == nil {
 		return
 	}
 
 	r.GET("/mis", func(c *gin.Context) {
-		c.File(filepath.Join("admin", "index.html"))
+		c.Redirect(http.StatusFound, "/mis/dashboard")
 	})
 	r.GET("/mis/", func(c *gin.Context) {
-		c.File(filepath.Join("admin", "index.html"))
+		c.Redirect(http.StatusFound, "/mis/dashboard")
 	})
+	r.GET("/mis/:page", serveMISPage)
 	r.GET("/api/admin/console", func(c *gin.Context) {
-		c.File(filepath.Join("admin", "index.html"))
+		c.Redirect(http.StatusFound, "/mis/dashboard")
 	})
 
 	r.POST("/api/admin/login", func(c *gin.Context) {
@@ -148,7 +173,7 @@ func registerAdminRoutes(r *gin.Engine, adminService *service.AdminService, payS
 		adminGroup.GET("/province-lines", func(c *gin.Context) {
 			page := parseInt(c.Query("page"), 1)
 			limit := parseInt(c.Query("limit"), 20)
-			items, total, err := adminService.Repo().ListProvinceScoreLines(c.Request.Context(), c.Query("keyword"), page, limit)
+			items, total, err := adminService.Repo().ListProvinceScoreLines(c.Request.Context(), c.Query("keyword"), c.Query("province"), parseInt(c.Query("year"), 0), c.Query("subject"), c.Query("batch"), page, limit)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 				return
@@ -158,7 +183,7 @@ func registerAdminRoutes(r *gin.Engine, adminService *service.AdminService, payS
 		adminGroup.POST("/province-lines/list", func(c *gin.Context) {
 			page := parseInt(c.Query("page"), 1)
 			limit := parseInt(c.Query("limit"), 20)
-			items, total, err := adminService.Repo().ListProvinceScoreLines(c.Request.Context(), c.Query("keyword"), page, limit)
+			items, total, err := adminService.Repo().ListProvinceScoreLines(c.Request.Context(), c.Query("keyword"), c.Query("province"), parseInt(c.Query("year"), 0), c.Query("subject"), c.Query("batch"), page, limit)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 				return
@@ -196,7 +221,7 @@ func registerAdminRoutes(r *gin.Engine, adminService *service.AdminService, payS
 		adminGroup.GET("/score-ranks", func(c *gin.Context) {
 			page := parseInt(c.Query("page"), 1)
 			limit := parseInt(c.Query("limit"), 20)
-			items, total, err := adminService.Repo().ListScoreRanks(c.Request.Context(), c.Query("keyword"), page, limit)
+			items, total, err := adminService.Repo().ListScoreRanks(c.Request.Context(), c.Query("keyword"), c.Query("province"), parseInt(c.Query("year"), 0), c.Query("subject"), parseInt(c.Query("score"), 0), page, limit)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 				return
@@ -206,7 +231,7 @@ func registerAdminRoutes(r *gin.Engine, adminService *service.AdminService, payS
 		adminGroup.POST("/score-ranks/list", func(c *gin.Context) {
 			page := parseInt(c.Query("page"), 1)
 			limit := parseInt(c.Query("limit"), 20)
-			items, total, err := adminService.Repo().ListScoreRanks(c.Request.Context(), c.Query("keyword"), page, limit)
+			items, total, err := adminService.Repo().ListScoreRanks(c.Request.Context(), c.Query("keyword"), c.Query("province"), parseInt(c.Query("year"), 0), c.Query("subject"), parseInt(c.Query("score"), 0), page, limit)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 				return
