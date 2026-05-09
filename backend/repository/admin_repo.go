@@ -11,7 +11,7 @@ import (
 )
 
 type AdminRepository struct {
-	db *sql.DB
+	db *observedDB
 }
 
 type defaultVIPProduct struct {
@@ -30,7 +30,7 @@ var defaultVIPProducts = []defaultVIPProduct{
 }
 
 func NewAdminRepository(db *sql.DB) *AdminRepository {
-	return &AdminRepository{db: db}
+	return &AdminRepository{db: observeDB(db)}
 }
 
 func (r *AdminRepository) EnsureBootstrap(ctx context.Context, defaultPasswordHash string) error {

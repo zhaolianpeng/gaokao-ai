@@ -15,34 +15,16 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"gaokao-ai/backend/logging"
 	"gaokao-ai/backend/model"
 	"gaokao-ai/backend/service"
 )
 
 const maxAvatarUploadSize = 5 << 20
 
-func NewRouter(recommendService *service.RecommendService, aiService *service.AIService, explorerService *service.ExplorerService, authService *service.AuthService, payService *service.PayService, taskService *service.TaskService, feedbackService *service.FeedbackService, adminService *service.AdminService, trustedProxies []string, uploadDir, publicBaseURL string) *gin.Engine {
+func NewRouter(recommendService *service.RecommendService, aiService *service.AIService, explorerService *service.ExplorerService, authService *service.AuthService, payService *service.PayService, taskService *service.TaskService, feedbackService *service.FeedbackService, adminService *service.AdminService, trustedProxies []string, uploadDir, publicBaseURL string, logBodyLimitBytes int) *gin.Engine {
 	r := gin.New()
-	r.Use(gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
-		latency := param.Latency.Round(time.Millisecond)
-		if latency < 0 {
-			latency = 0
-		}
-
-		entry := fmt.Sprintf(
-			"time=%s level=info status=%d latency=%s ip=%s method=%s path=%q",
-			param.TimeStamp.Format(time.RFC3339),
-			param.StatusCode,
-			latency,
-			param.ClientIP,
-			param.Method,
-			param.Path,
-		)
-		if param.ErrorMessage != "" {
-			entry += fmt.Sprintf(" error=%q", param.ErrorMessage)
-		}
-		return entry + "\n"
-	}), gin.Recovery())
+	r.Use(logging.RequestResponseLogger(logBodyLimitBytes), gin.RecoveryWithWriter(gin.DefaultErrorWriter))
 	if err := r.SetTrustedProxies(trustedProxies); err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "set trusted proxies failed: %v\n", err)
 	}

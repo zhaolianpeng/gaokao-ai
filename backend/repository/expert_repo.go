@@ -12,11 +12,11 @@ import (
 )
 
 type ExpertRepository struct {
-	db *sql.DB
+	db *observedDB
 }
 
 func NewExpertRepository(db *sql.DB) *ExpertRepository {
-	return &ExpertRepository{db: db}
+	return &ExpertRepository{db: observeDB(db)}
 }
 
 func (r *ExpertRepository) GetDashboardOverview(ctx context.Context, province string, year int, subject string) (model.DashboardOverview, error) {

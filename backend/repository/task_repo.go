@@ -9,11 +9,11 @@ import (
 )
 
 type TaskRepository struct {
-	db *sql.DB
+	db *observedDB
 }
 
 func NewTaskRepository(db *sql.DB) *TaskRepository {
-	return &TaskRepository{db: db}
+	return &TaskRepository{db: observeDB(db)}
 }
 
 func (r *TaskRepository) CreateTask(ctx context.Context, title string, studentJSON, templatesJSON, recommendJSON []byte, demand, taskType string) (int, error) {

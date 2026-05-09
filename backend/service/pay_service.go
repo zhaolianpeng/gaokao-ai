@@ -24,6 +24,7 @@ import (
 	"strings"
 	"time"
 
+	"gaokao-ai/backend/logging"
 	"gaokao-ai/backend/model"
 	"gaokao-ai/backend/repository"
 )
@@ -90,6 +91,7 @@ func NewPayService(appID, mchID, certSerial, privateKeyPath, notifyURL string, a
 }
 
 func (s *PayService) CreatePayment(ctx context.Context, req model.WechatPayRequest) (*model.WechatPayResponse, error) {
+	logging.LogEvent("pay_create_start", map[string]any{"orderId": strings.TrimSpace(req.OrderID), "userId": strings.TrimSpace(req.UserID), "productId": strings.TrimSpace(req.ProductID), "hasOpenID": strings.TrimSpace(req.OpenID) != ""})
 	product, ok := vipProducts[strings.TrimSpace(req.ProductID)]
 	if s.adminRepo != nil {
 		configured, err := s.adminRepo.GetVIPProductByProductID(ctx, strings.TrimSpace(req.ProductID))
@@ -152,11 +154,13 @@ func (s *PayService) CreatePayment(ctx context.Context, req model.WechatPayReque
 	httpRequest.Header.Set("User-Agent", "gaokao-api/1.0")
 	response, err := s.httpClient.Do(httpRequest)
 	if err != nil {
+		logging.LogEvent("pay_wechat_request", map[string]any{"orderId": strings.TrimSpace(req.OrderID), "productId": strings.TrimSpace(req.ProductID), "status": "failed", "error": err.Error()})
 		return nil, fmt.Errorf("create wechat prepay failed: %w", err)
 	}
 	defer response.Body.Close()
 	body, _ := io.ReadAll(response.Body)
 	if response.StatusCode >= 300 {
+		logging.LogEvent("pay_wechat_request", map[string]any{"orderId": strings.TrimSpace(req.OrderID), "productId": strings.TrimSpace(req.ProductID), "statusCode": response.StatusCode, "status": "failed", "responsePreview": logging.PreviewString(strings.TrimSpace(string(body)), 512)})
 		return nil, fmt.Errorf("create wechat prepay failed: %s", strings.TrimSpace(string(body)))
 	}
 	var payload struct {
@@ -188,6 +192,7 @@ func (s *PayService) CreatePayment(ctx context.Context, req model.WechatPayReque
 			PrepayID:       strings.TrimSpace(payload.PrepayID),
 		})
 	}
+	logging.LogEvent("pay_create_complete", map[string]any{"orderId": strings.TrimSpace(req.OrderID), "userId": userID, "productId": strings.TrimSpace(req.ProductID), "amountFen": product.AmountFen, "prepayId": strings.TrimSpace(payload.PrepayID), "status": "created"})
 	return &model.WechatPayResponse{
 		AmountFen: product.AmountFen,
 		Debug: model.WechatPayDebug{
@@ -209,6 +214,7 @@ func (s *PayService) CreatePayment(ctx context.Context, req model.WechatPayReque
 }
 
 func (s *PayService) ConfirmPayment(ctx context.Context, req model.WechatPayConfirmRequest) map[string]any {
+	logging.LogEvent("pay_confirm", map[string]any{"orderId": strings.TrimSpace(req.OrderID), "userId": strings.TrimSpace(req.UserID), "productId": strings.TrimSpace(req.ProductID), "status": "start"})
 	if s.adminRepo != nil {
 		paidAt := time.Now()
 		_ = s.adminRepo.UpsertPaymentOrder(ctx, model.AdminOrder{
@@ -220,6 +226,7 @@ func (s *PayService) ConfirmPayment(ctx context.Context, req model.WechatPayConf
 			PaidAt:         &paidAt,
 		})
 	}
+	logging.LogEvent("pay_confirm", map[string]any{"orderId": strings.TrimSpace(req.OrderID), "userId": parseUserID(req.UserID), "productId": strings.TrimSpace(req.ProductID), "status": "paid"})
 	return map[string]any{
 		"confirmedAt":    time.Now().UnixMilli(),
 		"ok":             true,
@@ -238,6 +245,7 @@ func parseUserID(raw string) int {
 }
 
 func (s *PayService) BackfillOrders(ctx context.Context, startDate, endDate string) (*OrderBackfillResult, error) {
+	logging.LogEvent("pay_backfill_start", map[string]any{"startDate": strings.TrimSpace(startDate), "endDate": strings.TrimSpace(endDate)})
 	if s.adminRepo == nil || s.authRepo == nil {
 		return nil, fmt.Errorf("order backfill unavailable")
 	}
@@ -260,10 +268,12 @@ func (s *PayService) BackfillOrders(ctx context.Context, startDate, endDate stri
 	for day := start; !day.After(end); day = day.AddDate(0, 0, 1) {
 		rows, fetchErr := s.fetchTradeBillRows(ctx, day)
 		if fetchErr != nil {
+			logging.LogEvent("pay_backfill_day", map[string]any{"billDate": day.Format("2006-01-02"), "status": "skipped", "error": fetchErr.Error()})
 			result.SkippedDays = append(result.SkippedDays, day.Format("2006-01-02"))
 			result.SkippedNotes = append(result.SkippedNotes, fetchErr.Error())
 			continue
 		}
+		logging.LogEvent("pay_backfill_day", map[string]any{"billDate": day.Format("2006-01-02"), "status": "fetched", "rowCount": len(rows)})
 		result.BillDays++
 		for _, row := range rows {
 			productID := parseProductIDFromOrderID(row.OrderID)
@@ -306,10 +316,12 @@ func (s *PayService) BackfillOrders(ctx context.Context, startDate, endDate stri
 			result.Processed++
 		}
 	}
+	logging.LogEvent("pay_backfill_complete", map[string]any{"startDate": result.StartDate, "endDate": result.EndDate, "billDays": result.BillDays, "processed": result.Processed, "skippedDays": result.SkippedDays})
 	return result, nil
 }
 
 func (s *PayService) fetchTradeBillRows(ctx context.Context, day time.Time) ([]tradeBillRow, error) {
+	logging.LogEvent("pay_bill_fetch", map[string]any{"billDate": day.Format("2006-01-02"), "status": "start"})
 	query := url.Values{}
 	query.Set("bill_date", day.Format("2006-01-02"))
 	query.Set("bill_type", "ALL")
@@ -327,17 +339,20 @@ func (s *PayService) fetchTradeBillRows(ctx context.Context, day time.Time) ([]t
 	req.Header.Set("User-Agent", "gaokao-api/1.0")
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
+		logging.LogEvent("pay_bill_fetch", map[string]any{"billDate": day.Format("2006-01-02"), "status": "failed", "error": err.Error()})
 		return nil, err
 	}
 	defer resp.Body.Close()
 	body, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode >= 300 {
+		logging.LogEvent("pay_bill_fetch", map[string]any{"billDate": day.Format("2006-01-02"), "status": "failed", "statusCode": resp.StatusCode, "responsePreview": logging.PreviewString(strings.TrimSpace(string(body)), 512)})
 		return nil, fmt.Errorf("fetch trade bill %s failed: %s", day.Format("2006-01-02"), strings.TrimSpace(string(body)))
 	}
 	var payload struct {
 		DownloadURL string `json:"download_url"`
 	}
 	if err := json.Unmarshal(body, &payload); err != nil {
+		logging.LogEvent("pay_bill_fetch", map[string]any{"billDate": day.Format("2006-01-02"), "status": "failed", "error": err.Error(), "responsePreview": logging.PreviewString(strings.TrimSpace(string(body)), 512)})
 		return nil, fmt.Errorf("parse trade bill %s failed: %w", day.Format("2006-01-02"), err)
 	}
 	if strings.TrimSpace(payload.DownloadURL) == "" {
@@ -349,14 +364,22 @@ func (s *PayService) fetchTradeBillRows(ctx context.Context, day time.Time) ([]t
 	}
 	downloadResp, err := s.httpClient.Do(downloadReq)
 	if err != nil {
+		logging.LogEvent("pay_bill_download", map[string]any{"billDate": day.Format("2006-01-02"), "status": "failed", "error": err.Error()})
 		return nil, err
 	}
 	defer downloadResp.Body.Close()
 	downloadBody, _ := io.ReadAll(downloadResp.Body)
 	if downloadResp.StatusCode >= 300 {
+		logging.LogEvent("pay_bill_download", map[string]any{"billDate": day.Format("2006-01-02"), "status": "failed", "statusCode": downloadResp.StatusCode, "responsePreview": logging.PreviewString(strings.TrimSpace(string(downloadBody)), 512)})
 		return nil, fmt.Errorf("download trade bill %s failed: %s", day.Format("2006-01-02"), strings.TrimSpace(string(downloadBody)))
 	}
-	return parseTradeBillCSV(downloadBody)
+	rows, parseErr := parseTradeBillCSV(downloadBody)
+	if parseErr != nil {
+		logging.LogEvent("pay_bill_download", map[string]any{"billDate": day.Format("2006-01-02"), "status": "failed", "error": parseErr.Error()})
+		return nil, parseErr
+	}
+	logging.LogEvent("pay_bill_download", map[string]any{"billDate": day.Format("2006-01-02"), "status": "success", "rowCount": len(rows)})
+	return rows, nil
 }
 
 func parseTradeBillCSV(body []byte) ([]tradeBillRow, error) {

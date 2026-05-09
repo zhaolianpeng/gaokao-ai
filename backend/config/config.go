@@ -11,6 +11,8 @@ import (
 
 type Config struct {
 	ServerAddr              string
+	LogDir                  string
+	LogBodyLimitBytes       int
 	PublicBaseURL           string
 	UploadDir               string
 	DBDriver                string
@@ -40,6 +42,8 @@ func Load() Config {
 
 	cfg := Config{
 		ServerAddr:              getEnv("SERVER_ADDR", ":8080"),
+		LogDir:                  getEnv("LOG_DIR", "/home/ubuntu/system_logs"),
+		LogBodyLimitBytes:       getEnvIntAllowZero("LOG_BODY_LIMIT_BYTES", 1048576),
 		PublicBaseURL:           strings.TrimSpace(os.Getenv("PUBLIC_BASE_URL")),
 		UploadDir:               getEnv("UPLOAD_DIR", "uploads"),
 		DBDriver:                getEnv("DB_DRIVER", "mysql"),

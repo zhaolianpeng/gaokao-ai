@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"gaokao-ai/backend/logging"
 	"gaokao-ai/backend/model"
 	"gaokao-ai/backend/service"
 )
@@ -32,20 +33,23 @@ func registerAdminRoutes(r *gin.Engine, adminService *service.AdminService, payS
 	r.POST("/api/admin/login", func(c *gin.Context) {
 		var req model.AdminLoginRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
+			logging.LogEvent("admin_login", map[string]any{"username": strings.TrimSpace(req.Username), "status": "bad_request", "error": err.Error()})
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 		token, user, err := adminService.Login(c.Request.Context(), req.Username, req.Password)
 		if err != nil {
+			logging.LogEvent("admin_login", map[string]any{"username": strings.TrimSpace(req.Username), "status": "failed", "error": err.Error()})
 			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 			return
 		}
 		c.SetCookie(adminCookieName, token, 86400*7, "/", "", false, true)
+		logging.LogEvent("admin_login", map[string]any{"adminId": user.ID, "username": user.Username, "status": "success"})
 		c.JSON(http.StatusOK, gin.H{"user": user})
 	})
 
 	adminGroup := r.Group("/api/admin")
-	adminGroup.Use(adminAuthRequired(adminService))
+	adminGroup.Use(adminAuthRequired(adminService), adminOperationLogger())
 	{
 		adminGroup.GET("/me", func(c *gin.Context) {
 			user := c.MustGet("adminUser")
@@ -57,6 +61,9 @@ func registerAdminRoutes(r *gin.Engine, adminService *service.AdminService, payS
 		})
 
 		adminGroup.POST("/logout", func(c *gin.Context) {
+			if user, ok := c.MustGet("adminUser").(*model.AdminUser); ok && user != nil {
+				logging.LogEvent("admin_logout", map[string]any{"adminId": user.ID, "username": user.Username, "status": "success"})
+			}
 			adminService.Logout(readAdminToken(c))
 			c.SetCookie(adminCookieName, "", -1, "/", "", false, true)
 			c.JSON(http.StatusOK, gin.H{"ok": true})
@@ -501,6 +508,7 @@ func adminAuthRequired(adminService *service.AdminService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		user, err := adminService.CurrentUser(c.Request.Context(), readAdminToken(c))
 		if err != nil {
+			logging.LogEvent("admin_auth", map[string]any{"status": "failed", "error": err.Error(), "path": c.Request.URL.Path})
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 			return
 		}

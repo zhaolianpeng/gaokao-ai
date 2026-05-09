@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"gaokao-ai/backend/logging"
 	"gaokao-ai/backend/model"
 	"gaokao-ai/backend/repository"
 )
@@ -36,6 +37,7 @@ func (s *TaskService) SubmitAgentRecommend(ctx context.Context, req model.AgentR
 	if err != nil {
 		return "", "", err
 	}
+	logging.LogEvent("task_submit", map[string]any{"taskId": taskID, "taskType": "agent-recommend", "student": req.Student, "demandPreview": logging.PreviewString(req.Demand, 512), "templateCount": len(req.Templates)})
 	go s.runAgentRecommend(taskID, req)
 	return strconv.Itoa(taskID), "pending", nil
 }
@@ -63,6 +65,7 @@ func (s *TaskService) SubmitAnalyzeTask(ctx context.Context, req model.AIAnalyze
 	if err != nil {
 		return "", "", err
 	}
+	logging.LogEvent("task_submit", map[string]any{"taskId": taskID, "taskType": "analyze", "student": student, "extraNotesPreview": logging.PreviewString(req.ExtraNotes, 512), "chongCount": len(req.Recommend.Chong), "wenCount": len(req.Recommend.Wen), "baoCount": len(req.Recommend.Bao)})
 	go s.runAnalyzeTask(taskID, req)
 	return strconv.Itoa(taskID), "pending", nil
 }
@@ -103,43 +106,60 @@ func (s *TaskService) GetTaskStatus(ctx context.Context, taskID string) (*model.
 
 func (s *TaskService) runAgentRecommend(taskID int, req model.AgentRecommendRequest) {
 	ctx := context.Background()
+	logging.LogEvent("task_run_start", map[string]any{"taskId": taskID, "taskType": "agent-recommend"})
 	if err := s.repo.MarkProcessing(ctx, taskID); err != nil {
 		log.Printf("mark agent task processing failed: %v", err)
+		logging.LogEvent("task_run_error", map[string]any{"taskId": taskID, "taskType": "agent-recommend", "step": "mark_processing", "error": err.Error()})
 		return
 	}
 	suggestions := buildExploreSuggestions(req.Student, req.Demand, req.Templates)
 	report, provider := s.buildAgentReport(ctx, req)
 	suggestionsJSON, _ := json.Marshal(suggestions)
+	logging.LogEvent("task_compute", map[string]any{"taskId": taskID, "taskType": "agent-recommend", "suggestionCount": len(suggestions), "provider": provider, "reportPreview": logging.PreviewString(report, 512), "reportLength": len(report)})
 	if err := s.repo.CompleteTask(ctx, taskID, report, provider, suggestionsJSON); err != nil {
 		log.Printf("complete agent task failed: %v", err)
+		logging.LogEvent("task_run_error", map[string]any{"taskId": taskID, "taskType": "agent-recommend", "step": "complete", "error": err.Error()})
+		return
 	}
+	logging.LogEvent("task_run_complete", map[string]any{"taskId": taskID, "taskType": "agent-recommend", "provider": provider, "suggestionCount": len(suggestions), "reportLength": len(report)})
 }
 
 func (s *TaskService) runAnalyzeTask(taskID int, req model.AIAnalyzeRequest) {
 	ctx := context.Background()
+	logging.LogEvent("task_run_start", map[string]any{"taskId": taskID, "taskType": "analyze"})
 	if err := s.repo.MarkProcessing(ctx, taskID); err != nil {
 		log.Printf("mark analyze task processing failed: %v", err)
+		logging.LogEvent("task_run_error", map[string]any{"taskId": taskID, "taskType": "analyze", "step": "mark_processing", "error": err.Error()})
 		return
 	}
 	report, err := s.aiService.Analyze(ctx, req)
 	if err != nil {
 		if failErr := s.repo.FailTask(ctx, taskID, err.Error()); failErr != nil {
 			log.Printf("fail analyze task failed: %v", failErr)
+			logging.LogEvent("task_run_error", map[string]any{"taskId": taskID, "taskType": "analyze", "step": "mark_failed", "error": failErr.Error()})
 		}
+		logging.LogEvent("task_run_error", map[string]any{"taskId": taskID, "taskType": "analyze", "step": "analyze", "error": err.Error()})
 		return
 	}
 	if err := s.repo.CompleteTask(ctx, taskID, report, providerName(report), []byte(`[]`)); err != nil {
 		log.Printf("complete analyze task failed: %v", err)
+		logging.LogEvent("task_run_error", map[string]any{"taskId": taskID, "taskType": "analyze", "step": "complete", "error": err.Error()})
+		return
 	}
+	logging.LogEvent("task_compute", map[string]any{"taskId": taskID, "taskType": "analyze", "provider": providerName(report), "reportPreview": logging.PreviewString(report, 512), "reportLength": len(report)})
+	logging.LogEvent("task_run_complete", map[string]any{"taskId": taskID, "taskType": "analyze", "provider": providerName(report), "reportLength": len(report)})
 }
 
 func (s *TaskService) buildAgentReport(ctx context.Context, req model.AgentRecommendRequest) (string, string) {
 	prompt := buildAgentPrompt(req.Student, req.Demand, req.Templates)
+	logging.LogEvent("task_prompt", map[string]any{"taskType": "agent-recommend", "promptPreview": logging.PreviewString(prompt, 512), "promptLength": len(prompt)})
 	if !s.aiService.HasAPIKey() {
+		logging.LogEvent("task_fallback", map[string]any{"taskType": "agent-recommend", "reason": "missing_api_key"})
 		return buildLocalAgentAdvice(req.Student, req.Demand, req.Templates, "missing_key"), "local"
 	}
 	report, err := s.aiService.GenerateText(ctx, "你是中国高考志愿填报智能体，擅长将考生需求转化为可执行的志愿策略。", prompt, 0.4)
 	if err != nil {
+		logging.LogEvent("task_fallback", map[string]any{"taskType": "agent-recommend", "reason": "generate_failed", "error": err.Error()})
 		return buildLocalAgentAdvice(req.Student, req.Demand, req.Templates, "timeout"), "local-fallback"
 	}
 	return report, "deepseek"

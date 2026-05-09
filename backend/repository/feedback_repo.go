@@ -10,12 +10,12 @@ import (
 )
 
 type FeedbackRepository struct {
-	db     *sql.DB
+	db     *observedDB
 	driver string
 }
 
 func NewFeedbackRepository(db *sql.DB, driver string) (*FeedbackRepository, error) {
-	repo := &FeedbackRepository{db: db, driver: strings.ToLower(strings.TrimSpace(driver))}
+	repo := &FeedbackRepository{db: observeDB(db), driver: strings.ToLower(strings.TrimSpace(driver))}
 	if err := repo.ensureTable(); err != nil {
 		return nil, err
 	}

@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"gaokao-ai/backend/logging"
 	"gaokao-ai/backend/model"
 )
 
@@ -36,6 +37,7 @@ func NewAIService(apiKey, baseURL string, timeout time.Duration) *AIService {
 
 func (s *AIService) Analyze(ctx context.Context, req model.AIAnalyzeRequest) (string, error) {
 	prompt := buildPrompt(req)
+	logging.LogEvent("ai_analyze", map[string]any{"hasAPIKey": s.HasAPIKey(), "student": req.Student, "promptLength": len(prompt), "promptPreview": logging.PreviewString(prompt, 512), "chongCount": len(req.Recommend.Chong), "wenCount": len(req.Recommend.Wen), "baoCount": len(req.Recommend.Bao)})
 	if !s.HasAPIKey() {
 		return "当前服务未配置 DEEPSEEK_API_KEY，先返回本地模板报告。\n\n" + prompt, nil
 	}
@@ -66,6 +68,7 @@ func (s *AIService) GenerateText(ctx context.Context, systemPrompt, prompt strin
 	if err != nil {
 		return "", fmt.Errorf("marshal deepseek request: %w", err)
 	}
+	logging.LogEvent("ai_request", map[string]any{"baseURL": s.baseURL, "temperature": temperature, "systemPromptPreview": logging.PreviewString(systemPrompt, 256), "promptPreview": logging.PreviewString(prompt, 512), "requestBodyPreview": logging.PreviewString(string(body), 512), "requestBodyBytes": len(body)})
 
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, s.baseURL+"/chat/completions", bytes.NewReader(body))
 	if err != nil {
@@ -78,6 +81,7 @@ func (s *AIService) GenerateText(ctx context.Context, systemPrompt, prompt strin
 	resp, err := s.client.Do(httpReq)
 	if err != nil {
 		log.Printf("[DeepSeek] request error: %v", err)
+		logging.LogEvent("ai_response", map[string]any{"error": err.Error()})
 		return "", fmt.Errorf("deepseek request failed: %w", err)
 	}
 	defer resp.Body.Close()
@@ -85,6 +89,7 @@ func (s *AIService) GenerateText(ctx context.Context, systemPrompt, prompt strin
 	respBytes, readErr := io.ReadAll(resp.Body)
 	if readErr != nil {
 		log.Printf("[DeepSeek] read response error: %v, status=%d, partial_body=%s", readErr, resp.StatusCode, previewBody(respBytes))
+		logging.LogEvent("ai_response", map[string]any{"status": resp.StatusCode, "error": readErr.Error(), "responsePreview": previewBody(respBytes)})
 		return "", fmt.Errorf("deepseek read response failed: %w", readErr)
 	}
 
@@ -94,6 +99,7 @@ func (s *AIService) GenerateText(ctx context.Context, systemPrompt, prompt strin
 
 	if resp.StatusCode >= 300 {
 		log.Printf("[DeepSeek] non-success status=%d body=%s", resp.StatusCode, previewBody(respBytes))
+		logging.LogEvent("ai_response", map[string]any{"status": resp.StatusCode, "responsePreview": previewBody(respBytes)})
 		return "", fmt.Errorf("deepseek http status=%d body=%s", resp.StatusCode, previewBody(respBytes))
 	}
 
@@ -111,21 +117,26 @@ func (s *AIService) GenerateText(ctx context.Context, systemPrompt, prompt strin
 	}
 	if err := json.Unmarshal(respBytes, &parsed); err != nil {
 		log.Printf("[DeepSeek] unmarshal error: %v, body=%s", err, previewBody(respBytes))
+		logging.LogEvent("ai_response", map[string]any{"status": resp.StatusCode, "error": err.Error(), "responsePreview": previewBody(respBytes)})
 		return "", fmt.Errorf("deepseek invalid json response: %w, body=%s", err, previewBody(respBytes))
 	}
 	if parsed.Error != nil {
 		log.Printf("[DeepSeek] api error: message=%q type=%q code=%q", parsed.Error.Message, parsed.Error.Type, parsed.Error.Code)
+		logging.LogEvent("ai_response", map[string]any{"status": resp.StatusCode, "apiError": parsed.Error})
 		return "", fmt.Errorf("deepseek api error: %s (type=%s code=%s)", parsed.Error.Message, parsed.Error.Type, parsed.Error.Code)
 	}
 	if len(parsed.Choices) == 0 {
 		log.Printf("[DeepSeek] empty choices body=%s", previewBody(respBytes))
+		logging.LogEvent("ai_response", map[string]any{"status": resp.StatusCode, "responsePreview": previewBody(respBytes), "error": "empty choices"})
 		return "", fmt.Errorf("deepseek empty choices response: %s", previewBody(respBytes))
 	}
 	content := strings.TrimSpace(parsed.Choices[0].Message.Content)
 	if content == "" {
 		log.Printf("[DeepSeek] empty content body=%s", previewBody(respBytes))
+		logging.LogEvent("ai_response", map[string]any{"status": resp.StatusCode, "responsePreview": previewBody(respBytes), "error": "empty content"})
 		return "", fmt.Errorf("deepseek returned empty content: %s", previewBody(respBytes))
 	}
+	logging.LogEvent("ai_response", map[string]any{"status": resp.StatusCode, "responsePreview": logging.PreviewString(content, 512), "responseLength": len(content)})
 	return content, nil
 }
 

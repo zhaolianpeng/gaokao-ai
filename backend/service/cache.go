@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
+
+	"gaokao-ai/backend/logging"
 )
 
 type ResultCache struct {
@@ -32,6 +34,7 @@ func NewResultCache(addr, password string, db int, ttl time.Duration) (*ResultCa
 	if err := client.Ping(ctx).Err(); err != nil {
 		return nil, err
 	}
+	logging.LogEvent("cache_connect", map[string]any{"addr": addr, "db": db, "ttlSeconds": int(ttl.Seconds())})
 	return &ResultCache{client: client, ttl: ttl, prefix: "gaokao:"}, nil
 }
 
@@ -55,19 +58,31 @@ func rememberJSON[T any](ctx context.Context, cache *ResultCache, key string, fe
 	fullKey := cache.prefix + key
 	if raw, err := cache.client.Get(ctx, fullKey).Bytes(); err == nil {
 		var cached T
-		if unmarshalErr := json.Unmarshal(raw, &cached); unmarshalErr == nil {
+		unmarshalErr := json.Unmarshal(raw, &cached)
+		if unmarshalErr == nil {
+			logging.LogEvent("cache_get", map[string]any{"key": fullKey, "hit": true, "valuePreview": logging.PreviewString(string(raw), 512), "valueBytes": len(raw)})
 			return cached, nil
 		}
+		logging.LogEvent("cache_get", map[string]any{"key": fullKey, "hit": true, "unmarshalError": unmarshalErr.Error(), "valuePreview": logging.PreviewString(string(raw), 512), "valueBytes": len(raw)})
 	} else if err != redis.Nil {
+		logging.LogEvent("cache_get", map[string]any{"key": fullKey, "hit": false, "error": err.Error()})
 		return fetch()
 	}
+	logging.LogEvent("cache_get", map[string]any{"key": fullKey, "hit": false})
 
 	value, err := fetch()
 	if err != nil {
+		logging.LogEvent("cache_fetch", map[string]any{"key": fullKey, "error": err.Error()})
 		return zero, err
 	}
 	if payload, marshalErr := json.Marshal(value); marshalErr == nil {
-		_ = cache.client.Set(ctx, fullKey, payload, cache.ttl).Err()
+		if setErr := cache.client.Set(ctx, fullKey, payload, cache.ttl).Err(); setErr != nil {
+			logging.LogEvent("cache_set", map[string]any{"key": fullKey, "ttlSeconds": int(cache.ttl.Seconds()), "valueBytes": len(payload), "valuePreview": logging.PreviewString(string(payload), 512), "error": setErr.Error()})
+		} else {
+			logging.LogEvent("cache_set", map[string]any{"key": fullKey, "ttlSeconds": int(cache.ttl.Seconds()), "valueBytes": len(payload), "valuePreview": logging.PreviewString(string(payload), 512)})
+		}
+	} else {
+		logging.LogEvent("cache_set", map[string]any{"key": fullKey, "marshalError": marshalErr.Error()})
 	}
 	return value, nil
 }

@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 
+	"gaokao-ai/backend/logging"
 	"gaokao-ai/backend/model"
 	"gaokao-ai/backend/repository"
 )
@@ -23,6 +24,7 @@ func NewRecommendService(repo *repository.CollegeRepository, cache *ResultCache)
 func (s *RecommendService) Recommend(ctx context.Context, req model.RecommendRequest) (model.RecommendResponse, error) {
 	cacheKey := fmt.Sprintf("recommend:%s:%d:%d:%s:%d:%s", strings.TrimSpace(req.Province), req.Score, req.Rank, strings.TrimSpace(req.Subject), req.Year, strings.TrimSpace(req.TargetMajor))
 	return rememberJSON(ctx, s.cache, cacheKey, func() (model.RecommendResponse, error) {
+		logging.LogEvent("recommend_start", map[string]any{"province": req.Province, "subject": req.Subject, "year": req.Year, "score": req.Score, "rank": req.Rank, "targetMajor": req.TargetMajor})
 		if req.Province == "" {
 			req.Province = "黑龙江"
 		}
@@ -38,6 +40,7 @@ func (s *RecommendService) Recommend(ctx context.Context, req model.RecommendReq
 		wen := make([]model.RecommendItem, 0)
 		bao := make([]model.RecommendItem, 0)
 		bands := buildRecommendBands(req.Rank)
+		logging.LogEvent("recommend_bands", map[string]any{"rank": req.Rank, "chongLower": bands.ChongLower, "wenUpper": bands.WenUpper, "baoUpper": bands.BaoUpper, "candidateCount": len(items)})
 
 		for _, item := range items {
 			if item.MinRank == 0 {

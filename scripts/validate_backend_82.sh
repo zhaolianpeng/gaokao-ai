@@ -34,6 +34,28 @@ echo "[1/2] starting candidate on temporary port ${TEMP_PORT}"
 SSHPASS="${SSH_PASSWORD}" sshpass -e ssh "${SSH_OPTS[@]}" "${REMOTE_USER}@${REMOTE_HOST}" \
   "REMOTE_DIR='${REMOTE_DIR}' TEMP_PORT='${TEMP_PORT}' BUILD_OUTPUT='${BUILD_OUTPUT}' bash -s" <<'EOF'
 set -euo pipefail
+
+wait_for_port_release() {
+  local port="$1"
+  local pid="${2:-}"
+  for _ in 1 2 3 4 5 6 7 8 9 10; do
+    if ! lsof -tiTCP:"${port}" -sTCP:LISTEN >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 1
+  done
+  if [[ -n "${pid}" ]] && kill -0 "${pid}" >/dev/null 2>&1; then
+    kill -9 "${pid}" || true
+  fi
+  for _ in 1 2 3 4 5; do
+    if ! lsof -tiTCP:"${port}" -sTCP:LISTEN >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 1
+  done
+  return 1
+}
+
 cd "${REMOTE_DIR}"
 if [[ ! -f "${BUILD_OUTPUT}" ]]; then
   echo "candidate binary not found: ${BUILD_OUTPUT}" >&2
@@ -43,7 +65,11 @@ fi
 existing_pid="$(lsof -tiTCP:${TEMP_PORT} -sTCP:LISTEN || true)"
 if [[ -n "${existing_pid}" ]]; then
   kill "${existing_pid}" || true
-  sleep 1
+  if ! wait_for_port_release "${TEMP_PORT}" "${existing_pid}"; then
+    echo "temporary port ${TEMP_PORT} did not release after stopping pid ${existing_pid}" >&2
+    lsof -iTCP:${TEMP_PORT} -sTCP:LISTEN -n -P >&2 || true
+    exit 1
+  fi
 fi
 
 nohup env SERVER_ADDR=":${TEMP_PORT}" "./${BUILD_OUTPUT}" >/tmp/gaokao-api-${TEMP_PORT}.log 2>&1 &

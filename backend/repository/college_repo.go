@@ -8,11 +8,11 @@ import (
 )
 
 type CollegeRepository struct {
-	db *sql.DB
+	db *observedDB
 }
 
 func NewCollegeRepository(db *sql.DB) *CollegeRepository {
-	return &CollegeRepository{db: db}
+	return &CollegeRepository{db: observeDB(db)}
 }
 
 func (r *CollegeRepository) ListAdmissionLines(ctx context.Context, province, subject string, year int, targetMajor string, limit int) ([]model.RecommendItem, error) {

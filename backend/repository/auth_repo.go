@@ -10,11 +10,11 @@ import (
 )
 
 type AuthRepository struct {
-	db *sql.DB
+	db *observedDB
 }
 
 func NewAuthRepository(db *sql.DB) *AuthRepository {
-	return &AuthRepository{db: db}
+	return &AuthRepository{db: observeDB(db)}
 }
 
 func (r *AuthRepository) GetUserByID(ctx context.Context, userID int) (*model.AuthUserRecord, error) {

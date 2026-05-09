@@ -8,12 +8,16 @@ import (
 
 	"gaokao-ai/backend/api"
 	"gaokao-ai/backend/config"
+	"gaokao-ai/backend/logging"
 	"gaokao-ai/backend/repository"
 	"gaokao-ai/backend/service"
 )
 
 func main() {
 	cfg := config.Load()
+	if _, err := logging.Setup(cfg.LogDir); err != nil {
+		log.Fatalf("init logger failed: %v", err)
+	}
 	gin.SetMode(cfg.GinMode)
 
 	db, err := repository.NewDB(cfg.DBDriver, cfg.DBDSN)
@@ -53,7 +57,7 @@ func main() {
 		log.Printf("init pay service failed: %v", err)
 	}
 
-	router := api.NewRouter(recommendService, aiService, explorerService, authService, payService, taskService, feedbackService, adminService, cfg.TrustedProxies, cfg.UploadDir, cfg.PublicBaseURL)
+	router := api.NewRouter(recommendService, aiService, explorerService, authService, payService, taskService, feedbackService, adminService, cfg.TrustedProxies, cfg.UploadDir, cfg.PublicBaseURL, cfg.LogBodyLimitBytes)
 
 	if err := router.Run(cfg.ServerAddr); err != nil {
 		log.Fatalf("run server failed: %v", err)
