@@ -1,0 +1,134 @@
+<view class="container">
+  <view class="card" wx:if="{{compareBoard}}">
+    <view class="row-between">
+      <view class="section-title">方案并排比较</view>
+      <view class="tip">已选 {{compareBoard.columns.length}} 套</view>
+    </view>
+    <view class="tip">先在下方勾选 2-3 套方案，这里会直接展开核心差异，适合和家长一起看。</view>
+    <view class="summary-chip-row">
+      <block wx:for="{{compareBoard.summaryChips}}" wx:key="*this">
+        <view class="summary-chip">{{item}}</view>
+      </block>
+    </view>
+    <view class="compare-conclusion-card" wx:if="{{compareBoard.conclusions.length}}">
+      <view class="compare-conclusion-title">自动结论</view>
+      <block wx:for="{{compareBoard.conclusions}}" wx:key="*this">
+        <view class="compare-conclusion-line">{{index + 1}}. {{item}}</view>
+      </block>
+    </view>
+    <scroll-view scroll-x="true" class="compare-scroll" enable-flex="true">
+      <view class="compare-board">
+        <view class="compare-header compare-grid" style="grid-template-columns: 180rpx repeat({{compareBoard.columns.length}}, 1fr);">
+          <view class="compare-cell compare-label-head">比较项</view>
+          <block wx:for="{{compareBoard.columns}}" wx:key="id">
+            <view class="compare-cell compare-column-head">
+              {{item.title}}
+              <view class="compare-column-sub">{{item.total}} 组</view>
+              <view class="compare-badge-row" wx:if="{{item.badges.length}}">
+                <block wx:for="{{item.badges}}" wx:key="*this">
+                  <view class="compare-badge">{{item}}</view>
+                </block>
+              </view>
+            </view>
+          </block>
+        </view>
+        <block wx:for="{{compareBoard.rows}}" wx:key="label">
+          <view class="compare-grid compare-row-grid" style="grid-template-columns: 180rpx repeat({{compareBoard.columns.length}}, 1fr);">
+            <view class="compare-cell compare-label-cell">{{item.label}}</view>
+            <block wx:for="{{item.cells}}" wx:key="id">
+              <view class="compare-cell compare-value-cell {{item.highlighted ? 'compare-value-cell-highlight' : ''}}">{{item.text}}</view>
+            </block>
+          </view>
+        </block>
+      </view>
+    </scroll-view>
+    <view class="action-row action-grid">
+      <button class="ghost-btn" bindtap="openFamilyShareCard">生成家长沟通卡片</button>
+      <button class="ghost-btn" bindtap="openVip">查看 VIP 深度服务</button>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="row-between">
+      <view class="section-title">方案对比库</view>
+      <view class="tip">已保存 {{scenarios.length}} 套</view>
+    </view>
+    <view class="tip">推荐页里保存的保结果版、保专业版、冲层次版会统一沉淀在这里，方便和家长老师对比。</view>
+    <block wx:for="{{scenarios}}" wx:key="id">
+      <view class="scenario-item">
+        <view class="row-between top-row">
+          <view class="plan-title">{{item.title}}</view>
+          <view class="filter-pill scenario-pill">{{item.metrics.total}} 组</view>
+        </view>
+        <view class="plan-sub">{{item.desc}}</view>
+        <view class="plan-sub">冲/稳/保：{{item.metrics.chong}} / {{item.metrics.wen}} / {{item.metrics.bao}}，命中目标方向 {{item.metrics.targetHits}} 组</view>
+        <view class="plan-sub">代表院校：{{item.collegeText}}</view>
+        <view class="plan-foot">
+          <text>{{item.timeText}}</text>
+          <text>{{item.focus}}</text>
+        </view>
+        <view class="scenario-toggle-row">
+          <view class="scenario-toggle {{item.selected ? 'scenario-toggle-active' : ''}}" data-id="{{item.id}}" bindtap="onToggleScenarioCompare">{{item.selected ? '已加入对比' : '加入并排比较'}}</view>
+        </view>
+        <view class="action-row action-grid">
+          <button class="ghost-btn" data-id="{{item.id}}" bindtap="onApplyScenario">应用到正式志愿表</button>
+          <button class="ghost-btn" data-id="{{item.id}}" bindtap="onRemoveScenario">移除方案</button>
+        </view>
+      </view>
+    </block>
+    <view class="empty-tip" wx:if="{{!scenarios.length}}">还没有保存的对比方案，先去推荐页保存一套。</view>
+  </view>
+
+  <view class="card">
+    <view class="row-between">
+      <view class="section-title">正式志愿表</view>
+      <view class="link-btn" bindtap="onClearPlan">清空</view>
+    </view>
+    <view class="tip">先收藏专业组，再生成正式志愿表；也可以从推荐结果直接加入。</view>
+    <view class="toolbar-row">
+      <picker mode="selector" range="{{sortOptions}}" range-key="label" bindchange="onSortChange">
+        <view class="filter-pill">排序：{{currentSortLabel}}</view>
+      </picker>
+      <view class="filter-pill export-pill" bindtap="onExportPlan">导出清单</view>
+    </view>
+    <view class="action-row action-grid">
+      <button class="ghost-btn" bindtap="onBuildFromFavorites">从收藏生成</button>
+    </view>
+    <block wx:for="{{groupedApplicationList}}" wx:key="key" wx:for-item="group">
+      <view class="group-section">
+        <view class="group-title">{{group.title}} · {{group.items.length}} 组</view>
+        <block wx:for="{{group.items}}" wx:key="id" wx:for-item="plan">
+          <view class="plan-item">
+            <view class="row-between top-row">
+              <view class="plan-title">{{plan.item.college_name}}</view>
+              <view class="tag tag-{{plan.item.tag || 'other'}}">{{plan.item.tag === 'chong' ? '冲' : plan.item.tag === 'wen' ? '稳' : plan.item.tag === 'bao' ? '保' : '待定'}}</view>
+            </view>
+            <view class="plan-sub">{{plan.item.group_code}} {{plan.item.group_name}} · {{plan.item.batch}}</view>
+            <view class="plan-sub">选科 {{plan.item.subject_requirement}} · 最低位次 {{plan.item.min_rank}} · 最低分 {{plan.item.min_score}}</view>
+            <view class="plan-sub">{{plan.item.majorPreview || plan.item.matched_major || plan.item.major}}</view>
+            <view class="plan-foot">
+              <text>{{plan.timeText}}</text>
+              <text class="plan-remove" data-id="{{plan.id}}" bindtap="onRemovePlanItem">移除</text>
+            </view>
+          </view>
+        </block>
+      </view>
+    </block>
+    <view class="empty-tip" wx:if="{{!groupedApplicationList.length}}">正式志愿表还没有内容。</view>
+  </view>
+
+  <view class="card">
+    <view class="section-title section-title-small">已收藏专业组</view>
+    <block wx:for="{{favorites}}" wx:key="id">
+      <view class="favorite-item">
+        <view class="plan-title">{{item.item.college_name}}</view>
+        <view class="plan-sub">{{item.item.group_code}} {{item.item.group_name}} · {{item.item.batch}}</view>
+        <view class="plan-foot">
+          <text>{{item.timeText}}</text>
+          <text>可一键导入正式志愿表</text>
+        </view>
+      </view>
+    </block>
+    <view class="empty-tip" wx:if="{{!favorites.length}}">还没有收藏的专业组。</view>
+  </view>
+</view>

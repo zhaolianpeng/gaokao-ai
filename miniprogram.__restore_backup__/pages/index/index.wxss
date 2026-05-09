@@ -1,0 +1,26 @@
+.page {
+  min-height: 100vh;
+  padding: 48rpx;
+  box-sizing: border-box;
+}
+
+.card {
+  margin-top: 120rpx;
+  padding: 48rpx;
+  background: #ffffff;
+  border-radius: 24rpx;
+  box-shadow: 0 12rpx 40rpx rgba(15, 23, 42, 0.08);
+}
+
+.title {
+  font-size: 44rpx;
+  font-weight: 600;
+  color: #111827;
+}
+
+.desc {
+  margin-top: 24rpx;
+  font-size: 28rpx;
+  line-height: 1.6;
+  color: #4b5563;
+}

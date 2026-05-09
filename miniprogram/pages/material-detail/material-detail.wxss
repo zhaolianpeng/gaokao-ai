@@ -1,0 +1,90 @@
+.container {
+  padding: 28rpx;
+}
+
+.hero {
+  margin-bottom: 24rpx;
+  padding: 30rpx;
+  border-radius: 28rpx;
+  background: linear-gradient(135deg, #123861 0%, #1d6bb9 100%);
+  color: #ffffff;
+  box-shadow: 0 16rpx 32rpx rgba(18, 49, 87, 0.18);
+}
+
+.category-pill {
+  display: inline-block;
+  padding: 10rpx 18rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 255, 255, 0.16);
+  font-size: 22rpx;
+}
+
+.hero-title {
+  margin-top: 18rpx;
+  font-size: 40rpx;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+.hero-summary {
+  margin-top: 12rpx;
+  font-size: 26rpx;
+  line-height: 1.8;
+  color: rgba(255, 255, 255, 0.84);
+}
+
+.notice-card {
+  background: linear-gradient(135deg, #fff7e8 0%, #fffdf8 100%);
+}
+
+.notice-title {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #9a6700;
+}
+
+.notice-text,
+.empty-text {
+  margin-top: 10rpx;
+  font-size: 26rpx;
+  line-height: 1.8;
+  color: #5b6471;
+}
+
+.section-card {
+  padding-bottom: 8rpx;
+}
+
+.bullet-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 16rpx;
+  padding: 12rpx 0;
+}
+
+.bullet-dot {
+  width: 12rpx;
+  height: 12rpx;
+  margin-top: 14rpx;
+  border-radius: 50%;
+  background: #175cd3;
+  flex-shrink: 0;
+}
+
+.bullet-text {
+  flex: 1;
+  font-size: 27rpx;
+  line-height: 1.8;
+  color: #304255;
+}
+
+.ghost-btn {
+  margin-top: 8rpx;
+  border-radius: 16rpx;
+  background: #e8f1ff;
+  color: #175cd3;
+}
+
+.empty-card {
+  margin-top: 80rpx;
+}

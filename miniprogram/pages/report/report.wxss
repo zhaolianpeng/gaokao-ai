@@ -1,0 +1,159 @@
+.container {
+  padding: 28rpx;
+}
+
+.student-meta {
+  margin-bottom: 18rpx;
+  font-size: 24rpx;
+  color: #6b7280;
+}
+
+.stats-row {
+  display: flex;
+  gap: 12rpx;
+  margin-bottom: 18rpx;
+}
+
+.stat-chip {
+  padding: 8rpx 16rpx;
+  border-radius: 999rpx;
+  background: #eef5ff;
+  color: #284b75;
+  font-size: 22rpx;
+}
+
+.outline-card {
+  margin-bottom: 20rpx;
+  padding: 20rpx;
+  border-radius: 18rpx;
+  background: linear-gradient(180deg, rgba(248,251,255,0.98), rgba(238,245,255,0.98));
+}
+
+.suggestion-card {
+  margin-bottom: 20rpx;
+  padding: 20rpx;
+  border-radius: 18rpx;
+  background: linear-gradient(180deg, rgba(238,248,255,0.98), rgba(230,244,255,0.98));
+}
+
+.suggestion-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14rpx;
+  margin-top: 16rpx;
+}
+
+.suggestion-chip {
+  padding: 12rpx 18rpx;
+  border-radius: 999rpx;
+  background: #16355b;
+  color: #ffffff;
+  font-size: 22rpx;
+}
+
+.outline-title {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #16355b;
+}
+
+.outline-item {
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  line-height: 1.7;
+  color: #60748d;
+}
+
+.family-brief,
+.checklist-item {
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  line-height: 1.8;
+  color: #38597f;
+  white-space: pre-wrap;
+}
+
+.family-action-row {
+  margin-top: 18rpx;
+}
+
+.vip-prompt-desc {
+  margin-top: 14rpx;
+}
+
+.package-list {
+  margin-bottom: 20rpx;
+}
+
+.package-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18rpx 0;
+  border-bottom: 1rpx solid #eef2f7;
+}
+
+.package-label {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.package-desc {
+  margin-top: 6rpx;
+  font-size: 24rpx;
+  color: #6b7280;
+}
+
+.package-price {
+  font-size: 30rpx;
+  color: #175cd3;
+  font-weight: 800;
+}
+
+.report-box {
+  height: 920rpx;
+  padding-right: 8rpx;
+}
+
+.report-block {
+  margin-bottom: 18rpx;
+  line-height: 1.85;
+  font-size: 28rpx;
+  color: #1f2937;
+}
+
+.report-block-heading {
+  font-size: 32rpx;
+  font-weight: 800;
+  color: #16355b;
+}
+
+.report-block-bullet {
+  padding: 18rpx 20rpx;
+  border-radius: 18rpx;
+  background: #f8fbff;
+  color: #38597f;
+}
+
+.action-row {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 20rpx;
+}
+
+.ghost-btn {
+  flex: 1;
+  border-radius: 16rpx;
+  background: #eef5ff;
+  color: #175cd3;
+}
+
+.primary-btn {
+  margin-top: 20rpx;
+}
+
+.action-btn {
+  flex: 1;
+  margin-top: 0;
+}

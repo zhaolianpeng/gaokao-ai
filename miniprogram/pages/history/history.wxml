@@ -1,0 +1,13 @@
+<view class="container">
+  <view class="card">
+    <view class="section-title">历史记录</view>
+    <view class="empty" wx:if="{{!history.length}}">暂无历史记录，先去生成一次推荐结果。</view>
+    <block wx:for="{{history}}" wx:key="id">
+      <view class="history-item" data-index="{{index}}" bindtap="openRecord">
+        <view class="history-title">{{item.student.province}} {{item.student.subject}} · {{item.student.score}}分 / {{item.student.rank}}名</view>
+        <view class="history-sub">{{item.student.year}}年 · {{item.student.targetMajor || '未填写意向专业'}}</view>
+        <view class="history-time">{{item.timeText}}</view>
+      </view>
+    </block>
+  </view>
+</view>

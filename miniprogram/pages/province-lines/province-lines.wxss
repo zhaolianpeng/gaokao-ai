@@ -1,0 +1,63 @@
+.container {
+  padding: 28rpx;
+}
+
+.filter-row {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 18rpx;
+}
+
+.filter-pill {
+  padding: 14rpx 20rpx;
+  border-radius: 999rpx;
+  background: #eef5ff;
+  color: #284b75;
+  font-size: 24rpx;
+}
+
+.tip-highlight {
+  padding: 16rpx 18rpx;
+  border-radius: 18rpx;
+  background: #f7f9fc;
+}
+
+.tip,
+.empty-tip {
+  margin-top: 12rpx;
+  color: #5f738b;
+  font-size: 24rpx;
+  line-height: 1.7;
+}
+
+.line-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 22rpx 0;
+  border-bottom: 1rpx dashed #e6edf7;
+}
+
+.line-batch {
+  font-size: 29rpx;
+  font-weight: 700;
+  color: #1a2d43;
+}
+
+.line-sub {
+  margin-top: 6rpx;
+  font-size: 24rpx;
+  color: #60748d;
+}
+
+.line-score {
+  font-size: 34rpx;
+  font-weight: 800;
+  color: #16355b;
+}
+
+@media (max-width: 420px) {
+  .filter-row {
+    flex-direction: column;
+  }
+}

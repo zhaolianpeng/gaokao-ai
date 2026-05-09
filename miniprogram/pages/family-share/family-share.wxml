@@ -1,0 +1,136 @@
+<view class="container" wx:if="{{payload}}">
+  <view class="share-hero-card">
+    <view class="share-badge">家长沟通卡</view>
+    <view class="share-title">{{payload.title}}</view>
+    <view class="share-sub" wx:if="{{payload.sourceTitle}}">来源：{{payload.sourceTitle}}</view>
+    <view class="share-student" wx:if="{{payload.student}}">黑龙江 {{payload.student.subject}} · {{payload.student.score}}分 / {{payload.student.rank}}名</view>
+  </view>
+
+  <view class="poster-card">
+    <view class="poster-top-row">
+      <view>
+        <view class="poster-badge">适合截图转发</view>
+        <view class="poster-title">{{payload.title}}</view>
+        <view class="poster-lead-strip" wx:if="{{posterLead}}">{{posterLead}}</view>
+      </view>
+      <view class="poster-corner">2026 黑龙江</view>
+    </view>
+    <view class="poster-metric-row">
+      <block wx:for="{{posterMetrics}}" wx:key="label">
+        <view class="poster-metric-card">
+          <view class="poster-metric-label">{{item.label}}</view>
+          <view class="poster-metric-value">{{item.value}}</view>
+        </view>
+      </block>
+    </view>
+    <view class="poster-section" wx:if="{{payload.summary && payload.summary.length}}">
+      <view class="poster-section-title">一句话先讲清楚</view>
+      <block wx:for="{{payload.summary}}" wx:key="*this">
+        <view class="poster-line">{{index + 1}}. {{item}}</view>
+      </block>
+    </view>
+    <view class="poster-section" wx:if="{{payload.conclusions && payload.conclusions.length}}">
+      <view class="poster-section-title">家长怎么选更快</view>
+      <block wx:for="{{payload.conclusions}}" wx:key="*this">
+        <view class="poster-line poster-line-strong">{{index + 1}}. {{item}}</view>
+      </block>
+    </view>
+    <view class="poster-highlight-box" wx:if="{{payload.columns && payload.columns.length}}">
+      <view class="poster-section-title">重点看哪一列</view>
+      <block wx:for="{{payload.columns}}" wx:key="title">
+        <view class="poster-highlight-row">
+          <view class="poster-highlight-title">{{item.title}}</view>
+          <view class="badge-row" wx:if="{{item.badges.length}}">
+            <block wx:for="{{item.badges}}" wx:key="*this">
+              <view class="poster-mini-badge">{{item}}</view>
+            </block>
+          </view>
+        </view>
+      </block>
+    </view>
+    <view class="poster-footer">{{payload.footer}}</view>
+    <view class="poster-signature-row">
+      <view class="poster-signature-left">
+        <view class="poster-signature-title">{{signatureText}}</view>
+        <view class="poster-signature-sub">仅供家庭沟通与决策参考，请以正式招生信息为准</view>
+      </view>
+      <view class="poster-stamp">家长沟通版</view>
+    </view>
+  </view>
+
+  <view class="card" wx:if="{{payload.summary && payload.summary.length}}">
+    <view class="section-title">核心结论</view>
+    <block wx:for="{{payload.summary}}" wx:key="*this">
+      <view class="share-line">{{index + 1}}. {{item}}</view>
+    </block>
+  </view>
+
+  <view class="card" wx:if="{{payload.columns && payload.columns.length}}">
+    <view class="section-title">方案标签</view>
+    <block wx:for="{{payload.columns}}" wx:key="title">
+      <view class="column-card">
+        <view class="column-title">{{item.title}}</view>
+        <view class="badge-row" wx:if="{{item.badges.length}}">
+          <block wx:for="{{item.badges}}" wx:key="*this">
+            <view class="mini-badge">{{item}}</view>
+          </block>
+        </view>
+      </view>
+    </block>
+  </view>
+
+  <view class="card" wx:if="{{payload.conclusions && payload.conclusions.length}}">
+    <view class="section-title">自动结论</view>
+    <block wx:for="{{payload.conclusions}}" wx:key="*this">
+      <view class="share-line share-line-strong">{{index + 1}}. {{item}}</view>
+    </block>
+  </view>
+
+  <view class="card" wx:if="{{payload.rows && payload.rows.length}}">
+    <view class="section-title">对比摘要</view>
+    <block wx:for="{{payload.rows}}" wx:key="label">
+      <view class="compare-item">
+        <view class="compare-label">{{item.label}}</view>
+        <block wx:for="{{item.cells}}" wx:key="id">
+          <view class="compare-value {{item.highlighted ? 'compare-value-highlight' : ''}}">{{item.text}}</view>
+        </block>
+      </view>
+    </block>
+  </view>
+
+  <view class="card" wx:if="{{payload.checklist && payload.checklist.length}}">
+    <view class="section-title">接下来怎么讨论</view>
+    <block wx:for="{{payload.checklist}}" wx:key="*this">
+      <view class="share-line">{{index + 1}}. {{item}}</view>
+    </block>
+  </view>
+
+  <view class="card" wx:if="{{payload.suggestions && payload.suggestions.length}}">
+    <view class="section-title">建议继续看</view>
+    <view class="badge-row">
+      <block wx:for="{{payload.suggestions}}" wx:key="*this">
+        <view class="mini-badge mini-badge-dark">{{item}}</view>
+      </block>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="section-title">结论文案</view>
+    <view class="share-text-box">{{shareText}}</view>
+    <view class="action-row">
+      <button class="ghost-btn" bindtap="copyCardText">复制卡片文案</button>
+      <button class="ghost-btn" open-type="share">转发这页</button>
+    </view>
+    <view class="action-row action-row-second">
+      <button class="ghost-btn" bindtap="openPlanList">去方案对比库</button>
+      <button class="ghost-btn" bindtap="openVip">查看 VIP 中心</button>
+    </view>
+  </view>
+</view>
+
+<view class="container" wx:else>
+  <view class="card">
+    <view class="section-title">暂无可展示内容</view>
+    <view class="share-sub">请从报告页或方案对比页进入家长沟通卡片。</view>
+  </view>
+</view>

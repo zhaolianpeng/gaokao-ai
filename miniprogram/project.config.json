@@ -1,0 +1,35 @@
+{
+  "setting": {
+    "es6": true,
+    "postcss": true,
+    "minified": true,
+    "uglifyFileName": false,
+    "enhance": true,
+    "packNpmRelationList": [],
+    "babelSetting": {
+      "ignore": [],
+      "disablePlugins": [],
+      "outputPath": ""
+    },
+    "useCompilerPlugins": false,
+    "minifyWXML": true
+  },
+  "compileType": "miniprogram",
+  "cloudfunctionRoot": "cloudfunctions",
+  "simulatorPluginLibVersion": {},
+  "packOptions": {
+    "ignore": [
+      {
+        "type": "folder",
+        "value": "cloud-data"
+      },
+      {
+        "type": "file",
+        "value": ".DS_Store"
+      }
+    ],
+    "include": []
+  },
+  "appid": "wx91ccb7f4d39f56dc",
+  "editorSetting": {}
+}

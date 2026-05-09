@@ -1,0 +1,57 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/my/my",
+    "pages/login/login",
+    "pages/vip/vip",
+    "pages/explore/explore",
+    "pages/college-detail/college-detail",
+    "pages/province-lines/province-lines",
+    "pages/score-rank/score-rank",
+    "pages/plan-list/plan-list",
+    "pages/about/about",
+    "pages/diagnostics/diagnostics",
+    "pages/materials/materials",
+    "pages/material-detail/material-detail",
+    "pages/recommend/recommend",
+    "pages/ai-agent/ai-agent",
+    "pages/report/report",
+    "pages/family-share/family-share",
+    "pages/history/history"
+  ],
+  "window": {
+    "navigationBarTitleText": "黑龙江高报助手",
+    "navigationBarBackgroundColor": "#1f3a5f",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#f4f7fb",
+    "backgroundTextStyle": "light"
+  },
+  "tabBar": {
+    "color": "#708197",
+    "selectedColor": "#1f6feb",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "首页",
+        "iconPath": "assets/tabbar/home.png",
+        "selectedIconPath": "assets/tabbar/home-active.png"
+      },
+      {
+        "pagePath": "pages/explore/explore",
+        "text": "院校库",
+        "iconPath": "assets/tabbar/explore.png",
+        "selectedIconPath": "assets/tabbar/explore-active.png"
+      },
+      {
+        "pagePath": "pages/my/my",
+        "text": "我的",
+        "iconPath": "assets/tabbar/my.png",
+        "selectedIconPath": "assets/tabbar/my-active.png"
+      }
+    ]
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

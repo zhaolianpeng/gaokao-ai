@@ -1,0 +1,49 @@
+.diagnostics-page {
+  padding: 28rpx;
+}
+
+.diagnostics-sub {
+  margin-top: 10rpx;
+  color: #60748d;
+  font-size: 24rpx;
+  line-height: 1.7;
+}
+
+.diagnostics-empty {
+  text-align: center;
+}
+
+.empty-title {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #16355b;
+}
+
+.empty-text {
+  margin-top: 12rpx;
+  color: #60748d;
+  font-size: 24rpx;
+  line-height: 1.7;
+}
+
+.diagnostics-card {
+  margin-top: 20rpx;
+}
+
+.diagnostics-time {
+  font-size: 22rpx;
+  color: #60748d;
+}
+
+.diagnostics-message {
+  margin-top: 12rpx;
+  white-space: pre-wrap;
+  line-height: 1.7;
+  font-size: 24rpx;
+  color: #16355b;
+  word-break: break-all;
+}
+
+.diagnostics-copy {
+  margin-top: 20rpx;
+}

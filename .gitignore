@@ -1,0 +1,6 @@
+.env
+.env.local
+backend/.env
+backend/.env.local
+backend/gaokao-api
+backend/gaokao-api-linux

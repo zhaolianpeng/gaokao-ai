@@ -1,0 +1,107 @@
+.container {
+  padding: 28rpx;
+}
+
+.hero {
+  margin-bottom: 24rpx;
+  padding: 30rpx;
+  border-radius: 28rpx;
+  background: linear-gradient(135deg, #14375e 0%, #0d7c86 100%);
+  color: #ffffff;
+  box-shadow: 0 16rpx 32rpx rgba(14, 59, 86, 0.18);
+}
+
+.hero-badge {
+  display: inline-block;
+  padding: 10rpx 18rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 255, 255, 0.16);
+  font-size: 22rpx;
+}
+
+.hero-title {
+  margin-top: 18rpx;
+  font-size: 44rpx;
+  font-weight: 800;
+}
+
+.hero-sub {
+  margin-top: 10rpx;
+  font-size: 26rpx;
+  color: rgba(255, 255, 255, 0.84);
+  line-height: 1.7;
+}
+
+.featured-item,
+.material-item {
+  padding: 22rpx 0;
+  border-bottom: 1rpx solid #edf2f8;
+}
+
+.featured-item:last-child,
+.material-item:last-child {
+  border-bottom: none;
+}
+
+.featured-top,
+.row-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.row-start {
+  align-items: flex-start;
+  gap: 18rpx;
+}
+
+.category-pill,
+.category-tag {
+  flex-shrink: 0;
+  padding: 8rpx 16rpx;
+  border-radius: 999rpx;
+  background: #e6f4f4;
+  color: #0c6871;
+  font-size: 22rpx;
+}
+
+.arrow {
+  color: #0a84ff;
+  font-size: 24rpx;
+}
+
+.featured-title,
+.material-title {
+  margin-top: 12rpx;
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #16324a;
+}
+
+.material-title {
+  margin-top: 0;
+  flex: 1;
+}
+
+.featured-summary,
+.material-summary {
+  margin-top: 10rpx;
+  font-size: 25rpx;
+  line-height: 1.7;
+  color: #61758d;
+}
+
+.tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-top: 14rpx;
+}
+
+.tag {
+  padding: 8rpx 14rpx;
+  border-radius: 999rpx;
+  background: #f4f8ff;
+  color: #37516e;
+  font-size: 22rpx;
+}

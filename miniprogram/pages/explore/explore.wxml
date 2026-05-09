@@ -1,0 +1,58 @@
+<view class="container">
+  <view class="card hero-card">
+    <view class="section-title">黑龙江院校库</view>
+    <view class="meta">黑龙江 {{subject}} 2025 年专业组与招生计划数据</view>
+    <picker mode="selector" range="{{subjectOptions}}" bindchange="onSubjectChange">
+      <view class="input picker-field">切换科类：{{subject}}</view>
+    </picker>
+    <input class="input" placeholder="搜索院校或专业关键词" value="{{keyword}}" bindinput="onKeywordInput" bindconfirm="onKeywordConfirm" confirm-type="search" />
+    <view class="keyword-row">
+      <block wx:for="{{suggestedKeywords}}" wx:key="item">
+        <view class="keyword-chip" data-keyword="{{item}}" bindtap="onQuickKeyword">{{item}}</view>
+      </block>
+    </view>
+    <view class="sort-row">
+      <block wx:for="{{sortOptions}}" wx:key="value">
+        <view class="sort-chip {{sortMode === item.value ? 'sort-chip-active' : ''}}" data-value="{{item.value}}" bindtap="onSortModeChange">{{item.label}}</view>
+      </block>
+    </view>
+    <button class="primary-btn" loading="{{loading}}" bindtap="onSearch">搜索</button>
+    <view class="result-tip" wx:if="{{resultTip}}">{{resultTip}}</view>
+    <view class="filter-summary-card" wx:if="{{filterSummary || pageSummary}}">
+      <view class="filter-summary-label">当前筛选</view>
+      <view class="filter-summary-value" wx:if="{{filterSummary}}">{{filterSummary}}</view>
+      <view class="page-summary" wx:if="{{pageSummary}}">{{pageSummary}}</view>
+    </view>
+  </view>
+
+  <view class="empty-state" wx:if="{{!loading && !items.length}}">
+    <view class="empty-title">当前没有匹配院校</view>
+    <view class="empty-text">可以试试师范、医学、财经等关键词，或先切换历史/物理科类。</view>
+  </view>
+
+  <block wx:for="{{items}}" wx:key="id">
+    <view class="card college-card" data-id="{{item.id}}" bindtap="openCollegeDetail">
+      <view class="row-between top-row">
+        <view class="college-title">{{item.name}}</view>
+        <view class="rank-chip" wx:if="{{item.ranking}}">排名 {{item.ranking}}</view>
+      </view>
+      <view class="college-meta">{{item.city || '黑龙江'}} · {{item.level || '未标注'}} · 保研率 {{item.recommended_postgraduate_rate || '0'}}</view>
+      <view class="tag-row">
+        <block wx:for="{{item.tags}}" wx:key="index">
+          <view class="tag">{{item}}</view>
+        </block>
+      </view>
+      <view class="stat-row">
+        <view class="stat-item">专业组 {{item.group_count}}</view>
+        <view class="stat-item">招生专业 {{item.major_count}}</view>
+        <view class="stat-item">最低组分 {{item.min_group_score}}</view>
+        <view class="stat-item">最低组位 {{item.min_group_rank || '无'}}</view>
+      </view>
+    </view>
+  </block>
+
+  <view class="list-status" wx:if="{{loadingMore}}">正在加载下一页...</view>
+  <view class="list-status" wx:if="{{!loading && !loadingMore && paginationReady && hasMore}}">上滑到底自动加载更多</view>
+  <view class="list-status list-status-warn" wx:if="{{!loading && !loadingMore && items.length && !paginationReady}}">当前后端还未上线分页接口，暂时无法继续加载下一页</view>
+  <view class="list-status" wx:if="{{!loading && !loadingMore && items.length && paginationReady && !hasMore}}">已经到底了</view>
+</view>

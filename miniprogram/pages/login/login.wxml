@@ -1,0 +1,28 @@
+<view class="login-page">
+  <view class="login-shell">
+    <view class="login-hero">
+      <view class="login-badge">微信登录</view>
+      <view class="login-title">创建你的报考档案</view>
+      <view class="login-subtitle">使用微信手机号授权登录后，可把账号与服务端支付、报告和个人资料打通。</view>
+    </view>
+
+    <view class="card login-card">
+      <view class="login-card-title">欢迎回来</view>
+      <view class="login-card-desc">昵称可以稍后修改，手机号授权用于绑定服务端账号和微信支付。</view>
+
+      <view class="login-field">
+        <view class="login-label">昵称</view>
+        <input class="input login-input" placeholder="例如：黑龙江考生" value="{{nickname}}" data-field="nickname" bindinput="onInput" />
+      </view>
+
+      <view class="login-field">
+        <view class="login-label">登录方式</view>
+        <view class="login-tip">点击下方按钮，使用微信手机号授权完成登录。</view>
+      </view>
+
+      <button class="primary-btn login-submit" open-type="getPhoneNumber" bindgetphonenumber="onGetPhoneNumber" loading="{{loading}}">微信手机号登录</button>
+      <button class="ghost-btn login-demo-btn" bindtap="submitDemo">先用体验模式进入</button>
+      <view class="login-footnote">体验模式只保存在当前设备，无法使用服务端支付。</view>
+    </view>
+  </view>
+</view>

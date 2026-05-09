@@ -1,0 +1,157 @@
+.about-page {
+  padding-bottom: 28rpx;
+}
+
+.about-hero {
+  background: linear-gradient(135deg, rgba(22, 53, 91, 0.98), rgba(28, 107, 185, 0.88));
+  color: #ffffff;
+}
+
+.about-card {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 248, 255, 0.98));
+}
+
+.about-sub,
+.about-copy {
+  margin-top: 10rpx;
+  color: #5f738b;
+  font-size: 24rpx;
+  line-height: 1.7;
+}
+
+.about-hero .section-title,
+.about-hero .about-sub {
+  color: #ffffff;
+}
+
+.about-hero .about-sub {
+  opacity: 0.82;
+}
+
+.about-item {
+  padding: 18rpx 0;
+  border-bottom: 1rpx dashed #e2eaf5;
+}
+
+.about-item:last-child {
+  border-bottom: none;
+}
+
+.about-item-top {
+  align-items: flex-start;
+  gap: 16rpx;
+}
+
+.about-item-title {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #16355b;
+}
+
+.about-badge {
+  flex-shrink: 0;
+  padding: 8rpx 16rpx;
+  border-radius: 999rpx;
+  background: #e8f1ff;
+  color: #175cd3;
+  font-size: 22rpx;
+  font-weight: 700;
+}
+
+.about-item-desc {
+  margin-top: 10rpx;
+}
+
+.about-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14rpx;
+  margin-top: 18rpx;
+}
+
+.about-mode {
+  padding: 22rpx;
+  border-radius: 20rpx;
+}
+
+.about-mode-light {
+  background: linear-gradient(180deg, #f8fbff, #eef5ff);
+}
+
+.about-mode-mid {
+  background: linear-gradient(180deg, #eef9f3, #e8f7ef);
+}
+
+.about-mode-strong {
+  background: linear-gradient(180deg, #fff7eb, #fff2dd);
+}
+
+.about-mode-desc {
+  margin-top: 10rpx;
+}
+
+.about-field-card {
+  margin-top: 18rpx;
+  padding: 20rpx;
+  background: #ffffff;
+  border: 2rpx solid #e5edf6;
+  border-radius: 18rpx;
+}
+
+.about-feedback-textarea {
+  min-height: 220rpx;
+  margin-top: 14rpx;
+  padding: 20rpx 24rpx;
+  background: #f6f9fc;
+  border: 2rpx solid #d9e4f1;
+  border-radius: 16rpx;
+  box-sizing: border-box;
+  font-size: 28rpx;
+  line-height: 1.7;
+  color: #1d2a39;
+}
+
+.about-label {
+  font-size: 26rpx;
+  font-weight: 700;
+  color: #16355b;
+}
+
+.about-static-value {
+  min-height: 88rpx;
+  display: flex;
+  align-items: center;
+  margin-top: 14rpx;
+  padding: 0 24rpx;
+  background: #f6f9fc;
+  border: 2rpx solid #d9e4f1;
+  border-radius: 16rpx;
+  box-sizing: border-box;
+  font-size: 28rpx;
+  color: #1d2a39;
+}
+
+.about-static-value-break {
+  word-break: break-all;
+  line-height: 1.6;
+  align-items: flex-start;
+  padding-top: 18rpx;
+  padding-bottom: 18rpx;
+}
+
+.about-preset-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-top: 18rpx;
+}
+
+.about-preset-btn {
+  margin-top: 0;
+  margin-right: 0;
+  padding: 0 20rpx;
+}
+
+.about-ghost-btn {
+  margin-top: 18rpx;
+}

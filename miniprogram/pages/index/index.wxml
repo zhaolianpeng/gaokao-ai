@@ -1,0 +1,197 @@
+<view class="container">
+  <view class="hero">
+    <view class="hero-badge">2026 数据看板版</view>
+    <view class="hero-title">黑龙江高考志愿填报</view>
+    <view class="hero-sub">先看院校、专业组、招生计划、批次线和位次，再决定是否进入推荐和 AI 分析。</view>
+    <view class="hero-stat-row">
+      <view class="hero-stat-item">
+        <view class="hero-stat-value">{{dashboard.college_count}}</view>
+        <view class="hero-stat-label">院校</view>
+      </view>
+      <view class="hero-stat-item">
+        <view class="hero-stat-value">{{dashboard.program_group_count}}</view>
+        <view class="hero-stat-label">专业组</view>
+      </view>
+      <view class="hero-stat-item">
+        <view class="hero-stat-value">{{dashboard.stat_count}}</view>
+        <view class="hero-stat-label">录取统计</view>
+      </view>
+    </view>
+    <view class="hero-note">覆盖黑龙江 2025-2022 批次线、一分一段与跨年录取数据。</view>
+    <view class="hero-link-row">
+      <view class="hero-link-btn" bindtap="openAboutPage">关于我们</view>
+    </view>
+  </view>
+
+  <view class="card overview-card">
+    <view class="row-between">
+      <view>
+        <view class="section-title section-title-small">数据看板</view>
+        <view class="knowledge-sub">当前直接展示院校、专业组、招生计划和录取统计核心规模，首页优先看数据，不先讲概念。</view>
+      </view>
+      <view class="tip" wx:if="{{dashboardLoading}}">加载中...</view>
+    </view>
+    <view class="picker-row">
+      <picker mode="selector" range="{{yearOptions}}" bindchange="onAnalysisYearChange">
+        <view class="mini-picker">查分年份：{{form.analysisYear}}</view>
+      </picker>
+      <picker mode="selector" range="{{subjectOptions}}" bindchange="onSubjectChange">
+        <view class="mini-picker">科类：{{form.subject}}</view>
+      </picker>
+    </view>
+    <view class="context-tip context-tip-{{analysisContext.mappingTone}}">{{analysisContext.mappingText}}</view>
+    <view class="context-tip context-tip-{{analysisContext.reliabilityTone}}">{{analysisContext.reliabilityText}}</view>
+    <view class="overview-grid">
+      <view class="overview-item overview-item-strong overview-item-deep">
+        <view class="overview-value">{{dashboard.college_count}}</view>
+        <view class="overview-label">院校</view>
+      </view>
+      <view class="overview-item overview-item-strong">
+        <view class="overview-value">{{dashboard.program_group_count}}</view>
+        <view class="overview-label">专业组</view>
+      </view>
+      <view class="overview-item">
+        <view class="overview-value">{{dashboard.enrollment_count}}</view>
+        <view class="overview-label">招生计划</view>
+      </view>
+      <view class="overview-item">
+        <view class="overview-value">{{dashboard.major_count}}</view>
+        <view class="overview-label">专业</view>
+      </view>
+      <view class="overview-item">
+        <view class="overview-value">{{dashboard.stat_count}}</view>
+        <view class="overview-label">录取统计</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="insight-grid">
+    <view class="card line-card line-card-half">
+      <view class="row-between">
+        <view>
+          <view class="section-title section-title-small">黑龙江批次线</view>
+          <view class="knowledge-sub">{{form.analysisYear}} 年 {{form.subject}} 常用批次线预览</view>
+        </view>
+        <view class="link-btn" bindtap="openProvinceLinesPage">查看全部</view>
+      </view>
+      <view class="tip" wx:if="{{lineLoading}}">加载中...</view>
+      <view class="line-panel" wx:if="{{batchLineDashboard.length}}">
+        <block wx:for="{{batchLineDashboard}}" wx:key="batch">
+          <view class="line-pod line-pod-{{item.tone}}">
+            <view class="line-pod-top">
+              <view class="line-batch">{{item.batch}}</view>
+              <view class="line-score-group">
+                <view class="line-score">{{item.score}}</view>
+                <view class="line-unit">分</view>
+              </view>
+            </view>
+            <view class="line-trend-track">
+              <view class="line-trend-fill line-trend-fill-{{item.tone}}" style="width: {{item.trendWidth}}%;"></view>
+            </view>
+          </view>
+        </block>
+      </view>
+      <view class="empty-tip" wx:if="{{!lineLoading && !batchLinePreview.length}}">当前年份暂无该科类批次线</view>
+    </view>
+
+    <view class="card rank-card rank-card-half">
+      <view class="row-between">
+        <view>
+          <view class="section-title section-title-small">查分位次</view>
+          <view class="knowledge-sub">输入分数后自动匹配 {{form.analysisYear}} 年 {{form.subject}} 一分一段</view>
+        </view>
+        <view class="link-btn" bindtap="openScoreRankPage">进入查分页</view>
+      </view>
+      <input class="input rank-quick-input" type="number" placeholder="先输入分数快速查位次" value="{{form.score}}" bindinput="onScoreInput" />
+      <view class="tip" wx:if="{{rankLoading}}">查询中...</view>
+      <view class="rank-panel" wx:if="{{scoreRankDashboard && scoreRankDashboard.available}}">
+        <view class="rank-panel-main">{{scoreRankDashboard.rank}}</view>
+        <view class="rank-panel-sub">全省参考位次</view>
+        <view class="rank-metric-row">
+          <view class="rank-metric-card">
+            <view class="rank-metric-label">输入分数</view>
+            <view class="rank-metric-value">{{form.score || '--'}}</view>
+          </view>
+          <view class="rank-metric-card">
+            <view class="rank-metric-label">命中分段</view>
+            <view class="rank-metric-value">{{scoreRankDashboard.matched_score}}</view>
+          </view>
+          <view class="rank-metric-card">
+            <view class="rank-metric-label">同分人数</view>
+            <view class="rank-metric-value">{{scoreRankDashboard.count}}</view>
+          </view>
+        </view>
+        <view class="rank-confidence-row">
+          <view class="rank-confidence-label">{{scoreRankDashboard.confidenceLabel}}</view>
+          <view class="rank-confidence-value">{{scoreRankDashboard.confidence}}%</view>
+        </view>
+        <view class="rank-confidence-track">
+          <view class="rank-confidence-fill rank-confidence-fill-{{scoreRankDashboard.status}}" style="width: {{scoreRankDashboard.confidence}}%;"></view>
+        </view>
+        <view class="rank-status rank-status-{{scoreRankDashboard.status}}">{{scoreRankDashboard.status === 'exact' ? '精确命中' : scoreRankDashboard.status === 'near' ? '近似命中' : '参考结果'}}</view>
+        <view class="rank-meta">{{scoreRankDashboard.message}}</view>
+      </view>
+      <view class="empty-tip" wx:if="{{!rankLoading && (!scoreRankPreview || !scoreRankPreview.available)}}">输入分数后可直接查看黑龙江全省位次</view>
+    </view>
+  </view>
+
+  <view class="card slim-card">
+    <view class="section-title section-title-small">快捷入口</view>
+    <view class="action-grid">
+      <block wx:for="{{quickActions}}" wx:key="key">
+        <view class="action-card" data-action="{{item.action}}" bindtap="handleQuickAction">
+          <view class="action-title">{{item.title}}</view>
+          <view class="action-desc">{{item.desc}}</view>
+        </view>
+      </block>
+    </view>
+  </view>
+
+  <view class="card knowledge-card">
+    <view class="row-between knowledge-header">
+      <view class="knowledge-copy">
+        <view class="section-title section-title-small">报考资料库</view>
+        <view class="knowledge-sub">黑龙江专版保留政策资料入口，同时把专家版院校、专业组和录取数据作为主数据层。</view>
+      </view>
+      <view class="link-btn knowledge-link" bindtap="openMaterialsPage">去查看</view>
+    </view>
+    <view class="knowledge-grid">
+      <view class="knowledge-chip">提前批路径</view>
+      <view class="knowledge-chip">特殊招生</view>
+      <view class="knowledge-chip">政策机会</view>
+      <view class="knowledge-chip">填报方法</view>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="section-title">黑龙江专业组推荐</view>
+
+    <view class="field fixed-field">地区：黑龙江</view>
+    <view class="field fixed-field">年度：2025 招生计划口径</view>
+    <view class="field fixed-field">当前科类：{{form.subject}}</view>
+
+    <input class="input" type="number" placeholder="高考分数" value="{{form.score}}" bindinput="onScoreInput" />
+    <input class="input" type="number" placeholder="全省排名" value="{{form.rank}}" bindinput="onRankInput" />
+    <input class="input" placeholder="意向专业，如：计算机类" value="{{form.targetMajor}}" bindinput="onTargetMajorInput" />
+    <textarea class="textarea" placeholder="补充偏好，例如：优先哈尔滨、尽量公办、接受组内调剂" value="{{form.notes}}" bindinput="onNotesInput"></textarea>
+
+    <button class="primary-btn" loading="{{loading}}" bindtap="onRecommend">生成黑龙江专业组方案</button>
+  </view>
+
+  <view class="card slim-card" wx:if="{{historyPreview.length}}">
+    <view class="row-between">
+      <view class="section-title section-title-small">最近查询</view>
+      <view class="history-actions">
+        <text class="history-count">收藏 {{favoriteCount}}</text>
+        <text class="history-count">志愿表 {{applicationCount}}</text>
+        <view class="link-btn" bindtap="openHistoryPage">查看全部</view>
+      </view>
+    </view>
+    <block wx:for="{{historyPreview}}" wx:key="id">
+      <view class="history-item" data-index="{{index}}" bindtap="useHistory">
+        <view class="history-title">黑龙江 {{item.student.subject}} · {{item.student.score}}分 / {{item.student.rank}}名</view>
+        <view class="history-sub">{{item.student.targetMajor || '未填写意向专业'}}</view>
+      </view>
+    </block>
+  </view>
+</view>

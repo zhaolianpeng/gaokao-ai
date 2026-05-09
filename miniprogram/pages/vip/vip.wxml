@@ -1,0 +1,37 @@
+<view class="vip-page">
+  <view class="vip-shell">
+    <view class="card vip-hero-card">
+      <view class="vip-badge">VIP 中心</view>
+      <view class="vip-title">把免费体验和深度服务分开讲清楚</view>
+      <view class="vip-desc">免费版先解决“能不能快速出结果”，VIP 更适合需要反复比较方案、生成深度 AI 报告、和家长老师多轮讨论的人。购买前需要先完成微信手机号登录，这样服务端才能绑定 openid 并创建微信支付订单。</view>
+      <button wx:if="{{!user}}" class="primary-btn vip-login-btn" bindtap="goLogin">先去登录</button>
+      <view wx:if="{{user}}" class="vip-user">当前账号：{{user.nickname}}{{user.phone ? '（' + user.phone + '）' : ''}}</view>
+      <view class="vip-status {{canPay ? 'vip-status-ok' : 'vip-status-warn'}}">{{loginHint}}</view>
+    </view>
+
+    <view class="card vip-product-card">
+      <view class="vip-product-title">能力边界</view>
+      <view class="vip-product-desc">不是所有功能都必须付费，但高频、重度、反复决策场景更适合放进 VIP 服务。</view>
+      <block wx:for="{{accessMatrix}}" wx:key="feature">
+        <view class="vip-matrix-row">
+          <view class="vip-matrix-feature">{{item.feature}}</view>
+          <view class="vip-matrix-values">
+            <view class="vip-matrix-chip vip-matrix-free">免费：{{item.free}}</view>
+            <view class="vip-matrix-chip vip-matrix-vip">VIP：{{item.vip}}</view>
+          </view>
+        </view>
+      </block>
+    </view>
+
+    <view class="card vip-product-card" wx:for="{{products}}" wx:key="id">
+      <view class="vip-product-head">
+        <view>
+          <view class="vip-product-title">{{item.title}}</view>
+          <view class="vip-product-desc">{{item.desc}}</view>
+        </view>
+        <view class="vip-product-badge">{{item.badge}}</view>
+      </view>
+      <button class="primary-btn vip-buy-btn" data-product-id="{{item.id}}" bindtap="purchase" loading="{{loadingProductId === item.id}}">立即购买</button>
+    </view>
+  </view>
+</view>

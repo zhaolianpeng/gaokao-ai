@@ -1,0 +1,163 @@
+.my-page {
+  min-height: 100vh;
+  padding: 28rpx;
+  box-sizing: border-box;
+}
+
+.my-shell {
+  max-width: 680rpx;
+  margin: 0 auto;
+}
+
+.my-hero-card,
+.my-profile-card,
+.my-form-card {
+  padding: 32rpx;
+}
+
+.my-hero-card {
+  text-align: center;
+}
+
+.my-title {
+  font-size: 42rpx;
+  font-weight: 700;
+  color: #10233f;
+  margin-bottom: 14rpx;
+}
+
+.my-desc {
+  font-size: 28rpx;
+  line-height: 1.75;
+  color: #607389;
+  margin-bottom: 26rpx;
+}
+
+.my-primary-btn {
+  margin-top: 8rpx;
+}
+
+.my-ghost-btn {
+  margin-top: 18rpx;
+}
+
+.my-badge {
+  display: inline-block;
+  padding: 10rpx 22rpx;
+  border-radius: 999rpx;
+  background: rgba(31, 111, 235, 0.12);
+  color: #1f6feb;
+  font-size: 24rpx;
+  font-weight: 700;
+  letter-spacing: 2rpx;
+  margin-bottom: 18rpx;
+}
+
+.profile-head {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+}
+
+.profile-avatar {
+  width: 112rpx;
+  height: 112rpx;
+  border-radius: 50%;
+  background: #dbeafe;
+  flex-shrink: 0;
+}
+
+.profile-avatar-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #1f6feb;
+  font-size: 42rpx;
+  font-weight: 700;
+}
+
+.profile-meta {
+  min-width: 0;
+}
+
+.profile-title {
+  font-size: 40rpx;
+  line-height: 1.3;
+  font-weight: 700;
+  color: #10233f;
+  margin-bottom: 10rpx;
+}
+
+.profile-subtitle {
+  font-size: 26rpx;
+  color: #607389;
+  margin-bottom: 10rpx;
+}
+
+.my-form-title {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #10233f;
+}
+
+.my-form-desc {
+  margin-top: 10rpx;
+  margin-bottom: 24rpx;
+  font-size: 26rpx;
+  line-height: 1.7;
+  color: #6a7c92;
+}
+
+.my-picker {
+  margin-top: 0;
+  min-height: 88rpx;
+  display: flex;
+  align-items: center;
+  padding: 0 24rpx;
+  background: #f6f9fc;
+  border: 2rpx solid #d9e4f1;
+  border-radius: 16rpx;
+  box-sizing: border-box;
+  font-size: 28rpx;
+  color: #1d2a39;
+}
+
+.my-textarea {
+  min-height: 180rpx;
+  padding: 20rpx 24rpx;
+  background: #f6f9fc;
+  border: 2rpx solid #d9e4f1;
+  border-radius: 16rpx;
+  box-sizing: border-box;
+  font-size: 28rpx;
+  line-height: 1.6;
+  color: #1d2a39;
+}
+
+.my-field-card {
+  margin-bottom: 22rpx;
+  padding: 20rpx;
+  background: #ffffff;
+  border: 2rpx solid #e5edf6;
+  border-radius: 18rpx;
+  box-sizing: border-box;
+}
+
+.my-static-value {
+  min-height: 88rpx;
+  display: flex;
+  align-items: center;
+  padding: 0 24rpx;
+  background: #f6f9fc;
+  border: 2rpx solid #d9e4f1;
+  border-radius: 16rpx;
+  box-sizing: border-box;
+  font-size: 28rpx;
+  color: #1d2a39;
+}
+
+.danger-btn {
+  margin-top: 20rpx;
+  color: #b42318;
+  border-color: rgba(180, 35, 24, 0.18);
+}

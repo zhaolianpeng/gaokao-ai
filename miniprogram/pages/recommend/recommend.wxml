@@ -1,0 +1,143 @@
+<view class="container">
+  <view class="card" wx:if="{{loadError}}">
+    <view class="section-title">结果暂时不可用</view>
+    <view class="meta">{{loadError}}</view>
+  </view>
+
+  <view class="card" wx:if="{{!loadError}}">
+    <view class="section-title">黑龙江专业组方案</view>
+    <view class="meta">黑龙江 {{student.subject}} | 2025年 | 分数 {{student.score}} | 排名 {{student.rank}}</view>
+    <view class="meta" wx:if="{{student.targetMajor}}">意向专业：{{student.targetMajor}}</view>
+    <view class="meta" wx:if="{{student.notes}}">补充偏好：{{student.notes}}</view>
+    <view class="meta">收藏 {{favoriteCount}} | 志愿表 {{applicationCount}} | 对比方案 {{scenarioCount}}</view>
+    <view class="page-actions">
+      <button class="ghost-btn" bindtap="openHistoryPage">查看历史记录</button>
+      <button class="ghost-btn" bindtap="openPlanList">查看正式志愿表</button>
+    </view>
+  </view>
+
+  <view class="card" wx:if="{{!loadError}}">
+    <view class="section-title">结果概览</view>
+    <block wx:for="{{summary}}" wx:key="label">
+      <view class="item">
+        <view class="item-title">{{item.label}}</view>
+        <view class="item-sub">共 {{item.value}} 所</view>
+      </view>
+    </block>
+  </view>
+
+  <view class="card" wx:if="{{!loadError && strategyCards.length}}">
+    <view class="section-title">多策略看法</view>
+    <view class="meta">同一批推荐结果，可以按保结果、保专业、冲层次三种方式来排表。</view>
+    <view class="strategy-grid">
+      <block wx:for="{{strategyCards}}" wx:key="key">
+        <view class="strategy-card">
+          <view class="strategy-card-title">{{item.title}}</view>
+          <view class="strategy-card-desc">{{item.desc}}</view>
+          <view class="strategy-card-focus">{{item.focus}}</view>
+          <view class="strategy-card-note">{{item.note}}</view>
+          <view class="item-actions strategy-action-row">
+            <view class="item-action item-action-primary" data-strategy-key="{{item.key}}" bindtap="saveStrategyScenario">保存这套方案</view>
+          </view>
+        </view>
+      </block>
+    </view>
+  </view>
+
+  <view class="card" wx:if="{{!loadError}}">
+    <view class="section-title">免费版与 VIP 边界</view>
+    <view class="compare-row vip-compare-row">
+      <view class="compare-tag">免费可看</view>
+      <view class="compare-main">
+        <view class="compare-sub">冲稳保推荐、梯度对比、家长沟通摘要、正式志愿表基础整理。</view>
+      </view>
+    </view>
+    <view class="compare-row vip-compare-row">
+      <view class="compare-tag vip-tag-gold">VIP 服务</view>
+      <view class="compare-main">
+        <view class="compare-sub">更适合需要深度 AI 报告、长期保存多套方案、反复和家长老师讨论的人群。</view>
+      </view>
+    </view>
+    <view class="page-actions">
+      <button class="ghost-btn" bindtap="openVip">查看 VIP 中心</button>
+      <button class="ghost-btn" bindtap="openPlanList">查看方案对比库</button>
+    </view>
+  </view>
+
+  <view class="card" wx:if="{{!loadError && comparisonRows.length}}">
+    <view class="section-title">梯度对比表</view>
+    <view class="meta">每个分组先抓 1 个代表项，方便和家长快速比较。</view>
+    <block wx:for="{{comparisonRows}}" wx:key="label">
+      <view class="compare-row">
+        <view class="compare-tag">{{item.label}}</view>
+        <view class="compare-main">
+          <view class="compare-title">{{item.college}} {{item.groupLabel}}</view>
+          <view class="compare-sub">{{item.majorPreview}}</view>
+          <view class="compare-sub">{{item.rankText}} · 概率 {{item.probabilityText}}</view>
+        </view>
+      </view>
+    </block>
+  </view>
+
+  <view class="card" wx:if="{{!loadError && decisionSteps.length}}">
+    <view class="section-title">怎么一步步定志愿</view>
+    <block wx:for="{{decisionSteps}}" wx:key="title">
+      <view class="decision-step">
+        <view class="decision-index">{{index + 1}}</view>
+        <view class="decision-body">
+          <view class="decision-title">{{item.title}}</view>
+          <view class="decision-desc">{{item.desc}}</view>
+        </view>
+      </view>
+    </block>
+  </view>
+
+  <view class="card" wx:if="{{!loadError && familySummary}}">
+    <view class="section-title">发给家长的摘要</view>
+    <view class="meta">把这一段直接发到家长群，先统一决策口径再排正式志愿表。</view>
+    <view class="family-summary-box">{{familySummary}}</view>
+    <view class="page-actions">
+      <button class="ghost-btn" bindtap="copyFamilySummary">复制沟通摘要</button>
+      <button class="ghost-btn" open-type="share">转发这页</button>
+    </view>
+  </view>
+
+  <block wx:if="{{!loadError}}">
+    <block wx:for="{{sections}}" wx:for-item="section" wx:key="key">
+      <view class="card">
+        <view class="section-title">{{section.title}}（{{section.itemCount}} 所）</view>
+        <view class="meta">{{section.subtitle}}</view>
+        <view class="link-btn" data-key="{{section.key}}" bindtap="onToggleSection">{{section.arrowText}}</view>
+
+        <view wx:if="{{section.expanded}}">
+          <view wx:if="{{!section.items.length}}" class="meta">当前分组暂无可展示学校</view>
+          <block wx:for="{{section.items}}" wx:for-item="school" wx:key="itemKey">
+            <view class="item">
+              <view class="item-title">{{school.college_name}}</view>
+              <view class="item-sub">{{school.groupLabel}} · {{school.batch}} · 选科 {{school.subject_requirement}}</view>
+              <view class="item-sub">组内专业：{{school.majorPreview}}</view>
+              <view class="item-sub">计划：{{school.planText}}</view>
+              <view class="item-sub">最低位次 {{school.min_rank}} · 最低分 {{school.min_score}} · 概率 {{school.probabilityText}}</view>
+              <view class="item-reason">{{school.recommendation_reason}}</view>
+              <view class="item-actions">
+                <view class="item-action {{school.favoriteClass}}" data-item-key="{{school.itemKey}}" bindtap="onToggleFavorite">{{school.favoriteText}}</view>
+                <view class="item-action item-action-primary" data-item-key="{{school.itemKey}}" bindtap="onAddToPlan">加入正式志愿表</view>
+              </view>
+            </view>
+          </block>
+        </view>
+      </view>
+    </block>
+
+    <view class="card">
+      <view class="section-title">AI 报告生成提示</view>
+      <view class="meta">{{analyzingText}}</view>
+      <view class="analyze-progress-track" wx:if="{{loading || analyzeProgressPercent}}">
+        <view class="analyze-progress-bar" style="width: {{analyzeProgressPercent}}%;"></view>
+      </view>
+      <view class="analyze-progress-label" wx:if="{{loading || analyzeProgressPercent}}">当前进度 {{analyzeProgressPercent}}%</view>
+      <view class="analyze-helper-text">{{analyzeHelperText}}</view>
+      <button class="primary-btn" loading="{{loading}}" bindtap="onAnalyze">{{analyzeButtonText}}</button>
+    </view>
+  </block>
+</view>

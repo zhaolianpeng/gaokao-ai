@@ -1,0 +1,94 @@
+<view class="container about-page">
+  <view class="card about-hero">
+    <view class="section-title">关于我们</view>
+    <view class="about-sub">这里集中说明产品定位、适用人群、联系方式，以及当前后端与网络诊断设置。</view>
+  </view>
+
+  <view class="card about-card">
+    <view class="section-title section-title-small">产品定位</view>
+    <block wx:for="{{positioning}}" wx:key="title">
+      <view class="about-item">
+        <view class="about-item-title">{{item.title}}</view>
+        <view class="about-copy about-item-desc">{{item.desc}}</view>
+      </view>
+    </block>
+  </view>
+
+  <view class="card about-card">
+    <view class="section-title section-title-small">适用人群</view>
+    <view class="about-grid">
+      <block wx:for="{{audiences}}" wx:key="title">
+        <view class="about-mode about-mode-light">
+          <view class="about-item-title">{{item.title}}</view>
+          <view class="about-copy about-mode-desc">{{item.desc}}</view>
+        </view>
+      </block>
+    </view>
+  </view>
+
+  <view class="card about-card">
+    <view class="section-title section-title-small">这版重点做什么</view>
+    <view class="about-copy">围绕竞品最强势的几个点，这版优先做透明推荐、分层 AI 和适合家长共看的输出方式。</view>
+    <block wx:for="{{differentiators}}" wx:key="title">
+      <view class="about-item">
+        <view class="row-between about-item-top">
+          <view class="about-item-title">{{item.title}}</view>
+          <view class="about-badge">{{item.badge}}</view>
+        </view>
+        <view class="about-copy about-item-desc">{{item.desc}}</view>
+      </view>
+    </block>
+  </view>
+
+  <view class="card about-card">
+    <view class="section-title section-title-small">AI 响应策略</view>
+    <view class="about-copy">不把所有动作都塞进大模型。先快查，再快推，最后再做深度分析。</view>
+    <view class="about-grid">
+      <block wx:for="{{aiExperienceModes}}" wx:key="title">
+        <view class="about-mode about-mode-{{item.tone}}">
+          <view class="about-item-title">{{item.title}}</view>
+          <view class="about-copy about-mode-desc">{{item.desc}}</view>
+        </view>
+      </block>
+    </view>
+  </view>
+
+  <view class="card about-card">
+    <view class="section-title section-title-small">反馈与联系</view>
+    <view class="about-copy">把问题、建议或你希望新增的能力直接提交到后端，我们会按反馈内容继续迭代。</view>
+    <view class="about-field-card">
+      <view class="about-label">提交反馈</view>
+      <textarea class="textarea about-feedback-textarea" placeholder="例如：首页希望把批次线和位次做成更明显的双卡布局，或某个接口在真机上报错。" value="{{feedbackContent}}" bindinput="onFeedbackInput"></textarea>
+      <button class="primary-btn" loading="{{feedbackSubmitting}}" bindtap="submitFeedback">提交到后端</button>
+      <view class="about-copy" wx:if="{{feedbackSuccessMessage}}">{{feedbackSuccessMessage}}</view>
+    </view>
+  </view>
+
+  <view class="card about-card">
+    <view class="section-title section-title-small">后端与网络诊断</view>
+    <view class="about-copy">这里统一管理当前后端地址、健康检查和最近一次网络诊断，便于真机调试。</view>
+    <view class="about-field-card">
+      <view class="about-label">当前后端地址</view>
+      <view class="about-static-value about-static-value-break">{{backendBaseUrl}}</view>
+    </view>
+    <view class="about-field-card">
+      <view class="about-label">切换后端地址</view>
+      <input class="input login-input" placeholder="例如：http://82.156.54.232:80" value="{{backendBaseUrlInput}}" bindinput="onBackendBaseUrlInput" />
+      <view class="about-preset-row">
+        <button wx:for="{{backendPresets}}" wx:key="value" class="ghost-btn about-preset-btn" data-value="{{item.value}}" bindtap="useBackendPreset">{{item.label}}</button>
+      </view>
+      <button class="primary-btn" bindtap="applyBackendBaseUrl">立即生效</button>
+      <button class="ghost-btn about-ghost-btn" bindtap="verifyBackendBaseUrl">检测 /healthz</button>
+      <button class="ghost-btn about-ghost-btn" bindtap="resetBackendBaseUrl">恢复推荐地址</button>
+    </view>
+    <view class="about-copy" wx:if="{{backendCheckMessage}}">{{backendCheckMessage}}</view>
+    <view class="about-field-card">
+      <view class="about-label">最近一次网络诊断</view>
+      <view class="about-static-value about-static-value-break" wx:if="{{latestDiagnostic}}">{{latestDiagnostic.message}}</view>
+      <view class="about-copy" wx:if="{{!latestDiagnostic}}">当前还没有保存的网络错误记录。</view>
+      <button class="ghost-btn about-ghost-btn" bindtap="copyLatestDiagnostic" wx:if="{{latestDiagnostic}}">复制最近诊断</button>
+      <button class="ghost-btn about-ghost-btn" bindtap="openDiagnostics">打开完整网络诊断</button>
+      <button class="ghost-btn about-ghost-btn" bindtap="clearDiagnostics">清空诊断记录</button>
+    </view>
+  </view>
+</view>

@@ -1,0 +1,138 @@
+.vip-page {
+  min-height: 100vh;
+  padding: 32rpx 24rpx 48rpx;
+  box-sizing: border-box;
+}
+
+.vip-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+}
+
+.vip-hero-card,
+.vip-product-card {
+  padding: 32rpx;
+}
+
+.vip-badge {
+  display: inline-block;
+  padding: 8rpx 18rpx;
+  border-radius: 999rpx;
+  background: rgba(31, 111, 235, 0.12);
+  color: #1f6feb;
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
+.vip-title {
+  margin-top: 18rpx;
+  font-size: 40rpx;
+  font-weight: 700;
+  color: #10233f;
+}
+
+.vip-desc {
+  margin-top: 16rpx;
+  font-size: 27rpx;
+  line-height: 1.7;
+  color: #5c6f86;
+}
+
+.vip-login-btn {
+  margin-top: 24rpx;
+}
+
+.vip-user {
+  margin-top: 20rpx;
+  font-size: 26rpx;
+  color: #27415f;
+}
+
+.vip-status {
+  margin-top: 16rpx;
+  padding: 18rpx 20rpx;
+  border-radius: 16rpx;
+  font-size: 25rpx;
+  line-height: 1.6;
+}
+
+.vip-status-ok {
+  background: rgba(22, 163, 74, 0.08);
+  color: #166534;
+}
+
+.vip-status-warn {
+  background: rgba(217, 119, 6, 0.1);
+  color: #9a3412;
+}
+
+.vip-product-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+}
+
+.vip-product-title {
+  font-size: 34rpx;
+  font-weight: 700;
+  color: #10233f;
+}
+
+.vip-product-desc {
+  margin-top: 10rpx;
+  font-size: 26rpx;
+  line-height: 1.7;
+  color: #6a7c92;
+}
+
+.vip-buy-btn {
+  margin-top: 24rpx;
+}
+
+.vip-product-badge,
+.vip-matrix-chip {
+  padding: 8rpx 16rpx;
+  border-radius: 999rpx;
+  font-size: 22rpx;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.vip-product-badge {
+  background: #fff1cc;
+  color: #9a6700;
+}
+
+.vip-matrix-row {
+  padding: 18rpx 0;
+  border-bottom: 1rpx dashed #e4ecf6;
+}
+
+.vip-matrix-row:last-child {
+  border-bottom: none;
+}
+
+.vip-matrix-feature {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #10233f;
+}
+
+.vip-matrix-values {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-top: 12rpx;
+}
+
+.vip-matrix-free {
+  background: #eef5ff;
+  color: #175cd3;
+}
+
+.vip-matrix-vip {
+  background: #fff1cc;
+  color: #9a6700;
+}

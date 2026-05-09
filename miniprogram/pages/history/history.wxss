@@ -1,0 +1,32 @@
+.container {
+  padding: 28rpx;
+}
+
+.empty {
+  padding: 20rpx 0;
+  color: #6b7280;
+  font-size: 26rpx;
+}
+
+.history-item {
+  padding: 22rpx 0;
+  border-bottom: 1rpx solid #edf2f8;
+}
+
+.history-title {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.history-sub {
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  color: #61758d;
+}
+
+.history-time {
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: #8a97a8;
+}

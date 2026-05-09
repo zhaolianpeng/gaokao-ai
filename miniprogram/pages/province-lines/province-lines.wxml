@@ -1,0 +1,26 @@
+<view class="container">
+  <view class="card">
+    <view class="section-title">黑龙江批次线</view>
+    <view class="filter-row">
+      <picker mode="selector" range="{{yearOptions}}" bindchange="onYearChange">
+        <view class="filter-pill">年份 {{year}}</view>
+      </picker>
+      <picker mode="selector" range="{{subjectOptions}}" bindchange="onSubjectChange">
+        <view class="filter-pill">科类 {{subject}}</view>
+      </picker>
+    </view>
+    <view class="tip tip-highlight">{{yearHint}}</view>
+    <view class="tip">仅展示当前科类常用普通批次线，便于首页和推荐链路直接对照。</view>
+    <view class="tip" wx:if="{{loading}}">加载中...</view>
+    <block wx:for="{{items}}" wx:key="batch">
+      <view class="line-item">
+        <view>
+          <view class="line-batch">{{item.batch}}</view>
+          <view class="line-sub">{{item.subject}}</view>
+        </view>
+        <view class="line-score">{{item.score}} 分</view>
+      </view>
+    </block>
+    <view class="empty-tip" wx:if="{{!loading && !items.length}}">当前年份暂无可展示批次线</view>
+  </view>
+</view>

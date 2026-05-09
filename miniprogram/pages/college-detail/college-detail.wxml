@@ -1,0 +1,61 @@
+<view class="container" wx:if="{{detail}}">
+  <view class="card hero-card">
+    <view class="title">{{detail.name}}</view>
+    <view class="meta">黑龙江 {{subject}} 2025 口径 · {{detail.city || detail.province}} · {{detail.level}} · {{detail.school_type}} · {{detail.ownership_type}}</view>
+    <view class="tag-row">
+      <block wx:for="{{detail.tags}}" wx:key="index">
+        <view class="tag">{{item}}</view>
+      </block>
+    </view>
+    <view class="stat-grid">
+      <view class="stat-card">
+        <view class="stat-value">{{detail.recommended_postgraduate_rate || '0'}}</view>
+        <view class="stat-label">保研率</view>
+      </view>
+      <view class="stat-card">
+        <view class="stat-value">{{detail.softscience_ranking || detail.ranking || '无'}}</view>
+        <view class="stat-label">院校排名</view>
+      </view>
+      <view class="stat-card">
+        <view class="stat-value">{{detail.master_major_count}}</view>
+        <view class="stat-label">硕士点</view>
+      </view>
+      <view class="stat-card">
+        <view class="stat-value">{{detail.doctor_major_count}}</view>
+        <view class="stat-label">博士点</view>
+      </view>
+    </view>
+    <button class="ghost-btn" bindtap="openCharter">复制招生章程链接</button>
+  </view>
+
+  <view class="card" wx:if="{{detail.program_groups.length}}">
+    <view class="section-title">专业组画像</view>
+    <block wx:for="{{detail.program_groups}}" wx:key="group_code">
+      <view class="group-item">
+        <view class="group-title">{{item.group_code}} {{item.group_name}}</view>
+        <view class="group-meta">{{item.batch}} · {{item.subject_requirement}} · 计划 {{item.plan_count}}</view>
+        <view class="group-meta">最低分 {{item.min_score}} · 最低位次 {{item.min_rank || '无'}}</view>
+      </view>
+    </block>
+  </view>
+
+  <view class="card" wx:if="{{detail.major_plans.length}}">
+    <view class="section-title">组内招生专业</view>
+    <block wx:for="{{detail.major_plans}}" wx:key="id">
+      <view class="major-item">
+        <view class="major-title">{{item.major_name}}</view>
+        <view class="major-meta">{{item.group_code}} {{item.group_name}} · {{item.plan_count}}人 · {{item.study_years}}年 · {{item.tuition_fee}}</view>
+        <view class="major-meta">{{item.discipline_category}} / {{item.major_category}}</view>
+        <view class="major-meta" wx:if="{{item.major_strength}}">专业水平：{{item.major_strength}}</view>
+        <view class="timeline">
+          <block wx:for="{{item.admission_stats}}" wx:key="year">
+            <view class="timeline-item">
+              <view class="timeline-year">{{item.year}}</view>
+              <view class="timeline-text">{{item.legacy_batch || '同批次'}} · 最低分 {{item.min_score}} · 位次 {{item.min_rank || '无'}} · 录取 {{item.admitted_count}}</view>
+            </view>
+          </block>
+        </view>
+      </view>
+    </block>
+  </view>
+</view>

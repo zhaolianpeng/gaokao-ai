@@ -1,0 +1,34 @@
+<view class="container" wx:if="{{material}}">
+  <view class="hero">
+    <view class="category-pill">{{material.category}}</view>
+    <view class="hero-title">{{material.title}}</view>
+    <view class="hero-summary">{{material.summary}}</view>
+  </view>
+
+  <view class="card notice-card" wx:if="{{material.notice}}">
+    <view class="notice-title">使用提醒</view>
+    <view class="notice-text">{{material.notice}}</view>
+  </view>
+
+  <block wx:for="{{material.sections}}" wx:key="title">
+    <view class="card section-card">
+      <view class="section-title">{{item.title}}</view>
+      <block wx:for="{{item.items}}" wx:for-item="pointItem" wx:key="*this">
+        <view class="bullet-row">
+          <view class="bullet-dot"></view>
+          <view class="bullet-text">{{pointItem}}</view>
+        </view>
+      </block>
+    </view>
+  </block>
+
+  <button class="ghost-btn" bindtap="openMaterialsPage">返回资料列表</button>
+</view>
+
+<view class="container" wx:else>
+  <view class="card empty-card">
+    <view class="section-title">资料不存在</view>
+    <view class="empty-text">当前资料未找到，返回资料列表重新选择。</view>
+    <button class="ghost-btn" bindtap="openMaterialsPage">去看资料列表</button>
+  </view>
+</view>
