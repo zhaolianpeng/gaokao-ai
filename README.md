@@ -41,6 +41,24 @@ gaokao-ai/
 
 - `http://82.156.54.232:80`
 
+### 真机发布 / 微信开发者工具上传
+
+1. 用微信开发者工具打开 `miniprogram/`，确认 AppID 使用项目内现有配置。
+2. 在“详情”里确认本地设置与项目配置一致，尤其是：
+  - 不要误切到其他云环境
+  - 确认请求地址仍指向 `http://82.156.54.232:80`
+3. 先做一次真机预览：
+  - 点击“预览”
+  - 用测试微信扫码
+  - 重点验证首页、院校库分页、排序切换、推荐页、报告页、关于我们里的后端健康检查
+4. 真机验证通过后再上传：
+  - 点击“上传”
+  - 填写版本号和更新说明
+  - 在微信公众平台提交审核或直接发布
+5. 如果线上后端刚更新，建议上传前先手动访问以下地址确认服务正常：
+  - `http://82.156.54.232:80/healthz`
+  - `http://82.156.54.232:80/api/colleges?province=黑龙江&subject=历史&year=2025&page=1&limit=3`
+
 ## 线上生产环境
 
 当前生产环境约定如下：
@@ -58,8 +76,15 @@ gaokao-ai/
   - 只做源码同步与远端构建
   - 产出远端 `gaokao-api.new`
 
+- `scripts/validate_backend_82.sh`
+  - 只做候选版本验证
+  - 在 `18083` 拉起 `gaokao-api.new`
+  - 校验 `healthz` 与示例院校库接口
+
 - `scripts/deploy_backend_82.sh`
-  - 做完整发布：同步、远端构建、18083 临时验证、切换到 8080、再做公网验证
+  - 只做正式发布
+  - 把已经验证过的 `gaokao-api.new` 切换到 `8080`
+  - 再做公网健康检查
 
 - `scripts/watch_sync_backend_82.sh`
   - 监听本地 `backend/` 变化，自动调用同步脚本
@@ -74,13 +99,19 @@ export SSHPASS='你的服务器密码'
 
 ### 常用命令
 
-只同步并在远端构建：
+第一步，只同步并在远端构建候选版本：
 
 ```bash
 ./scripts/sync_backend_82.sh
 ```
 
-完整发布到生产：
+第二步，只验证候选版本：
+
+```bash
+./scripts/validate_backend_82.sh
+```
+
+第三步，正式切换生产版本：
 
 ```bash
 ./scripts/deploy_backend_82.sh
@@ -90,6 +121,15 @@ export SSHPASS='你的服务器密码'
 
 ```bash
 ./scripts/watch_sync_backend_82.sh
+```
+
+推荐发布顺序：
+
+```bash
+export SSHPASS='你的服务器密码'
+./scripts/sync_backend_82.sh
+./scripts/validate_backend_82.sh
+./scripts/deploy_backend_82.sh
 ```
 
 ## 说明
