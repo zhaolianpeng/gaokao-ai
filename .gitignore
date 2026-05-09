@@ -1,5 +1,7 @@
 .env
 .env.local
+.cache/
+cloud-data/
 backend/.env
 backend/.env.local
 backend/gaokao-api
