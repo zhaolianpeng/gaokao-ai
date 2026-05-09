@@ -55,8 +55,13 @@ Page({
     this.setData({ loading: true })
     try {
       const data = await request({
-        url: `/api/province-lines?province=${encodeURIComponent(province)}&subject=${encodeURIComponent(normalizeLookupSubject(subject))}&year=${year}`,
-        method: 'GET'
+        url: '/api/province-lines',
+        method: 'POST',
+        data: {
+          province,
+          subject: normalizeLookupSubject(subject),
+          year: Number(year)
+        }
       })
       this.setData({ items: data.items || [] })
     } catch (err) {

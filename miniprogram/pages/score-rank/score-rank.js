@@ -129,8 +129,13 @@ Page({
     const { province, subject, year } = this.data
     try {
       const data = await request({
-        url: `/api/province-lines?province=${encodeURIComponent(province)}&subject=${encodeURIComponent(normalizeLookupSubject(subject))}&year=${year}`,
-        method: 'GET'
+        url: '/api/province-lines',
+        method: 'POST',
+        data: {
+          province,
+          subject: normalizeLookupSubject(subject),
+          year: Number(year)
+        }
       })
       this.setData({ batchLines: data.items || [] })
     } catch (err) {
@@ -147,8 +152,14 @@ Page({
     this.setData({ loading: true })
     try {
       const result = await request({
-        url: `/api/score-rank?province=${encodeURIComponent(province)}&subject=${encodeURIComponent(normalizeLookupSubject(subject))}&year=${year}&score=${Number(score)}`,
-        method: 'GET'
+        url: '/api/score-rank',
+        method: 'POST',
+        data: {
+          province,
+          subject: normalizeLookupSubject(subject),
+          year: Number(year),
+          score: Number(score)
+        }
       })
       this.setData({ result: buildResultView(result, year) })
     } catch (err) {

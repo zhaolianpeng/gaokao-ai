@@ -270,8 +270,13 @@ Page({
     this.setData({ lineLoading: true })
     try {
       const data = await request({
-        url: `/api/province-lines?province=${encodeURIComponent(province)}&subject=${encodeURIComponent(normalizeLookupSubject(subject))}&year=${analysisYear}`,
-        method: 'GET'
+        url: '/api/province-lines',
+        method: 'POST',
+        data: {
+          province,
+          subject: normalizeLookupSubject(subject),
+          year: Number(analysisYear)
+        }
       })
       const batchLinePreview = (data.items || []).slice(0, 3)
       this.setData({
@@ -301,8 +306,14 @@ Page({
     this.setData({ rankLoading: true })
     try {
       const result = await request({
-        url: `/api/score-rank?province=${encodeURIComponent(province)}&subject=${encodeURIComponent(normalizeLookupSubject(subject))}&year=${analysisYear}&score=${Number(score)}`,
-        method: 'GET'
+        url: '/api/score-rank',
+        method: 'POST',
+        data: {
+          province,
+          subject: normalizeLookupSubject(subject),
+          year: Number(analysisYear),
+          score: Number(score)
+        }
       })
       const scoreRankPreview = buildRankDisplay(result, this.data.form)
       this.setData({

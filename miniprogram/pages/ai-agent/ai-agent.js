@@ -204,8 +204,9 @@ Page({
     this.pollingRequest = true
     try {
       const data = await request({
-        url: '/api/agent-recommend/task?taskId=' + encodeURIComponent(taskId),
-        method: 'GET',
+        url: '/api/agent-recommend/task',
+        method: 'POST',
+        data: { taskId },
         timeout: 20000
       })
 

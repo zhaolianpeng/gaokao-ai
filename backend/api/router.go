@@ -114,6 +114,26 @@ func NewRouter(recommendService *service.RecommendService, aiService *service.AI
 		c.JSON(http.StatusOK, result)
 	})
 
+	r.POST("/api/analyze/task", func(c *gin.Context) {
+		if taskService == nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "task service unavailable"})
+			return
+		}
+		var req struct {
+			TaskID string `json:"taskId" binding:"required"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		result, err := taskService.GetTaskStatus(c.Request.Context(), req.TaskID)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, result)
+	})
+
 	r.POST("/api/auth/wx-login", func(c *gin.Context) {
 		var req model.WechatLoginRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
@@ -238,6 +258,26 @@ func NewRouter(recommendService *service.RecommendService, aiService *service.AI
 		c.JSON(http.StatusOK, result)
 	})
 
+	r.POST("/api/agent-recommend/task", func(c *gin.Context) {
+		if taskService == nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "task service unavailable"})
+			return
+		}
+		var req struct {
+			TaskID string `json:"taskId" binding:"required"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		result, err := taskService.GetTaskStatus(c.Request.Context(), req.TaskID)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, result)
+	})
+
 	r.GET("/api/dashboard/overview", func(c *gin.Context) {
 		year, _ := strconv.Atoi(c.DefaultQuery("year", "2025"))
 		overview, err := explorerService.GetDashboardOverview(c.Request.Context(), c.Query("province"), year, c.Query("subject"))
@@ -260,6 +300,32 @@ func NewRouter(recommendService *service.RecommendService, aiService *service.AI
 		c.JSON(http.StatusOK, gin.H{"items": items})
 	})
 
+	r.POST("/api/province-lines", func(c *gin.Context) {
+		var req struct {
+			Province string `json:"province"`
+			Year     int    `json:"year"`
+			Subject  string `json:"subject"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		if req.Year == 0 {
+			req.Year = 2025
+		}
+		province := strings.TrimSpace(req.Province)
+		if province == "" {
+			province = "黑龙江"
+		}
+		subject := normalizeLookupSubject(req.Year, req.Subject)
+		items, err := explorerService.GetProvinceScoreLines(c.Request.Context(), province, req.Year, subject)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"items": items})
+	})
+
 	r.GET("/api/score-rank", func(c *gin.Context) {
 		year, _ := strconv.Atoi(c.DefaultQuery("year", "2025"))
 		score, _ := strconv.Atoi(c.DefaultQuery("score", "0"))
@@ -274,6 +340,41 @@ func NewRouter(recommendService *service.RecommendService, aiService *service.AI
 			return
 		}
 		result, err := explorerService.LookupScoreRank(c.Request.Context(), province, year, subject, score)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, result)
+	})
+
+	r.POST("/api/score-rank", func(c *gin.Context) {
+		var req struct {
+			Province string `json:"province"`
+			Year     int    `json:"year"`
+			Subject  string `json:"subject"`
+			Score    int    `json:"score"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		if req.Year == 0 {
+			req.Year = 2025
+		}
+		if req.Score <= 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid score"})
+			return
+		}
+		province := strings.TrimSpace(req.Province)
+		if province == "" {
+			province = "黑龙江"
+		}
+		subject := normalizeLookupSubject(req.Year, req.Subject)
+		if subject == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid subject"})
+			return
+		}
+		result, err := explorerService.LookupScoreRank(c.Request.Context(), province, req.Year, subject, req.Score)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return

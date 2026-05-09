@@ -688,8 +688,9 @@ Page({
     this.analyzePollingRequest = true
     try {
       var data = await request({
-        url: '/api/analyze/task?taskId=' + encodeURIComponent(taskId),
-        method: 'GET',
+        url: '/api/analyze/task',
+        method: 'POST',
+        data: { taskId: taskId },
         timeout: 20000
       })
       var taskStatus = data.status || 'pending'
