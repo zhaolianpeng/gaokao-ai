@@ -39,25 +39,25 @@ gaokao-ai/
 
 当前默认后端地址已经指向生产反向代理：
 
-- `http://82.156.54.232:80`
+- `https://api.succ.online`
 
 ### 真机发布 / 微信开发者工具上传
 
 1. 用微信开发者工具打开 `miniprogram/`，确认 AppID 使用项目内现有配置。
 2. 在“详情”里确认本地设置与项目配置一致，尤其是：
   - 不要误切到其他云环境
-  - 确认请求地址仍指向 `http://82.156.54.232:80`
+  - 确认请求地址仍指向 `https://api.succ.online`
 3. 先做一次真机预览：
   - 点击“预览”
   - 用测试微信扫码
-  - 重点验证首页、院校库分页、排序切换、推荐页、报告页、关于我们里的后端健康检查
+  - 重点验证首页批次线/位次、院校库分页与详情、推荐页、AI 报告、登录与 VIP 支付、关于我们里的后端健康检查
 4. 真机验证通过后再上传：
   - 点击“上传”
   - 填写版本号和更新说明
   - 在微信公众平台提交审核或直接发布
 5. 如果线上后端刚更新，建议上传前先手动访问以下地址确认服务正常：
-  - `http://82.156.54.232:80/healthz`
-  - `http://82.156.54.232:80/api/colleges?province=黑龙江&subject=历史&year=2025&page=1&limit=3`
+  - `https://api.succ.online/healthz`
+  - 使用 `curl -X POST https://api.succ.online/api/colleges ...` 验证院校库接口，而不是再用带查询参数的 GET
 
 ### 真机回归清单
 
@@ -67,18 +67,25 @@ gaokao-ai/
   - 进入院校库
   - 触底后确认会继续加载下一页，而不是直接提示“已经到底了”
   - 顶部“已加载第 N 页”提示要跟随变化
+  - 点进任意院校，确认详情页能正常打开
 2. 排序
   - 在院校库切换“按学校层次排序”和“按录取位次排序”
   - 确认两种排序的首屏结果明显不同
+3. 登录
+  - 在登录页走一次微信手机号登录
+  - 确认 `/api/auth/wx-login` 能返回服务端用户 ID
+  - 如果允许头像昵称授权，再确认 `/api/auth/wx-profile` 不会报字段校验异常
 3. 推荐
   - 首页输入分数、位次、意向专业
   - 生成推荐后确认冲、稳、保三组都有结果或有合理空态提示
 4. 报告
   - 在推荐页触发 AI 报告
+  - 确认报告轮询能成功结束，而不是卡在任务状态接口
   - 确认报告能正常生成、打开、复制，并能继续跳转到家长沟通卡片
 5. 支付
   - 进入 VIP 中心
   - 确认登录态正确、商品展示正常、支付入口可触发
+  - 确认 `/api/vip/pay` 能返回支付参数，`/api/vip/pay/confirm` 能正常确认
   - 正式发布前至少做一次完整支付链路联调或沙箱验证
 6. 健康检查
   - 在关于我们页面执行 `/healthz` 检测
@@ -180,6 +187,44 @@ export SSHPASS='你的服务器密码'
 ```bash
 export SSHPASS='你的服务器密码'
 ./scripts/release_backend_82.sh
+```
+
+### EdgeOne / WAF 运维说明
+
+这套生产链路前面挂了 `api.succ.online`，实测发现 EdgeOne 会对部分带查询参数的 `GET /api/*` 业务请求做误拦截，典型现象是：
+
+- 小程序或浏览器里看到 `302`
+- 响应头里出现 `location: https://dnspod.qcloud.com/static/webblock.html?d=api.succ.online`
+- `/healthz` 正常，但院校库、位次、任务轮询等接口异常
+
+当前已经验证并固定下来的处理规则：
+
+1. 保留 `GET /healthz` 作为健康检查。
+2. 需要携带业务查询条件的动态接口，统一优先走 `POST` JSON body。
+3. 小程序当前已改为 `POST` 的关键接口包括：
+  - `/api/colleges`
+  - `/api/colleges/:id`
+  - `/api/province-lines`
+  - `/api/score-rank`
+  - `/api/analyze/task`
+  - `/api/agent-recommend/task`
+4. 登录、支付、推荐、反馈本来就是 `POST`，当前生产验证可直达源站。
+
+如果后续再出现“接口本地直连源站正常、走域名就异常”的情况，按下面顺序排查：
+
+1. 先看是否是 `302 -> webblock.html`，不要先怀疑后端代码。
+2. 用服务器本机直连 `127.0.0.1:8080` 验证源站是否正常。
+3. 如果源站正常，再看该接口是否仍在使用带查询参数的 `GET`。
+4. 对动态查询接口，优先改为 `POST`，再验证 `https://api.succ.online` 是否恢复正常。
+5. 只有在 `POST` 也被拦时，才继续排查 EdgeOne 规则或回源配置。
+
+建议保留以下两个排障命令：
+
+```bash
+curl -I 'https://api.succ.online/healthz'
+curl -sS -X POST 'https://api.succ.online/api/colleges' \
+  -H 'Content-Type: application/json' \
+  --data '{"province":"黑龙江","subject":"历史","year":2025,"page":1,"limit":20,"sortMode":"tier","keyword":""}'
 ```
 
 ### 支付联调注意事项
