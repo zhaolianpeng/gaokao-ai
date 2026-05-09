@@ -80,7 +80,21 @@ func registerAdminRoutes(r *gin.Engine, adminService *service.AdminService, payS
 		})
 
 		adminGroup.GET("/colleges", func(c *gin.Context) {
-			items, total, err := adminService.Repo().ListColleges(c.Request.Context(), c.Query("keyword"), parseInt(c.Query("page"), 1), parseInt(c.Query("limit"), 20))
+			items, total, err := adminService.Repo().ListColleges(
+				c.Request.Context(),
+				c.Query("keyword"),
+				c.Query("name"),
+				c.Query("level"),
+				c.Query("schoolType"),
+				c.Query("ownershipType"),
+				c.Query("province"),
+				c.Query("city"),
+				c.Query("is985"),
+				c.Query("is211"),
+				c.Query("isDoubleFirst"),
+				parseInt(c.Query("page"), 1),
+				parseInt(c.Query("limit"), 20),
+			)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 				return
@@ -88,7 +102,21 @@ func registerAdminRoutes(r *gin.Engine, adminService *service.AdminService, payS
 			c.JSON(http.StatusOK, model.AdminListResponse[model.AdminCollege]{Items: items, Total: total, Page: parseInt(c.Query("page"), 1), Limit: parseInt(c.Query("limit"), 20)})
 		})
 		adminGroup.POST("/colleges/list", func(c *gin.Context) {
-			items, total, err := adminService.Repo().ListColleges(c.Request.Context(), c.Query("keyword"), parseInt(c.Query("page"), 1), parseInt(c.Query("limit"), 20))
+			items, total, err := adminService.Repo().ListColleges(
+				c.Request.Context(),
+				c.Query("keyword"),
+				c.Query("name"),
+				c.Query("level"),
+				c.Query("schoolType"),
+				c.Query("ownershipType"),
+				c.Query("province"),
+				c.Query("city"),
+				c.Query("is985"),
+				c.Query("is211"),
+				c.Query("isDoubleFirst"),
+				parseInt(c.Query("page"), 1),
+				parseInt(c.Query("limit"), 20),
+			)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 				return

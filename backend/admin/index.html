@@ -591,7 +591,8 @@
     const DEFAULT_PAGE_LIMIT = 20
     const PAGE_SIZE_OPTIONS = [20, 50, 100]
     const ORDER_STATUS_OPTIONS = ['', 'created', 'paid', 'closed', 'refunded']
-    const state = { currentUser: null, active: 'dashboard', cache: {}, keyword: '', paging: {}, pageSize: {}, orderProductId: '', orderStatus: '' }
+    const emptyCollegeFilters = () => ({ keyword: '', name: '', level: '', schoolType: '', ownershipType: '', province: '', city: '', is985: '', is211: '', isDoubleFirst: '' })
+    const state = { currentUser: null, active: 'dashboard', cache: {}, keyword: '', paging: {}, pageSize: {}, orderProductId: '', orderStatus: '', collegeFilters: emptyCollegeFilters() }
 
     function escapeHtml(value) {
       return String(value == null ? '' : value)
@@ -806,6 +807,142 @@
           }
         })
       }
+    }
+
+    async function renderColleges() {
+      const section = SECTION_DEFS.colleges
+      const currentPage = getCurrentPage('colleges')
+      const currentLimit = getCurrentPageSize('colleges')
+      const query = new URLSearchParams({
+        page: String(currentPage),
+        limit: String(currentLimit),
+        keyword: state.collegeFilters.keyword || '',
+        name: state.collegeFilters.name || '',
+        level: state.collegeFilters.level || '',
+        schoolType: state.collegeFilters.schoolType || '',
+        ownershipType: state.collegeFilters.ownershipType || '',
+        province: state.collegeFilters.province || '',
+        city: state.collegeFilters.city || '',
+        is985: state.collegeFilters.is985 || '',
+        is211: state.collegeFilters.is211 || '',
+        isDoubleFirst: state.collegeFilters.isDoubleFirst || ''
+      }).toString()
+      const data = await api(`${section.endpoint}/list?${query}`, { method: 'POST' })
+      const items = data.items || []
+      const page = Math.max(1, Number(data.page || currentPage))
+      const limit = Math.max(1, Number(data.limit || currentLimit))
+      const total = Math.max(0, Number(data.total || items.length))
+      const totalPages = Math.max(1, Math.ceil(total / limit))
+      if (total > 0 && page > totalPages) {
+        setCurrentPage('colleges', totalPages)
+        return renderColleges()
+      }
+      setCurrentPage('colleges', page)
+      document.getElementById('contentPanel').innerHTML = `
+        <div class="toolbar">
+          <div class="toolbar-actions">
+            <input id="collegeKeywordFilter" placeholder="关键词，支持名称/类别/所在地/标签等" value="${escapeHtml(state.collegeFilters.keyword)}" style="width:260px;" />
+            <input id="collegeNameFilter" placeholder="院校名称" value="${escapeHtml(state.collegeFilters.name)}" style="width:180px;" />
+            <input id="collegeLevelFilter" placeholder="层次" value="${escapeHtml(state.collegeFilters.level)}" style="width:120px;" />
+            <input id="collegeTypeFilter" placeholder="类别/办学类型" value="${escapeHtml(state.collegeFilters.schoolType)}" style="width:150px;" />
+            <input id="collegeOwnershipFilter" placeholder="性质" value="${escapeHtml(state.collegeFilters.ownershipType)}" style="width:120px;" />
+            <input id="collegeProvinceFilter" placeholder="省份" value="${escapeHtml(state.collegeFilters.province)}" style="width:120px;" />
+            <input id="collegeCityFilter" placeholder="城市" value="${escapeHtml(state.collegeFilters.city)}" style="width:120px;" />
+            <select id="college985Filter" style="width:110px;">
+              <option value="" ${state.collegeFilters.is985 === '' ? 'selected' : ''}>985全部</option>
+              <option value="1" ${state.collegeFilters.is985 === '1' ? 'selected' : ''}>仅985</option>
+              <option value="0" ${state.collegeFilters.is985 === '0' ? 'selected' : ''}>非985</option>
+            </select>
+            <select id="college211Filter" style="width:110px;">
+              <option value="" ${state.collegeFilters.is211 === '' ? 'selected' : ''}>211全部</option>
+              <option value="1" ${state.collegeFilters.is211 === '1' ? 'selected' : ''}>仅211</option>
+              <option value="0" ${state.collegeFilters.is211 === '0' ? 'selected' : ''}>非211</option>
+            </select>
+            <select id="collegeDoubleFirstFilter" style="width:120px;">
+              <option value="" ${state.collegeFilters.isDoubleFirst === '' ? 'selected' : ''}>双一流全部</option>
+              <option value="1" ${state.collegeFilters.isDoubleFirst === '1' ? 'selected' : ''}>仅双一流</option>
+              <option value="0" ${state.collegeFilters.isDoubleFirst === '0' ? 'selected' : ''}>非双一流</option>
+            </select>
+          </div>
+          <div class="toolbar-actions">
+            <button id="queryCollegesBtn" class="btn btn-primary">查询</button>
+            <button id="resetCollegeFiltersBtn" class="btn btn-secondary">重置</button>
+            <button id="createCollegeBtn" class="btn btn-secondary">新增</button>
+            <button id="refreshCollegeBtn" class="btn btn-secondary">刷新</button>
+            <span class="badge">共 ${total} 条</span>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                ${section.columns.map(([, label]) => `<th>${label}</th>`).join('')}
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${items.map((item) => `
+                <tr>
+                  ${section.columns.map(([key]) => `<td>${renderCell(key, item[key], item)}</td>`).join('')}
+                  <td>
+                    <div class="table-actions">
+                      <button class="btn btn-secondary" data-action="edit" data-id="${item.id}">编辑</button>
+                    </div>
+                  </td>
+                </tr>
+              `).join('') || `<tr><td class="empty" colspan="${section.columns.length + 1}">暂无数据</td></tr>`}
+            </tbody>
+          </table>
+        </div>
+        ${buildPagination(total, page, limit)}
+      `
+      bindPagination('colleges', () => renderColleges(), total, limit)
+      const syncCollegeFilters = () => {
+        state.collegeFilters = {
+          keyword: document.getElementById('collegeKeywordFilter')?.value.trim() || '',
+          name: document.getElementById('collegeNameFilter')?.value.trim() || '',
+          level: document.getElementById('collegeLevelFilter')?.value.trim() || '',
+          schoolType: document.getElementById('collegeTypeFilter')?.value.trim() || '',
+          ownershipType: document.getElementById('collegeOwnershipFilter')?.value.trim() || '',
+          province: document.getElementById('collegeProvinceFilter')?.value.trim() || '',
+          city: document.getElementById('collegeCityFilter')?.value.trim() || '',
+          is985: document.getElementById('college985Filter')?.value || '',
+          is211: document.getElementById('college211Filter')?.value || '',
+          isDoubleFirst: document.getElementById('collegeDoubleFirstFilter')?.value || ''
+        }
+      }
+      const submitCollegeFilters = () => {
+        syncCollegeFilters()
+        resetCurrentPage('colleges')
+        renderColleges()
+      }
+      ;['collegeKeywordFilter', 'collegeNameFilter', 'collegeLevelFilter', 'collegeTypeFilter', 'collegeOwnershipFilter', 'collegeProvinceFilter', 'collegeCityFilter', 'college985Filter', 'college211Filter', 'collegeDoubleFirstFilter'].forEach((id) => {
+        const input = document.getElementById(id)
+        if (!input) return
+        input.addEventListener('change', syncCollegeFilters)
+        input.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter') {
+            submitCollegeFilters()
+          }
+        })
+      })
+      document.getElementById('queryCollegesBtn')?.addEventListener('click', submitCollegeFilters)
+      document.getElementById('refreshCollegeBtn')?.addEventListener('click', () => {
+        syncCollegeFilters()
+        renderColleges()
+      })
+      document.getElementById('resetCollegeFiltersBtn')?.addEventListener('click', () => {
+        state.collegeFilters = emptyCollegeFilters()
+        resetCurrentPage('colleges')
+        renderColleges()
+      })
+      document.getElementById('createCollegeBtn')?.addEventListener('click', () => openForm('colleges', {}))
+      document.querySelectorAll('[data-action="edit"]').forEach((button) => {
+        button.addEventListener('click', () => {
+          const item = items.find((entry) => String(entry.id) === String(button.dataset.id))
+          openForm('colleges', item || {})
+        })
+      })
     }
 
     async function renderCRUD(sectionKey) {
@@ -1404,6 +1541,7 @@
       bindNav()
       setHeader()
       if (state.active === 'dashboard') return renderDashboard()
+      if (state.active === 'colleges') return renderColleges()
       if (state.active === 'orders') return renderOrders()
       if (state.active === 'volunteers' || state.active === 'aiTasks') return renderTasks(state.active)
       if (state.active === 'vipProducts' || state.active === 'paymentItems') return renderVIP('paymentItems')

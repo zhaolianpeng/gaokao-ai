@@ -278,21 +278,102 @@ func (r *AdminRepository) DeleteAdminUser(ctx context.Context, id int) error {
 	return err
 }
 
-func (r *AdminRepository) ListColleges(ctx context.Context, keyword string, page, limit int) ([]model.AdminCollege, int, error) {
+func (r *AdminRepository) ListColleges(ctx context.Context, keyword, name, level, schoolType, ownershipType, province, city, is985, is211, isDoubleFirst string, page, limit int) ([]model.AdminCollege, int, error) {
 	page, limit = normalizePage(page, limit)
-	like := buildLike(keyword)
+	conditions := []string{"1 = 1"}
+	args := make([]any, 0)
+	if strings.TrimSpace(keyword) != "" {
+		like := buildLike(keyword)
+		keywordConditions := []string{
+			`name LIKE ?`,
+			`province LIKE ?`,
+			`city LIKE ?`,
+			`level LIKE ?`,
+			`school_type LIKE ?`,
+			`ownership_type LIKE ?`,
+			`ranking LIKE ?`,
+			`code LIKE ?`,
+			`affiliation LIKE ?`,
+			`education_level LIKE ?`,
+			`address LIKE ?`,
+			`website LIKE ?`,
+			`softscience_grade LIKE ?`,
+			`softscience_ranking LIKE ?`,
+			`CAST(tags AS CHAR) LIKE ?`,
+			`CAST(school_level_tags AS CHAR) LIKE ?`,
+		}
+		for range keywordConditions {
+			args = append(args, like)
+		}
+		normalizedKeyword := strings.ToLower(strings.TrimSpace(keyword))
+		if strings.Contains(normalizedKeyword, "985") {
+			keywordConditions = append(keywordConditions, `is_985 = 1`)
+		}
+		if strings.Contains(normalizedKeyword, "211") {
+			keywordConditions = append(keywordConditions, `is_211 = 1`)
+		}
+		if strings.Contains(normalizedKeyword, "双一流") || strings.Contains(normalizedKeyword, "double first") {
+			keywordConditions = append(keywordConditions, `is_double_first = 1`)
+		}
+		conditions = append(conditions, `(`+strings.Join(keywordConditions, ` OR `)+`)`)
+	}
+	if strings.TrimSpace(name) != "" {
+		conditions = append(conditions, `name LIKE ?`)
+		args = append(args, buildLike(name))
+	}
+	if strings.TrimSpace(level) != "" {
+		conditions = append(conditions, `level LIKE ?`)
+		args = append(args, buildLike(level))
+	}
+	if strings.TrimSpace(schoolType) != "" {
+		conditions = append(conditions, `school_type LIKE ?`)
+		args = append(args, buildLike(schoolType))
+	}
+	if strings.TrimSpace(ownershipType) != "" {
+		conditions = append(conditions, `ownership_type LIKE ?`)
+		args = append(args, buildLike(ownershipType))
+	}
+	if strings.TrimSpace(province) != "" {
+		conditions = append(conditions, `province LIKE ?`)
+		args = append(args, buildLike(province))
+	}
+	if strings.TrimSpace(city) != "" {
+		conditions = append(conditions, `city LIKE ?`)
+		args = append(args, buildLike(city))
+	}
+	switch strings.TrimSpace(is985) {
+	case "1":
+		conditions = append(conditions, `is_985 = 1`)
+	case "0":
+		conditions = append(conditions, `is_985 = 0`)
+	}
+	switch strings.TrimSpace(is211) {
+	case "1":
+		conditions = append(conditions, `is_211 = 1`)
+	case "0":
+		conditions = append(conditions, `is_211 = 0`)
+	}
+	switch strings.TrimSpace(isDoubleFirst) {
+	case "1":
+		conditions = append(conditions, `is_double_first = 1`)
+	case "0":
+		conditions = append(conditions, `is_double_first = 0`)
+	}
+	where := strings.Join(conditions, " AND ")
+	countArgs := append([]any{}, args...)
 	var total int
-	if err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM college WHERE name LIKE ? OR province LIKE ? OR city LIKE ?`, like, like, like).Scan(&total); err != nil {
+	if err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM college WHERE `+where, countArgs...).Scan(&total); err != nil {
 		return nil, 0, err
 	}
+	queryArgs := append(append([]any{}, args...), limit, (page-1)*limit)
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT id, name, province, city, level, is_985, is_211, is_double_first,
 			COALESCE(website, ''), COALESCE(ranking, ''), COALESCE(school_type, ''), COALESCE(ownership_type, ''),
 			CAST(recommended_postgraduate_rate AS CHAR), updated_at
 		FROM college
-		WHERE name LIKE ? OR province LIKE ? OR city LIKE ?
+		WHERE `+where+`
 		ORDER BY id DESC LIMIT ? OFFSET ?
-	`, like, like, like, limit, (page-1)*limit)
+	`, queryArgs...)
 	if err != nil {
 		return nil, 0, err
 	}
