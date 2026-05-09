@@ -19,7 +19,13 @@
         </view>
       </view>
       <view class="login-footnote">登录后保存的考分和偏好会在首页自动带出。</view>
-      <button class="ghost-btn my-ghost-btn" bindtap="syncWechatProfile">同步微信头像昵称</button>
+      <view class="my-sync-card">
+        <view class="my-sync-title">同步微信昵称和头像</view>
+        <view class="my-sync-desc">真机上优先使用微信原生头像选择器，昵称单独填写后同步到服务端。</view>
+        <button class="ghost-btn my-ghost-btn" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">选择微信头像</button>
+        <input class="input login-input" type="nickname" placeholder="请输入或确认微信昵称" value="{{syncDraftNickname}}" bindinput="onSyncNicknameInput" />
+        <button class="ghost-btn my-ghost-btn" loading="{{syncSubmitting}}" bindtap="syncWechatProfile">同步到当前账号</button>
+      </view>
       <button class="primary-btn my-primary-btn" bindtap="openVip">进入 VIP 中心</button>
     </view>
 
