@@ -15,6 +15,10 @@
   padding: 32rpx;
 }
 
+.my-profile-card {
+  overflow: hidden;
+}
+
 .my-hero-card {
   text-align: center;
 }
@@ -35,6 +39,24 @@
 
 .my-primary-btn {
   margin-top: 8rpx;
+}
+
+.ghost-btn {
+  width: 100%;
+  min-height: 88rpx;
+  border-radius: 16rpx;
+  border: 2rpx solid #d9e4f1;
+  background: #f6f9fc;
+  color: #10233f;
+  font-size: 32rpx;
+  font-weight: 600;
+  line-height: 1.2;
+  padding: 0 24rpx;
+  box-sizing: border-box;
+}
+
+.ghost-btn::after {
+  border: 0;
 }
 
 .my-ghost-btn {
