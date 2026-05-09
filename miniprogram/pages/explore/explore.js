@@ -20,6 +20,8 @@ Page({
       { value: 'admission', label: '按录取位次排序' }
     ],
     items: [],
+    hasItems: false,
+    showEmptyState: false,
     page: 1,
     pageSize: 20,
     hasMore: false,
@@ -98,6 +100,7 @@ Page({
       const nextItems = data.items || []
       const paginationReady = typeof data.hasMore === 'boolean' && typeof data.page === 'number' && typeof data.limit === 'number'
       const mergedItems = reset ? nextItems : items.concat(nextItems)
+      const hasItems = mergedItems.length > 0
       const pageSummary = !mergedItems.length
         ? ''
         : paginationReady
@@ -105,6 +108,8 @@ Page({
           : '当前后端还未上线分页接口，暂时仅展示这 20 所院校'
       this.setData({
         items: mergedItems,
+        hasItems,
+        showEmptyState: !hasItems,
         page: nextPage,
         hasMore: paginationReady ? !!data.hasMore : false,
         paginationReady,
@@ -115,6 +120,9 @@ Page({
           : (keyword ? `关键词“${keyword}”当前仅返回 20 所院校，等待后端分页上线` : '当前后端仅返回 20 所院校，等待后端分页上线')
       })
     } catch (err) {
+      if (reset) {
+        this.setData({ hasItems: this.data.items.length > 0, showEmptyState: this.data.items.length === 0 })
+      }
       if (!err || !err.handledByModal) {
         wx.showToast({ title: (err && err.error) || '加载院校失败', icon: 'none' })
       }

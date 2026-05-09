@@ -25,34 +25,34 @@
     </view>
   </view>
 
-  <view class="empty-state" wx:if="{{!loading && !items.length}}">
+  <view class="empty-state" wx:if="{{!loading && showEmptyState}}">
     <view class="empty-title">当前没有匹配院校</view>
     <view class="empty-text">可以试试师范、医学、财经等关键词，或先切换历史/物理科类。</view>
   </view>
 
-  <block wx:for="{{items}}" wx:key="id">
-    <view class="card college-card" data-id="{{item.id}}" bindtap="openCollegeDetail">
+  <block wx:for="{{items}}" wx:key="id" wx:for-item="college">
+    <view class="card college-card" data-id="{{college.id}}" bindtap="openCollegeDetail">
       <view class="row-between top-row">
-        <view class="college-title">{{item.name}}</view>
-        <view class="rank-chip" wx:if="{{item.ranking}}">排名 {{item.ranking}}</view>
+        <view class="college-title">{{college.name}}</view>
+        <view class="rank-chip" wx:if="{{college.ranking}}">排名 {{college.ranking}}</view>
       </view>
-      <view class="college-meta">{{item.city || '黑龙江'}} · {{item.level || '未标注'}} · 保研率 {{item.recommended_postgraduate_rate || '0'}}</view>
+      <view class="college-meta">{{college.city || '黑龙江'}} · {{college.level || '未标注'}} · 保研率 {{college.recommended_postgraduate_rate || '0'}}</view>
       <view class="tag-row">
-        <block wx:for="{{item.tags}}" wx:key="index">
-          <view class="tag">{{item}}</view>
+        <block wx:for="{{college.tags}}" wx:key="index" wx:for-item="tag">
+          <view class="tag">{{tag}}</view>
         </block>
       </view>
       <view class="stat-row">
-        <view class="stat-item">专业组 {{item.group_count}}</view>
-        <view class="stat-item">招生专业 {{item.major_count}}</view>
-        <view class="stat-item">最低组分 {{item.min_group_score}}</view>
-        <view class="stat-item">最低组位 {{item.min_group_rank || '无'}}</view>
+        <view class="stat-item">专业组 {{college.group_count}}</view>
+        <view class="stat-item">招生专业 {{college.major_count}}</view>
+        <view class="stat-item">最低组分 {{college.min_group_score}}</view>
+        <view class="stat-item">最低组位 {{college.min_group_rank || '无'}}</view>
       </view>
     </view>
   </block>
 
   <view class="list-status" wx:if="{{loadingMore}}">正在加载下一页...</view>
-  <view class="list-status" wx:if="{{!loading && !loadingMore && paginationReady && hasMore}}">上滑到底自动加载更多</view>
-  <view class="list-status list-status-warn" wx:if="{{!loading && !loadingMore && items.length && !paginationReady}}">当前后端还未上线分页接口，暂时无法继续加载下一页</view>
-  <view class="list-status" wx:if="{{!loading && !loadingMore && items.length && paginationReady && !hasMore}}">已经到底了</view>
+  <view class="list-status" wx:if="{{!loading && !loadingMore && hasItems && paginationReady && hasMore}}">上滑到底自动加载更多</view>
+  <view class="list-status list-status-warn" wx:if="{{!loading && !loadingMore && hasItems && !paginationReady}}">当前后端还未上线分页接口，暂时无法继续加载下一页</view>
+  <view class="list-status" wx:if="{{!loading && !loadingMore && hasItems && paginationReady && !hasMore}}">已经到底了</view>
 </view>
