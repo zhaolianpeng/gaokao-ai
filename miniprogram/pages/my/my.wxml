@@ -23,12 +23,15 @@
         </view>
       </view>
       <view class="login-footnote">登录后保存的考分和偏好会在首页自动带出。</view>
-      <form class="my-sync-card" bindsubmit="syncWechatProfile">
+      <view class="my-sync-card">
         <view class="my-sync-title">同步微信昵称和头像</view>
-        <view class="my-sync-desc">头像请直接点击上方头像更新。这里仅同步昵称到当前账号。</view>
-        <input class="input login-input" name="nickname" placeholder="请输入或确认昵称" value="{{syncDraftNickname}}" bindinput="onSyncNicknameInput" always-embed="true" />
-        <view class="ghost-btn my-ghost-btn my-action-btn" hover-class="my-btn-hover" bindtap="triggerSyncSubmit">{{syncSubmitting ? '同步中...' : '同步到当前账号'}}</view>
-      </form>
+        <view class="my-sync-desc">头像请直接点击上方头像更新。昵称和报考档案请进入编辑页统一修改并保存。</view>
+        <view class="my-inline-summary">
+          <view class="my-inline-label">当前昵称</view>
+          <view class="my-inline-value">{{user.nickname}}</view>
+        </view>
+        <view class="ghost-btn my-ghost-btn my-action-btn" hover-class="my-btn-hover" bindtap="openProfileEditor">编辑昵称和档案</view>
+      </view>
       <view class="primary-btn my-primary-btn my-action-btn" hover-class="my-btn-hover" bindtap="openVip">进入 VIP 中心</view>
     </view>
 
@@ -43,32 +46,30 @@
 
       <view class="my-field-card">
         <view class="login-label">科类：</view>
-        <picker mode="selector" range="{{subjectOptions}}" bindchange="onSubjectChange">
-          <view class="mini-picker my-picker">{{profile.subject}}</view>
-        </picker>
+        <view class="my-static-value">{{profile.subject || '未填写'}}</view>
       </view>
 
       <view class="my-field-card">
         <view class="login-label">高考分数：</view>
-        <input class="input login-input" type="number" placeholder="请输入分数" value="{{profile.score}}" data-field="score" bindinput="onInput" always-embed="true" />
+        <view class="my-static-value">{{profile.score || '未填写'}}</view>
       </view>
 
       <view class="my-field-card">
         <view class="login-label">全省排名：</view>
-        <input class="input login-input" type="number" placeholder="请输入位次" value="{{profile.rank}}" data-field="rank" bindinput="onInput" always-embed="true" />
+        <view class="my-static-value">{{profile.rank || '未填写'}}</view>
       </view>
 
       <view class="my-field-card">
         <view class="login-label">意向专业：</view>
-        <input class="input login-input" placeholder="例如：计算机、临床医学" value="{{profile.targetMajor}}" data-field="targetMajor" bindinput="onInput" always-embed="true" />
+        <view class="my-static-value my-static-multiline">{{profile.targetMajor || '未填写'}}</view>
       </view>
 
       <view class="my-field-card">
         <view class="login-label">报考偏好：</view>
-        <textarea class="textarea my-textarea" placeholder="例如：优先哈尔滨、接受调剂、尽量公办" value="{{profile.notes}}" data-field="notes" bindinput="onInput" disable-default-padding="true"></textarea>
+        <view class="my-static-value my-static-multiline">{{profile.notes || '未填写'}}</view>
       </view>
 
-      <view class="primary-btn my-primary-btn my-action-btn" hover-class="my-btn-hover" bindtap="saveProfile">保存我的资料</view>
+      <view class="primary-btn my-primary-btn my-action-btn" hover-class="my-btn-hover" bindtap="openProfileEditor">编辑我的资料</view>
       <view class="ghost-btn danger-btn my-action-btn" hover-class="my-btn-hover" bindtap="logout">退出登录</view>
     </view>
 

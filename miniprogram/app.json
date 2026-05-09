@@ -17,7 +17,8 @@
     "pages/ai-agent/ai-agent",
     "pages/report/report",
     "pages/family-share/family-share",
-    "pages/history/history"
+    "pages/history/history",
+    "pages/profile-edit/profile-edit"
   ],
   "window": {
     "navigationBarTitleText": "黑龙江高报助手",

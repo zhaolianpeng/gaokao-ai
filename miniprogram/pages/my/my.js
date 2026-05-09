@@ -67,32 +67,12 @@ Page({
     wx.navigateTo({ url: '/pages/vip/vip' })
   },
 
-  triggerSyncSubmit() {
-    if (this.data.syncSubmitting) {
-      return
-    }
-    this.syncWechatProfile({
-      detail: {
-        value: {
-          nickname: this.data.syncDraftNickname || ''
-        }
-      }
-    })
+  openProfileEditor() {
+    wx.navigateTo({ url: '/pages/profile-edit/profile-edit' })
   },
 
   openAboutPage() {
     wx.navigateTo({ url: '/pages/about/about' })
-  },
-
-  onSyncNicknameInput(e) {
-    this.setData({ syncDraftNickname: e.detail.value })
-  },
-
-  onSyncNicknameReview(e) {
-    const detail = (e && e.detail) || {}
-    if (detail.pass === false) {
-      wx.showToast({ title: '昵称未通过微信审核，请调整后重试', icon: 'none' })
-    }
   },
 
   async onChooseAvatar(e) {
@@ -140,101 +120,8 @@ Page({
     }
   },
 
-  async syncWechatProfile(e) {
-    const user = getAuthUser()
-    if (!user || !user.id || user.storageMode !== 'server') {
-      wx.showToast({ title: '请先完成微信手机号登录', icon: 'none' })
-      return
-    }
-
-    const formNickname = e && e.detail && e.detail.value ? e.detail.value.nickname : ''
-    const nextNickname = String(formNickname || this.data.syncDraftNickname || '').trim()
-    if (!nextNickname && !user.nickname) {
-      wx.showToast({ title: '请先填写昵称', icon: 'none' })
-      return
-    }
-
-    try {
-      this.setData({ syncSubmitting: true })
-
-      const finalNickname = nextNickname || user.nickname || '考生用户'
-      const effectiveAvatarUrl = user.avatarUrl || ''
-
-      let avatarLocalPath = user.avatarLocalPath || ''
-      if (effectiveAvatarUrl) {
-        avatarLocalPath = await cacheRemoteAvatar(effectiveAvatarUrl)
-      }
-
-      const payload = await request({
-        url: '/api/auth/wx-profile',
-        method: 'POST',
-        data: {
-          userId: user.id,
-          phone: user.phone || '',
-          nickname: finalNickname,
-          avatarUrl: effectiveAvatarUrl
-        }
-      })
-
-      const serverAvatarUrl = (payload && payload.avatarUrl) || (payload && payload.user && payload.user.avatarUrl) || effectiveAvatarUrl
-      const finalAvatarLocalPath = avatarLocalPath || user.avatarLocalPath || ''
-      const syncedNickname = !isAnonymousWechatNickname((payload && payload.nickname) || (payload && payload.user && payload.user.nickname) || finalNickname)
-        ? ((payload && payload.nickname) || (payload && payload.user && payload.user.nickname) || finalNickname)
-        : (user.nickname || finalNickname || '考生用户')
-
-      const nextUser = saveAuthUser({
-        ...user,
-        ...(payload && payload.user ? payload.user : payload),
-        nickname: syncedNickname,
-        avatarUrl: serverAvatarUrl,
-        avatarLocalPath: finalAvatarLocalPath,
-        storageMode: 'server'
-      })
-
-      getApp().setUser(nextUser)
-      this.setData({
-        user: nextUser,
-        userInitial: this.getUserInitial(nextUser),
-        avatarDisplayUrl: this.getDisplayAvatarUrl(nextUser),
-        syncDraftNickname: nextUser.nickname || ''
-      })
-      wx.showToast({ title: '昵称已同步', icon: 'success' })
-    } catch (err) {
-      const message = (err && err.error) || (err && err.message) || '同步失败'
-      wx.showToast({ title: message, icon: 'none' })
-      this.setData({ avatarDisplayUrl: this.getDisplayAvatarUrl(user) })
-    } finally {
-      this.setData({ syncSubmitting: false })
-    }
-  },
-
   goLogin() {
     wx.navigateTo({ url: '/pages/login/login' })
-  },
-
-  onSubjectChange(e) {
-    const subject = this.data.subjectOptions[e.detail.value]
-    this.setData({ 'profile.subject': subject })
-  },
-
-  onInput(e) {
-    const field = e.currentTarget.dataset.field
-    this.setData({ [`profile.${field}`]: e.detail.value })
-  },
-
-  saveProfile() {
-    if (!this.data.user) {
-      wx.showToast({ title: '请先登录', icon: 'none' })
-      return
-    }
-    const profile = saveUserProfile({
-      ...this.data.profile,
-      score: Number(this.data.profile.score || 0),
-      rank: Number(this.data.profile.rank || 0)
-    })
-    getApp().setProfile(profile)
-    this.setData({ profile })
-    wx.showToast({ title: '已保存资料', icon: 'success' })
   },
 
   useDemoAccount() {
