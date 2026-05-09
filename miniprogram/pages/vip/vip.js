@@ -2,10 +2,10 @@ const { request } = require('../../utils/request')
 const { getAuthUser } = require('../../utils/storage')
 
 const PRODUCTS = [
-  { id: 'vip_single', title: '次卡', desc: '适合临门一脚看 1 次深度报告', badge: '低门槛' },
-  { id: 'vip_day', title: '天卡', desc: '按天体验 VIP 服务，适合集中比方案', badge: '试用' },
-  { id: 'vip_month', title: '月卡', desc: '适合集中填报阶段使用', badge: '推荐' },
-  { id: 'vip_season', title: '季卡', desc: '覆盖完整志愿准备周期', badge: '长期规划' }
+  { id: 'vip_single', title: '次卡', desc: '适合临门一脚看 1 次深度报告', badge: '低门槛', amountFen: 1 },
+  { id: 'vip_day', title: '天卡', desc: '按天体验 VIP 服务，适合集中比方案', badge: '试用', amountFen: 1 },
+  { id: 'vip_month', title: '月卡', desc: '适合集中填报阶段使用', badge: '推荐', amountFen: 1 },
+  { id: 'vip_season', title: '季卡', desc: '覆盖完整志愿准备周期', badge: '长期规划', amountFen: 1 }
 ]
 
 const ACCESS_MATRIX = [
@@ -57,10 +57,17 @@ function normalizePaymentParams(payload) {
   return normalized
 }
 
+function formatPrice(amountFen) {
+  return `￥${(Number(amountFen || 0) / 100).toFixed(2)}`
+}
+
 Page({
   data: {
     user: null,
-    products: PRODUCTS,
+    products: PRODUCTS.map((product) => ({
+      ...product,
+      priceText: formatPrice(product.amountFen)
+    })),
     accessMatrix: ACCESS_MATRIX,
     loadingProductId: '',
     canPay: false,

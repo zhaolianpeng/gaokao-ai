@@ -80,6 +80,19 @@
   color: #10233f;
 }
 
+.vip-product-title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 14rpx;
+  flex-wrap: wrap;
+}
+
+.vip-product-price {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #c2410c;
+}
+
 .vip-product-desc {
   margin-top: 10rpx;
   font-size: 26rpx;

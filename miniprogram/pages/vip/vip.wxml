@@ -26,7 +26,10 @@
     <view class="card vip-product-card" wx:for="{{products}}" wx:key="id">
       <view class="vip-product-head">
         <view>
-          <view class="vip-product-title">{{item.title}}</view>
+          <view class="vip-product-title-row">
+            <view class="vip-product-title">{{item.title}}</view>
+            <view class="vip-product-price">{{item.priceText}}</view>
+          </view>
           <view class="vip-product-desc">{{item.desc}}</view>
         </view>
         <view class="vip-product-badge">{{item.badge}}</view>
