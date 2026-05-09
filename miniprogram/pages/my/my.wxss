@@ -15,6 +15,22 @@
   padding: 32rpx;
 }
 
+.my-page button {
+  display: block;
+  width: 100%;
+  margin-left: 0;
+  margin-right: 0;
+  padding-left: 24rpx;
+  padding-right: 24rpx;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.my-page button::after {
+  border: 0;
+  display: none;
+}
+
 .my-profile-card {
   overflow: hidden;
 }
@@ -39,6 +55,22 @@
 
 .my-primary-btn {
   margin-top: 8rpx;
+}
+
+.primary-btn {
+  width: 100%;
+  min-height: 88rpx;
+  border-radius: 16rpx;
+  font-size: 32rpx;
+  font-weight: 700;
+  line-height: 1.2;
+  padding: 0 24rpx;
+  box-sizing: border-box;
+}
+
+.primary-btn::after {
+  border: 0;
+  display: none;
 }
 
 .ghost-btn {
@@ -136,6 +168,7 @@
   border-radius: 18rpx;
   background: #f8fbff;
   border: 2rpx solid #d9e4f1;
+  overflow: hidden;
 }
 
 .my-sync-title {
