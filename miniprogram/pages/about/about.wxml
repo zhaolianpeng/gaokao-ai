@@ -73,7 +73,8 @@
     </view>
     <view class="about-field-card">
       <view class="about-label">切换后端地址</view>
-      <input class="input login-input" placeholder="例如：http://82.156.54.232:80" value="{{backendBaseUrlInput}}" bindinput="onBackendBaseUrlInput" />
+      <input class="input login-input" placeholder="例如：https://api.succ.online" value="{{backendBaseUrlInput}}" bindinput="onBackendBaseUrlInput" />
+      <view class="about-copy">真机请求请优先使用已配置到微信合法域名的 HTTPS 域名，不要长期使用 IP 地址。</view>
       <view class="about-preset-row">
         <button wx:for="{{backendPresets}}" wx:key="value" class="ghost-btn about-preset-btn" data-value="{{item.value}}" bindtap="useBackendPreset">{{item.label}}</button>
       </view>

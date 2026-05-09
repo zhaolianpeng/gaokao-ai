@@ -1,5 +1,16 @@
+const LEGACY_BACKEND_URLS = {
+  'http://82.156.54.232:80': 'https://api.succ.online',
+  'https://82.156.54.232:443': 'https://api.succ.online',
+  'http://82.156.54.232:8080': 'https://api.succ.online'
+}
+
+function normalizeBackendBaseUrl(value, fallback) {
+  const normalized = String(value || '').trim().replace(/\/+$/, '') || fallback
+  return LEGACY_BACKEND_URLS[normalized] || normalized
+}
+
 App({
-  defaultHttpBaseUrl: 'http://82.156.54.232:80',
+  defaultHttpBaseUrl: 'https://api.succ.online',
 
   globalData: {
     cloudAvailable: false,
@@ -19,13 +30,18 @@ App({
       this.globalData.cloudAvailable = true
       this.globalData.cloudReady = true
     }
-    this.globalData.httpBaseUrl = wx.getStorageSync('backendBaseUrl') || this.defaultHttpBaseUrl
+    const storedBaseUrl = wx.getStorageSync('backendBaseUrl') || this.defaultHttpBaseUrl
+    const nextBaseUrl = normalizeBackendBaseUrl(storedBaseUrl, this.defaultHttpBaseUrl)
+    this.globalData.httpBaseUrl = nextBaseUrl
+    if (nextBaseUrl !== storedBaseUrl) {
+      wx.setStorageSync('backendBaseUrl', nextBaseUrl)
+    }
     this.globalData.user = wx.getStorageSync('authUser') || null
     this.globalData.profile = wx.getStorageSync('userProfile') || null
   },
 
   setHttpBaseUrl(baseUrl) {
-    const normalized = String(baseUrl || '').trim().replace(/\/+$/, '') || this.defaultHttpBaseUrl
+    const normalized = normalizeBackendBaseUrl(baseUrl, this.defaultHttpBaseUrl)
     this.globalData.httpBaseUrl = normalized
     wx.setStorageSync('backendBaseUrl', normalized)
     return normalized

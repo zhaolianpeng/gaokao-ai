@@ -2,9 +2,9 @@ const { getNetworkDiagnostics, clearNetworkDiagnostics, getAuthUser } = require(
 const { request } = require('../../utils/request')
 
 const BACKEND_PRESETS = [
-  { label: '推荐 IP:80', value: 'http://82.156.54.232:80' },
-  { label: 'HTTPS IP:443 仅调试', value: 'https://82.156.54.232:443' },
-  { label: '直连 8080', value: 'http://82.156.54.232:8080' }
+  { label: '推荐 HTTPS 域名', value: 'https://api.succ.online' },
+  { label: 'IP:443 仅排障', value: 'https://82.156.54.232:443' },
+  { label: '直连 8080 仅排障', value: 'http://82.156.54.232:8080' }
 ]
 
 Page({
@@ -12,7 +12,7 @@ Page({
     positioning: [
       { title: '产品定位', desc: '面向黑龙江高考志愿场景，把结构化数据查询、位次判断和方案生成放在一个入口里。 ' },
       { title: '核心方式', desc: '首页先给看板式数据，再进入推荐、AI 分析和家长沟通页，减少前置理解成本。' },
-      { title: '当前版本', desc: '默认通过公网 IP:80 反向代理访问自建后端，数据查询优先，说明内容后置。' }
+      { title: '当前版本', desc: '默认通过 HTTPS 域名访问自建后端，避免真机被微信合法域名机制拦截。' }
     ],
     audiences: [
       { title: '考生本人', desc: '先快速看批次线、位次和院校，再决定要不要生成方案。' },

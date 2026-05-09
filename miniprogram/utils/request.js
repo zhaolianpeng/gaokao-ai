@@ -1,6 +1,17 @@
 const { saveNetworkDiagnostic } = require('./storage')
 const CLOUD_FUNCTION_NAME = 'gaokaoApi'
 const RETRY_DELAYS = [400, 1200]
+const DEFAULT_HTTP_BASE_URL = 'https://api.succ.online'
+const LEGACY_BACKEND_URLS = {
+  'http://82.156.54.232:80': DEFAULT_HTTP_BASE_URL,
+  'https://82.156.54.232:443': DEFAULT_HTTP_BASE_URL,
+  'http://82.156.54.232:8080': DEFAULT_HTTP_BASE_URL
+}
+
+function normalizeBackendBaseUrl(value) {
+  const normalized = String(value || '').trim().replace(/\/+$/, '') || DEFAULT_HTTP_BASE_URL
+  return LEGACY_BACKEND_URLS[normalized] || normalized
+}
 
 function getCloudEnvText() {
   try {
@@ -123,11 +134,16 @@ function getHttpBaseUrl() {
   try {
     const app = getApp()
     if (app && app.globalData && app.globalData.httpBaseUrl) {
-      return app.globalData.httpBaseUrl
+      return normalizeBackendBaseUrl(app.globalData.httpBaseUrl)
     }
   } catch (err) {
   }
-  return wx.getStorageSync('backendBaseUrl') || 'http://82.156.54.232:80'
+  const storedBaseUrl = wx.getStorageSync('backendBaseUrl') || DEFAULT_HTTP_BASE_URL
+  const nextBaseUrl = normalizeBackendBaseUrl(storedBaseUrl)
+  if (nextBaseUrl !== storedBaseUrl) {
+    wx.setStorageSync('backendBaseUrl', nextBaseUrl)
+  }
+  return nextBaseUrl
 }
 
 function httpRequest(options, method) {
