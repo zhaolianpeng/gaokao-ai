@@ -1,16 +1,6 @@
 const { getAuthUser, saveAuthUser, clearAuthUser, getUserProfile, saveUserProfile, clearUserProfile } = require('../../utils/storage')
 const { request } = require('../../utils/request')
 
-function wxGetUserProfile() {
-  return new Promise((resolve, reject) => {
-    wx.getUserProfile({
-      desc: '用于补全头像和昵称',
-      success: (res) => resolve((res && res.userInfo) || {}),
-      fail: reject
-    })
-  })
-}
-
 function cacheRemoteAvatar(url) {
   return new Promise((resolve) => {
     if (!url) {
@@ -84,14 +74,22 @@ Page({
     this.setData({ syncDraftNickname: e.detail.value })
   },
 
-  async syncWechatProfile() {
+  onSyncNicknameReview(e) {
+    const detail = (e && e.detail) || {}
+    if (detail.pass === false) {
+      wx.showToast({ title: '昵称未通过微信审核，请调整后重试', icon: 'none' })
+    }
+  },
+
+  async syncWechatProfile(e) {
     const user = getAuthUser()
     if (!user || !user.id || user.storageMode !== 'server') {
       wx.showToast({ title: '请先完成微信手机号登录', icon: 'none' })
       return
     }
 
-    const nextNickname = String(this.data.syncDraftNickname || '').trim()
+    const formNickname = e && e.detail && e.detail.value ? e.detail.value.nickname : ''
+    const nextNickname = String(formNickname || this.data.syncDraftNickname || '').trim()
     if (!nextNickname && !user.nickname) {
       wx.showToast({ title: '请先填写昵称', icon: 'none' })
       return
@@ -100,16 +98,8 @@ Page({
     try {
       this.setData({ syncSubmitting: true })
 
-      let profile = {}
-      try {
-        profile = await wxGetUserProfile()
-      } catch (profileErr) {
-      }
-
-      const autoNickname = !isAnonymousWechatNickname(profile.nickName) ? profile.nickName : ''
-      const finalNickname = autoNickname || nextNickname || user.nickname || '考生用户'
-      const autoAvatarUrl = String(profile.avatarUrl || '').trim()
-      const effectiveAvatarUrl = autoAvatarUrl || user.avatarUrl || ''
+      const finalNickname = nextNickname || user.nickname || '考生用户'
+      const effectiveAvatarUrl = user.avatarUrl || ''
 
       let avatarLocalPath = user.avatarLocalPath || ''
       if (effectiveAvatarUrl) {
@@ -149,7 +139,7 @@ Page({
         avatarDisplayUrl: this.getDisplayAvatarUrl(nextUser),
         syncDraftNickname: nextUser.nickname || ''
       })
-      wx.showToast({ title: '头像昵称已同步', icon: 'success' })
+      wx.showToast({ title: '昵称已同步', icon: 'success' })
     } catch (err) {
       const message = (err && err.error) || (err && err.message) || '同步失败'
       wx.showToast({ title: message, icon: 'none' })
