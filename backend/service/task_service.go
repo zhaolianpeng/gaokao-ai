@@ -146,7 +146,7 @@ func (s *TaskService) buildAgentReport(ctx context.Context, req model.AgentRecom
 }
 
 func providerName(report string) string {
-	if strings.Contains(report, "未配置 DEEPSEEK_API_KEY") {
+	if strings.Contains(report, "未配置 DEEPSEEK_API_KEY") || strings.Contains(report, "本地模板报告") {
 		return "local"
 	}
 	return "deepseek"
@@ -242,7 +242,7 @@ func buildLocalAgentAdvice(student model.TaskStudent, demand string, templates [
 	}
 	fallbackIntro := "以下内容为本地模板建议。当前先返回一份结构化可执行分析。"
 	if fallbackReason == "missing_key" {
-		fallbackIntro = "以下内容为本地模板建议。当前云函数未配置 DEEPSEEK_API_KEY，所以先返回一份结构化可执行分析。"
+		fallbackIntro = "以下内容为本地模板建议。当前服务未配置 DEEPSEEK_API_KEY，所以先返回一份结构化可执行分析。"
 	} else if fallbackReason == "timeout" {
 		fallbackIntro = "以下内容为本地模板建议。当前智能体生成时间较长，先返回一份可执行分析；你也可以稍后继续重试获取更细化结果。"
 	}

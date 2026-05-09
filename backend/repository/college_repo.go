@@ -28,31 +28,34 @@ func (r *CollegeRepository) ListAdmissionLines(ctx context.Context, province, su
 	}
 
 	query := `
-SELECT
-	c.id,
-	c.name,
-	cep.province,
-	COALESCE(cpg.group_code, ''),
-	COALESCE(cpg.group_name, ''),
-	cep.batch,
-	COALESCE(cpg.subject_requirement, cep.subject_requirement, '不限'),
-	COALESCE(MAX(cpg.group_plan_count), SUM(cep.plan_count)) AS plan_count,
-	COUNT(DISTINCT cep.id) AS major_count,
-	GROUP_CONCAT(DISTINCT cep.major_name ORDER BY cep.major_name SEPARATOR '、') AS majors,
-	COALESCE(MAX(CASE WHEN ? <> '' AND cep.major_name LIKE ? THEN cep.major_name ELSE '' END), '') AS matched_major,
-	COALESCE(MIN(NULLIF(cmas.min_score, 0)), MIN(NULLIF(cpg.group_min_score, 0)), 0) AS min_score,
-	COALESCE(MIN(NULLIF(cmas.min_rank, 0)), MIN(NULLIF(cpg.group_min_rank, 0)), 0) AS min_rank,
-	COALESCE(CAST(AVG(NULLIF(cmas.min_score, 0)) AS SIGNED), 0) AS avg_score,
-	CASE WHEN ? <> '' AND MAX(CASE WHEN cep.major_name LIKE ? THEN 1 ELSE 0 END) = 1 THEN 1 ELSE 0 END AS target_hit
-FROM college_enrollment_plan cep
-JOIN college c ON cep.college_id = c.id
-LEFT JOIN college_program_group cpg ON cpg.id = cep.program_group_id
-LEFT JOIN college_major_admission_stat cmas ON cmas.enrollment_plan_id = cep.id AND cmas.stat_year = cep.year
-WHERE cep.province = ?
-	AND cep.subject = ?
-	AND cep.year = ?
-GROUP BY c.id, c.name, cep.province, cpg.group_code, cpg.group_name, cep.batch, cpg.subject_requirement, cep.subject_requirement
-ORDER BY target_hit DESC, CASE WHEN min_rank = 0 THEN 1 ELSE 0 END ASC, min_rank ASC, min_score DESC, plan_count DESC, c.id ASC
+SELECT *
+FROM (
+	SELECT
+		c.id,
+		c.name,
+		cep.province,
+		COALESCE(cpg.group_code, '') AS group_code,
+		COALESCE(cpg.group_name, '') AS group_name,
+		cep.batch,
+		COALESCE(cpg.subject_requirement, cep.subject_requirement, '不限') AS subject_requirement,
+		COALESCE(MAX(cpg.group_plan_count), SUM(cep.plan_count)) AS plan_count,
+		COUNT(DISTINCT cep.id) AS major_count,
+		GROUP_CONCAT(DISTINCT cep.major_name ORDER BY cep.major_name SEPARATOR '、') AS majors,
+		COALESCE(MAX(CASE WHEN ? <> '' AND cep.major_name LIKE ? THEN cep.major_name ELSE '' END), '') AS matched_major,
+		COALESCE(MIN(NULLIF(cmas.min_score, 0)), MIN(NULLIF(cpg.group_min_score, 0)), 0) AS min_score,
+		COALESCE(MIN(NULLIF(cmas.min_rank, 0)), MIN(NULLIF(cpg.group_min_rank, 0)), 0) AS min_rank,
+		COALESCE(CAST(AVG(NULLIF(cmas.min_score, 0)) AS SIGNED), 0) AS avg_score,
+		CASE WHEN ? <> '' AND MAX(CASE WHEN cep.major_name LIKE ? THEN 1 ELSE 0 END) = 1 THEN 1 ELSE 0 END AS target_hit
+	FROM college_enrollment_plan cep
+	JOIN college c ON cep.college_id = c.id
+	LEFT JOIN college_program_group cpg ON cpg.id = cep.program_group_id
+	LEFT JOIN college_major_admission_stat cmas ON cmas.enrollment_plan_id = cep.id AND cmas.stat_year = cep.year
+	WHERE cep.province = ?
+		AND cep.subject = ?
+		AND cep.year = ?
+	GROUP BY c.id, c.name, cep.province, cpg.group_code, cpg.group_name, cep.batch, cpg.subject_requirement, cep.subject_requirement
+) AS grouped_lines
+ORDER BY target_hit DESC, CASE WHEN min_rank = 0 THEN 1 ELSE 0 END ASC, min_rank ASC, min_score DESC, plan_count DESC, id ASC
 LIMIT ?;`
 
 	rows, err := r.db.QueryContext(ctx, query, keywordLike, keywordLike, keywordLike, keywordLike, province, subject, year, limit)

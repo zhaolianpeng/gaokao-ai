@@ -25,7 +25,7 @@ function nowMs() {
 }
 
 function getDeepSeekApiKey() {
-  return process.env.DEEPSEEK_API_KEY || 'sk-f79d5c85610148c28010a58d3828c328'
+  return process.env.DEEPSEEK_API_KEY || ''
 }
 
 function summarizePayload(payload) {
@@ -1256,7 +1256,7 @@ async function analyze(body) {
   const baseUrl = (process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com').replace(/\/$/, '')
 
   if (!apiKey) {
-    return { report: `未配置 DEEPSEEK_API_KEY，当前返回本地模板报告。\n\n${prompt}` }
+    return { report: `当前服务未配置 DEEPSEEK_API_KEY，先返回本地模板报告。\n\n${prompt}` }
   }
 
   const payload = JSON.stringify({
@@ -1399,7 +1399,7 @@ function buildLocalAgentAdvice(student, demand, templates, fallbackReason) {
       : '当前需求没有绝对冲突，但城市、层次、专业三者不一定能同时最优，需要接受局部妥协。'
 
   const fallbackIntro = fallbackReason === 'missing_key'
-    ? '以下内容为本地模板建议。当前云函数未配置 DEEPSEEK_API_KEY，所以先返回一份结构化可执行分析。'
+    ? '以下内容为本地模板建议。当前服务未配置 DEEPSEEK_API_KEY，所以先返回一份结构化可执行分析。'
     : fallbackReason === 'timeout'
       ? '以下内容为本地模板建议。当前智能体生成时间较长，先返回一份可执行分析；你也可以稍后继续重试获取更细化结果。'
       : '以下内容为本地模板建议。当前先返回一份结构化可执行分析。'

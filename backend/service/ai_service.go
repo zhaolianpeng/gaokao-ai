@@ -37,7 +37,7 @@ func NewAIService(apiKey, baseURL string, timeout time.Duration) *AIService {
 func (s *AIService) Analyze(ctx context.Context, req model.AIAnalyzeRequest) (string, error) {
 	prompt := buildPrompt(req)
 	if !s.HasAPIKey() {
-		return "未配置 DEEPSEEK_API_KEY，当前返回本地模板报告。\n\n" + prompt, nil
+		return "当前服务未配置 DEEPSEEK_API_KEY，先返回本地模板报告。\n\n" + prompt, nil
 	}
 	return s.GenerateText(ctx, "你是中国高考志愿填报专家。", prompt, 0.3)
 }
