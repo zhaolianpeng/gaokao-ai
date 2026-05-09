@@ -76,11 +76,11 @@ func (r *AuthRepository) UpdateProfile(ctx context.Context, userID int, phone, n
 		UPDATE mini_auth_user
 		SET phone = CASE WHEN ? <> '' THEN ? ELSE phone END,
 			nickname = ?,
-			avatar_url = ?,
+			avatar_url = CASE WHEN ? <> '' THEN ? ELSE avatar_url END,
 			updated_at = CURRENT_TIMESTAMP,
 			last_login_at = CURRENT_TIMESTAMP
 		WHERE id = ?
-	`, phone, phone, nickname, avatarURL, userID)
+	`, phone, phone, nickname, avatarURL, avatarURL, userID)
 	if err != nil {
 		return nil, fmt.Errorf("update mini_auth_user profile: %w", err)
 	}

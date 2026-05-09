@@ -37,7 +37,7 @@ type WechatProfileUpdateRequest struct {
 	UserID    string `json:"userId" binding:"required"`
 	Phone     string `json:"phone"`
 	Nickname  string `json:"nickname" binding:"required"`
-	AvatarURL string `json:"avatarUrl" binding:"required"`
+	AvatarURL string `json:"avatarUrl"`
 }
 
 type WechatPayRequest struct {
