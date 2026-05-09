@@ -1,9 +1,14 @@
 package api
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
+	"io"
+	"mime/multipart"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -14,7 +19,9 @@ import (
 	"gaokao-ai/backend/service"
 )
 
-func NewRouter(recommendService *service.RecommendService, aiService *service.AIService, explorerService *service.ExplorerService, authService *service.AuthService, payService *service.PayService, taskService *service.TaskService, feedbackService *service.FeedbackService, trustedProxies []string) *gin.Engine {
+const maxAvatarUploadSize = 5 << 20
+
+func NewRouter(recommendService *service.RecommendService, aiService *service.AIService, explorerService *service.ExplorerService, authService *service.AuthService, payService *service.PayService, taskService *service.TaskService, feedbackService *service.FeedbackService, trustedProxies []string, uploadDir, publicBaseURL string) *gin.Engine {
 	r := gin.New()
 	r.Use(gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
 		latency := param.Latency.Round(time.Millisecond)
@@ -39,6 +46,11 @@ func NewRouter(recommendService *service.RecommendService, aiService *service.AI
 	if err := r.SetTrustedProxies(trustedProxies); err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "set trusted proxies failed: %v\n", err)
 	}
+	uploadDir = strings.TrimSpace(uploadDir)
+	if uploadDir == "" {
+		uploadDir = "uploads"
+	}
+	r.Static("/uploads", uploadDir)
 
 	r.GET("/healthz", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
@@ -168,6 +180,49 @@ func NewRouter(recommendService *service.RecommendService, aiService *service.AI
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"user": user})
+	})
+
+	r.POST("/api/auth/wx-avatar", func(c *gin.Context) {
+		if authService == nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "auth service unavailable"})
+			return
+		}
+		userID := strings.TrimSpace(c.PostForm("userId"))
+		if userID == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "userId required"})
+			return
+		}
+		file, header, err := c.Request.FormFile("avatar")
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "avatar file required"})
+			return
+		}
+		defer file.Close()
+		if header.Size <= 0 || header.Size > maxAvatarUploadSize {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "avatar file too large"})
+			return
+		}
+		user, err := authService.GetUserByID(c.Request.Context(), userID)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		avatarURL, err := saveAvatarFile(file, header, uploadDir, buildPublicBaseURL(c, publicBaseURL))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		updatedUser, err := authService.UpdateProfile(c.Request.Context(), model.WechatProfileUpdateRequest{
+			UserID:    user.ID,
+			Phone:     user.Phone,
+			Nickname:  user.Nickname,
+			AvatarURL: avatarURL,
+		})
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"user": updatedUser, "avatarUrl": avatarURL})
 	})
 
 	r.POST("/api/vip/pay", func(c *gin.Context) {
@@ -487,6 +542,54 @@ func NewRouter(recommendService *service.RecommendService, aiService *service.AI
 	})
 
 	return r
+}
+
+func buildPublicBaseURL(c *gin.Context, configuredBaseURL string) string {
+	baseURL := strings.TrimRight(strings.TrimSpace(configuredBaseURL), "/")
+	if baseURL != "" {
+		return baseURL
+	}
+	scheme := strings.TrimSpace(c.GetHeader("X-Forwarded-Proto"))
+	if scheme == "" {
+		if c.Request.TLS != nil {
+			scheme = "https"
+		} else {
+			scheme = "http"
+		}
+	}
+	host := strings.TrimSpace(c.GetHeader("X-Forwarded-Host"))
+	if host == "" {
+		host = c.Request.Host
+	}
+	return strings.TrimRight(fmt.Sprintf("%s://%s", scheme, host), "/")
+}
+
+func saveAvatarFile(file multipart.File, header *multipart.FileHeader, uploadDir, publicBaseURL string) (string, error) {
+	ext := strings.ToLower(filepath.Ext(header.Filename))
+	switch ext {
+	case ".jpg", ".jpeg", ".png", ".webp":
+	default:
+		return "", fmt.Errorf("unsupported avatar format")
+	}
+	randomPart := make([]byte, 16)
+	if _, err := rand.Read(randomPart); err != nil {
+		return "", fmt.Errorf("generate avatar filename failed: %w", err)
+	}
+	fileName := fmt.Sprintf("%d-%s%s", time.Now().Unix(), hex.EncodeToString(randomPart), ext)
+	avatarDir := filepath.Join(uploadDir, "avatars")
+	if err := os.MkdirAll(avatarDir, 0o755); err != nil {
+		return "", fmt.Errorf("prepare avatar dir failed: %w", err)
+	}
+	filePath := filepath.Join(avatarDir, fileName)
+	destination, err := os.Create(filePath)
+	if err != nil {
+		return "", fmt.Errorf("create avatar file failed: %w", err)
+	}
+	defer destination.Close()
+	if _, err := io.Copy(destination, file); err != nil {
+		return "", fmt.Errorf("save avatar file failed: %w", err)
+	}
+	return strings.TrimRight(publicBaseURL, "/") + "/uploads/avatars/" + fileName, nil
 }
 
 func normalizeLookupSubject(year int, subject string) string {

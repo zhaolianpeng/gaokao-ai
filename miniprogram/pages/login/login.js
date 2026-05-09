@@ -10,16 +10,6 @@ function wxLogin() {
   })
 }
 
-function wxGetUserProfile() {
-  return new Promise((resolve, reject) => {
-    wx.getUserProfile({
-      desc: '用于补全头像和昵称',
-      success: (res) => resolve((res && res.userInfo) || {}),
-      fail: reject
-    })
-  })
-}
-
 function normalizeAuthUser(payload) {
   const candidates = [
     payload,
@@ -43,6 +33,7 @@ function isAnonymousWechatNickname(nickname) {
 Page({
   data: {
     nickname: '',
+    submittedNickname: '',
     phone: '',
     loading: false
   },
@@ -57,6 +48,18 @@ Page({
   onInput(e) {
     const field = e.currentTarget.dataset.field
     this.setData({ [field]: e.detail.value })
+  },
+
+  onNicknameReview(e) {
+    const detail = (e && e.detail) || {}
+    if (detail.pass === false) {
+      wx.showToast({ title: '昵称未通过微信审核，请调整后重试', icon: 'none' })
+    }
+  },
+
+  onLoginFormSubmit(e) {
+    const formNickname = e && e.detail && e.detail.value ? e.detail.value.nickname : ''
+    this.setData({ submittedNickname: String(formNickname || this.data.nickname || '').trim() })
   },
 
   async onGetPhoneNumber(e) {
@@ -87,17 +90,12 @@ Page({
         throw new Error('登录返回数据不完整，请重试')
       }
 
-      const inputNickname = (this.data.nickname || '').trim()
-      let profileFromWechat = {}
-      try {
-        profileFromWechat = await wxGetUserProfile()
-      } catch (profileErr) {
-      }
+      const inputNickname = String(this.data.submittedNickname || this.data.nickname || '').trim()
 
       const mergedUser = {
         ...loginUser,
-        nickname: !isAnonymousWechatNickname(profileFromWechat.nickName) ? profileFromWechat.nickName : (inputNickname || loginUser.nickname || '考生用户'),
-        avatarUrl: profileFromWechat.avatarUrl || loginUser.avatarUrl || '',
+        nickname: !isAnonymousWechatNickname(inputNickname) ? inputNickname : (loginUser.nickname || '考生用户'),
+        avatarUrl: loginUser.avatarUrl || '',
         storageMode: 'server'
       }
 
@@ -109,6 +107,7 @@ Page({
       getApp().setUser(authUser)
       this.setData({
         nickname: authUser.nickname || '',
+        submittedNickname: authUser.nickname || '',
         phone: authUser.phone || ''
       })
 
@@ -135,6 +134,7 @@ Page({
           getApp().setUser(authUser)
           this.setData({
             nickname: authUser.nickname || '',
+            submittedNickname: authUser.nickname || '',
             phone: authUser.phone || ''
           })
         } catch (profileErr) {
@@ -149,7 +149,7 @@ Page({
       const message = (err && err.error) || (err && err.message) || '登录失败'
       wx.showToast({ title: message, icon: 'none' })
     } finally {
-      this.setData({ loading: false })
+      this.setData({ loading: false, submittedNickname: '' })
     }
   },
 

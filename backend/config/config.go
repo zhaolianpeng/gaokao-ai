@@ -11,6 +11,8 @@ import (
 
 type Config struct {
 	ServerAddr              string
+	PublicBaseURL           string
+	UploadDir               string
 	DBDriver                string
 	DBDSN                   string
 	RedisAddr               string
@@ -38,6 +40,8 @@ func Load() Config {
 
 	cfg := Config{
 		ServerAddr:              getEnv("SERVER_ADDR", ":8080"),
+		PublicBaseURL:           strings.TrimSpace(os.Getenv("PUBLIC_BASE_URL")),
+		UploadDir:               getEnv("UPLOAD_DIR", "uploads"),
 		DBDriver:                getEnv("DB_DRIVER", "mysql"),
 		DBDSN:                   getEnv("DB_DSN", getEnv("MYSQL_DSN", "gaokao_app:GaokaoApi_2026_Auth@tcp(127.0.0.1:3306)/gaokao?charset=utf8mb4&parseTime=true&loc=Local")),
 		RedisAddr:               strings.TrimSpace(os.Getenv("REDIS_ADDR")),

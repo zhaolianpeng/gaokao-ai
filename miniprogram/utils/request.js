@@ -202,6 +202,42 @@ function httpRequest(options, method) {
   })
 }
 
+function uploadFile(options) {
+  return new Promise((resolve, reject) => {
+    if (!shouldUseHttp(options.url)) {
+      reject({ error: '暂不支持通过云函数上传文件', handledByModal: false })
+      return
+    }
+    wx.uploadFile({
+      url: `${getHttpBaseUrl()}${options.url}`,
+      filePath: options.filePath,
+      name: options.name || 'file',
+      formData: options.formData || {},
+      timeout: options.timeout || 20000,
+      header: {
+        ...(options.header || {})
+      },
+      success: (res) => {
+        let payload = {}
+        try {
+          payload = res.data ? JSON.parse(res.data) : {}
+        } catch (err) {
+          reject({ error: '上传返回解析失败', handledByModal: false })
+          return
+        }
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          resolve(payload)
+          return
+        }
+        reject({ error: (payload && payload.error) || `HTTP ${res.statusCode}`, handledByModal: false })
+      },
+      fail: (err) => {
+        reject({ error: (err && err.errMsg) || '上传失败', handledByModal: false })
+      }
+    })
+  })
+}
+
 function request(options) {
   const method = (options.method || 'GET').toUpperCase()
   if (shouldUseHttp(options.url)) {
@@ -311,4 +347,4 @@ function request(options) {
   return execute(0)
 }
 
-module.exports = { request }
+module.exports = { request, uploadFile }

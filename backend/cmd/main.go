@@ -47,7 +47,7 @@ func main() {
 		log.Printf("init pay service failed: %v", err)
 	}
 
-	router := api.NewRouter(recommendService, aiService, explorerService, authService, payService, taskService, feedbackService, cfg.TrustedProxies)
+	router := api.NewRouter(recommendService, aiService, explorerService, authService, payService, taskService, feedbackService, cfg.TrustedProxies, cfg.UploadDir, cfg.PublicBaseURL)
 
 	if err := router.Run(cfg.ServerAddr); err != nil {
 		log.Fatalf("run server failed: %v", err)

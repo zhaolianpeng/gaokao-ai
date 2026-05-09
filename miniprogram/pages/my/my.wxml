@@ -21,8 +21,9 @@
       <view class="login-footnote">登录后保存的考分和偏好会在首页自动带出。</view>
       <form class="my-sync-card" bindsubmit="syncWechatProfile">
         <view class="my-sync-title">同步微信昵称和头像</view>
-        <view class="my-sync-desc">微信当前不支持无感自动读取最新头像。昵称请通过微信昵称输入框提交；如果你以前已同步过头像，这里会继续沿用。</view>
+        <view class="my-sync-desc">昵称使用微信官方昵称输入能力提交。头像请点击下方按钮显式更新，更新后会上传到服务端并用于后续展示。</view>
         <input class="input login-input" name="nickname" type="nickname" placeholder="请输入或确认微信昵称" value="{{syncDraftNickname}}" bindinput="onSyncNicknameInput" bindnicknamereview="onSyncNicknameReview" />
+        <button class="ghost-btn my-ghost-btn" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar" loading="{{avatarSubmitting}}">更新头像</button>
         <button class="ghost-btn my-ghost-btn" loading="{{syncSubmitting}}" form-type="submit">同步到当前账号</button>
       </form>
       <button class="primary-btn my-primary-btn" bindtap="openVip">进入 VIP 中心</button>

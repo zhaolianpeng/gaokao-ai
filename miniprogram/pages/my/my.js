@@ -1,5 +1,5 @@
 const { getAuthUser, saveAuthUser, clearAuthUser, getUserProfile, saveUserProfile, clearUserProfile } = require('../../utils/storage')
-const { request } = require('../../utils/request')
+const { request, uploadFile } = require('../../utils/request')
 
 function cacheRemoteAvatar(url) {
   return new Promise((resolve) => {
@@ -27,6 +27,7 @@ Page({
     avatarDisplayUrl: '',
     syncDraftNickname: '',
     syncSubmitting: false,
+    avatarSubmitting: false,
     profile: {
       province: '黑龙江',
       subject: '历史',
@@ -78,6 +79,51 @@ Page({
     const detail = (e && e.detail) || {}
     if (detail.pass === false) {
       wx.showToast({ title: '昵称未通过微信审核，请调整后重试', icon: 'none' })
+    }
+  },
+
+  async onChooseAvatar(e) {
+    const user = getAuthUser()
+    if (!user || !user.id || user.storageMode !== 'server') {
+      wx.showToast({ title: '请先完成微信手机号登录', icon: 'none' })
+      return
+    }
+
+    const avatarPath = e && e.detail ? String(e.detail.avatarUrl || '').trim() : ''
+    if (!avatarPath) {
+      wx.showToast({ title: '未获取到头像文件', icon: 'none' })
+      return
+    }
+
+    try {
+      this.setData({ avatarSubmitting: true })
+      const payload = await uploadFile({
+        url: '/api/auth/wx-avatar',
+        filePath: avatarPath,
+        name: 'avatar',
+        formData: {
+          userId: user.id
+        }
+      })
+      const nextUser = saveAuthUser({
+        ...user,
+        ...(payload && payload.user ? payload.user : payload),
+        avatarUrl: (payload && payload.avatarUrl) || (payload && payload.user && payload.user.avatarUrl) || user.avatarUrl || '',
+        avatarLocalPath: avatarPath,
+        storageMode: 'server'
+      })
+      getApp().setUser(nextUser)
+      this.setData({
+        user: nextUser,
+        userInitial: this.getUserInitial(nextUser),
+        avatarDisplayUrl: this.getDisplayAvatarUrl(nextUser)
+      })
+      wx.showToast({ title: '头像已更新', icon: 'success' })
+    } catch (err) {
+      const message = (err && err.error) || (err && err.message) || '头像上传失败'
+      wx.showToast({ title: message, icon: 'none' })
+    } finally {
+      this.setData({ avatarSubmitting: false })
     }
   },
 
