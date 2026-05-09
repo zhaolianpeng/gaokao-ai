@@ -175,6 +175,59 @@ export SSHPASS='你的服务器密码'
 ./scripts/rollback_backend_82.sh
 ```
 
+一条命令串起同步、验证、发布：
+
+```bash
+export SSHPASS='你的服务器密码'
+./scripts/release_backend_82.sh
+```
+
+### 支付联调注意事项
+
+当前小程序支付链路涉及 4 个关键接口：
+
+- `/api/auth/wx-login`
+- `/api/auth/wx-profile`
+- `/api/vip/pay`
+- `/api/vip/pay/confirm`
+
+另有微信支付回调地址：
+
+- `/api/vip/pay/notify`
+
+联调时需要把下面几件事看清楚：
+
+1. 微信登录
+  - 小程序先调用 `wx.login()` 获取 `loginCode`
+  - 再配合手机号授权得到的 `code` 调后端 `/api/auth/wx-login`
+  - 后端会调用微信 `jscode2session`，从返回结果里换取 `openid`
+  - 如果后端没有配置 `WECHAT_APP_ID` 和 `WECHAT_APP_SECRET`，登录链路会直接失败
+2. openid
+  - 支付下单接口 `/api/vip/pay` 最终必须拿到 `openid`
+  - 当前后端逻辑是：优先使用请求体里的 `openId`，如果没有，再从已登录用户表里读取保存过的 `openid`
+  - 这意味着支付前必须先完成微信登录，并把服务端用户 ID 与 `openid` 绑定成功
+  - 如果用户只是本地体验账号，没有真实服务端用户 ID，支付一定会失败
+3. 支付下单
+  - `/api/vip/pay` 会根据 `productId`、`orderId`、`userId` 生成微信 JSAPI 下单请求
+  - 后端依赖这些配置项：
+    - `WECHAT_PAY_MCH_ID`
+    - `WECHAT_PAY_CERT_SERIAL`
+    - `WECHAT_PAY_PRIVATE_KEY_PATH`
+    - `WECHAT_PAY_NOTIFY_URL`
+  - 小程序拿到后端返回的支付参数后，再调用 `wx.requestPayment()`
+4. 支付确认
+  - 当前小程序在 `wx.requestPayment()` 成功后，会主动调用 `/api/vip/pay/confirm`
+  - 这一步更像“前端确认”，不是微信官方异步回调的替代品
+  - 联调时要同时验证：前端成功回调是否触发、后端确认接口是否成功落账
+5. 回调校验
+  - 当前后端虽然暴露了 `/api/vip/pay/notify`，但现在实现只是直接返回 `SUCCESS`
+  - 也就是说，微信支付回调通知的签名校验、报文解密、订单真实性校验目前还没有真正做完
+  - 这件事必须在正式大规模支付前补齐，否则不能把“支付回调已完成”当成事实
+6. 联调建议
+  - 先跑通“微信登录 -> 服务端保存 openid -> `/api/vip/pay` 下单 -> `wx.requestPayment()` 拉起支付”这条主链路
+  - 再核对 `WECHAT_PAY_NOTIFY_URL` 是否为公网可访问地址，并且确实指向当前生产后端
+  - 最后单独验证回调处理逻辑，确认不是只有前端 `confirm` 成功，而是微信异步通知也被正确验签和记账
+
 ## 说明
 
 - 仓库默认忽略本地 `.env`、二进制产物、缓存目录。
