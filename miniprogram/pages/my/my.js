@@ -67,6 +67,19 @@ Page({
     wx.navigateTo({ url: '/pages/vip/vip' })
   },
 
+  triggerSyncSubmit() {
+    if (this.data.syncSubmitting) {
+      return
+    }
+    this.syncWechatProfile({
+      detail: {
+        value: {
+          nickname: this.data.syncDraftNickname || ''
+        }
+      }
+    })
+  },
+
   openAboutPage() {
     wx.navigateTo({ url: '/pages/about/about' })
   },

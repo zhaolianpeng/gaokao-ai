@@ -3,9 +3,9 @@
     <view class="card my-hero-card" wx:if="{{!user}}">
       <view class="my-title">我的</view>
       <view class="my-desc">登录后可保存考分、排名和报考偏好，并在首页自动带出。</view>
-      <button class="ghost-btn my-ghost-btn" bindtap="openAboutPage">关于我们</button>
-      <button class="primary-btn my-primary-btn" bindtap="goLogin">去登录</button>
-      <button class="ghost-btn my-ghost-btn" bindtap="useDemoAccount">快速体验</button>
+      <view class="ghost-btn my-ghost-btn my-action-btn" hover-class="my-btn-hover" bindtap="openAboutPage">关于我们</view>
+      <view class="primary-btn my-primary-btn my-action-btn" hover-class="my-btn-hover" bindtap="goLogin">去登录</view>
+      <view class="ghost-btn my-ghost-btn my-action-btn" hover-class="my-btn-hover" bindtap="useDemoAccount">快速体验</view>
     </view>
 
     <view class="card my-profile-card" wx:if="{{user}}">
@@ -23,10 +23,13 @@
         <view class="my-sync-title">同步微信昵称和头像</view>
         <view class="my-sync-desc">昵称使用微信官方昵称输入能力提交。头像请点击下方按钮显式更新，更新后会上传到服务端并用于后续展示。</view>
         <input class="input login-input" name="nickname" type="nickname" placeholder="请输入或确认微信昵称" value="{{syncDraftNickname}}" bindinput="onSyncNicknameInput" bindnicknamereview="onSyncNicknameReview" />
-        <button class="ghost-btn my-ghost-btn" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar" loading="{{avatarSubmitting}}">更新头像</button>
-        <button class="ghost-btn my-ghost-btn" loading="{{syncSubmitting}}" form-type="submit">同步到当前账号</button>
+        <view class="ghost-btn my-ghost-btn my-action-btn my-avatar-action">
+          <view>{{avatarSubmitting ? '头像上传中...' : '更新头像'}}</view>
+          <button class="my-native-overlay-btn" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar" loading="{{avatarSubmitting}}"></button>
+        </view>
+        <view class="ghost-btn my-ghost-btn my-action-btn" hover-class="my-btn-hover" bindtap="triggerSyncSubmit">{{syncSubmitting ? '同步中...' : '同步到当前账号'}}</view>
       </form>
-      <button class="primary-btn my-primary-btn" bindtap="openVip">进入 VIP 中心</button>
+      <view class="primary-btn my-primary-btn my-action-btn" hover-class="my-btn-hover" bindtap="openVip">进入 VIP 中心</view>
     </view>
 
     <view class="card my-form-card" wx:if="{{user}}">
@@ -65,20 +68,20 @@
         <textarea class="textarea my-textarea" placeholder="例如：优先哈尔滨、接受调剂、尽量公办" value="{{profile.notes}}" data-field="notes" bindinput="onInput"></textarea>
       </view>
 
-      <button class="primary-btn my-primary-btn" bindtap="saveProfile">保存我的资料</button>
-      <button class="ghost-btn danger-btn" bindtap="logout">退出登录</button>
+      <view class="primary-btn my-primary-btn my-action-btn" hover-class="my-btn-hover" bindtap="saveProfile">保存我的资料</view>
+      <view class="ghost-btn danger-btn my-action-btn" hover-class="my-btn-hover" bindtap="logout">退出登录</view>
     </view>
 
     <view class="card my-form-card">
       <view class="my-form-title">VIP 服务</view>
       <view class="my-form-desc">服务端支付已经迁移到独立后端，购买前请先完成微信手机号登录。</view>
-      <button class="primary-btn my-primary-btn" bindtap="openVip">打开 VIP 中心</button>
+      <view class="primary-btn my-primary-btn my-action-btn" hover-class="my-btn-hover" bindtap="openVip">打开 VIP 中心</view>
     </view>
 
     <view class="card my-form-card">
       <view class="my-form-title">关于我们</view>
       <view class="my-form-desc">查看产品定位、适用人群、联系方式，以及后端切换与网络诊断相关设置。</view>
-      <button class="primary-btn my-primary-btn" bindtap="openAboutPage">打开关于我们</button>
+      <view class="primary-btn my-primary-btn my-action-btn" hover-class="my-btn-hover" bindtap="openAboutPage">打开关于我们</view>
     </view>
   </view>
 </view>
