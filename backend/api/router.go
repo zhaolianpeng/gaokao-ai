@@ -302,6 +302,48 @@ func NewRouter(recommendService *service.RecommendService, aiService *service.AI
 		c.JSON(http.StatusOK, result)
 	})
 
+	r.POST("/api/colleges", func(c *gin.Context) {
+		var req struct {
+			Province string `json:"province"`
+			Year     int    `json:"year"`
+			Subject  string `json:"subject"`
+			Keyword  string `json:"keyword"`
+			SortMode string `json:"sortMode"`
+			Page     int    `json:"page"`
+			Limit    int    `json:"limit"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		if req.Year == 0 {
+			req.Year = 2025
+		}
+		if req.Page <= 0 {
+			req.Page = 1
+		}
+		if req.Limit <= 0 {
+			req.Limit = 20
+		}
+		if strings.TrimSpace(req.SortMode) == "" {
+			req.SortMode = "tier"
+		}
+		result, err := explorerService.ListColleges(c.Request.Context(), model.CollegeListFilter{
+			Province: req.Province,
+			Year:     req.Year,
+			Subject:  req.Subject,
+			Keyword:  req.Keyword,
+			SortMode: strings.TrimSpace(req.SortMode),
+			Page:     req.Page,
+			Limit:    req.Limit,
+		})
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, result)
+	})
+
 	r.GET("/api/colleges/:id", func(c *gin.Context) {
 		collegeID, err := strconv.Atoi(c.Param("id"))
 		if err != nil || collegeID <= 0 {
@@ -310,6 +352,32 @@ func NewRouter(recommendService *service.RecommendService, aiService *service.AI
 		}
 		year, _ := strconv.Atoi(c.DefaultQuery("year", "2025"))
 		detail, err := explorerService.GetCollegeDetail(c.Request.Context(), collegeID, c.Query("province"), year, c.Query("subject"))
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, detail)
+	})
+
+	r.POST("/api/colleges/:id", func(c *gin.Context) {
+		collegeID, err := strconv.Atoi(c.Param("id"))
+		if err != nil || collegeID <= 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid college id"})
+			return
+		}
+		var req struct {
+			Province string `json:"province"`
+			Year     int    `json:"year"`
+			Subject  string `json:"subject"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		if req.Year == 0 {
+			req.Year = 2025
+		}
+		detail, err := explorerService.GetCollegeDetail(c.Request.Context(), collegeID, req.Province, req.Year, req.Subject)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return

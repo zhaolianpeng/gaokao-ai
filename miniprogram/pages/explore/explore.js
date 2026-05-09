@@ -94,8 +94,17 @@ Page({
     try {
       const { province, subject, year, keyword, pageSize, items, sortMode } = this.data
       const data = await request({
-        url: `/api/colleges?province=${encodeURIComponent(province)}&subject=${encodeURIComponent(subject)}&year=${year}&keyword=${encodeURIComponent(keyword)}&sortMode=${encodeURIComponent(sortMode)}&page=${nextPage}&limit=${pageSize}`,
-        method: 'GET'
+        url: '/api/colleges',
+        method: 'POST',
+        data: {
+          province,
+          subject,
+          year,
+          keyword,
+          sortMode,
+          page: nextPage,
+          limit: pageSize
+        }
       })
       const nextItems = data.items || []
       const paginationReady = typeof data.hasMore === 'boolean' && typeof data.page === 'number' && typeof data.limit === 'number'

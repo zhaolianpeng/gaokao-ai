@@ -25,8 +25,13 @@ Page({
     this.setData({ loading: true })
     try {
       const detail = await request({
-        url: `/api/colleges/${collegeID}?province=${encodeURIComponent(province)}&subject=${encodeURIComponent(subject)}&year=${year}`,
-        method: 'GET'
+        url: `/api/colleges/${collegeID}`,
+        method: 'POST',
+        data: {
+          province,
+          subject,
+          year
+        }
       })
       this.setData({ detail })
       wx.setNavigationBarTitle({ title: detail.name || '院校详情' })
