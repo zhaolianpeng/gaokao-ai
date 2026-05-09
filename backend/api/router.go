@@ -21,7 +21,7 @@ import (
 
 const maxAvatarUploadSize = 5 << 20
 
-func NewRouter(recommendService *service.RecommendService, aiService *service.AIService, explorerService *service.ExplorerService, authService *service.AuthService, payService *service.PayService, taskService *service.TaskService, feedbackService *service.FeedbackService, trustedProxies []string, uploadDir, publicBaseURL string) *gin.Engine {
+func NewRouter(recommendService *service.RecommendService, aiService *service.AIService, explorerService *service.ExplorerService, authService *service.AuthService, payService *service.PayService, taskService *service.TaskService, feedbackService *service.FeedbackService, adminService *service.AdminService, trustedProxies []string, uploadDir, publicBaseURL string) *gin.Engine {
 	r := gin.New()
 	r.Use(gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
 		latency := param.Latency.Round(time.Millisecond)
@@ -51,6 +51,7 @@ func NewRouter(recommendService *service.RecommendService, aiService *service.AI
 		uploadDir = "uploads"
 	}
 	r.Static("/uploads", uploadDir)
+	registerAdminRoutes(r, adminService, payService)
 
 	r.GET("/healthz", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})

@@ -409,3 +409,59 @@ CREATE TABLE IF NOT EXISTS mini_feedback (
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   KEY idx_mini_feedback_created_at (created_at DESC)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS mis_admin_user (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  username VARCHAR(64) NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  display_name VARCHAR(100) NOT NULL DEFAULT '',
+  phone VARCHAR(32) NOT NULL DEFAULT '',
+  role VARCHAR(50) NOT NULL DEFAULT 'staff',
+  status VARCHAR(20) NOT NULL DEFAULT 'enabled',
+  last_login_at TIMESTAMP NULL DEFAULT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_mis_admin_user_username (username),
+  KEY idx_mis_admin_user_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS vip_product_config (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  product_id VARCHAR(64) NOT NULL,
+  name VARCHAR(100) NOT NULL,
+  description VARCHAR(255) NOT NULL DEFAULT '',
+  amount_fen INT NOT NULL DEFAULT 1,
+  enabled TINYINT(1) NOT NULL DEFAULT 1,
+  validity_type VARCHAR(20) NOT NULL DEFAULT 'unlimited',
+  valid_times INT NOT NULL DEFAULT 0,
+  valid_from TIMESTAMP NULL DEFAULT NULL,
+  valid_until TIMESTAMP NULL DEFAULT NULL,
+  sort_order INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_vip_product_config_product_id (product_id),
+  KEY idx_vip_product_config_sort_order (sort_order)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS vip_payment_order (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  order_id VARCHAR(64) NOT NULL,
+  user_id INT NOT NULL DEFAULT 0,
+  openid VARCHAR(128) NOT NULL DEFAULT '',
+  product_id VARCHAR(64) NOT NULL DEFAULT '',
+  product_name VARCHAR(100) NOT NULL DEFAULT '',
+  content VARCHAR(255) NOT NULL DEFAULT '',
+  amount_fen INT NOT NULL DEFAULT 0,
+  status VARCHAR(32) NOT NULL DEFAULT 'created',
+  payment_channel VARCHAR(32) NOT NULL DEFAULT 'wechat-pay',
+  prepay_id VARCHAR(128) NOT NULL DEFAULT '',
+  transaction_id VARCHAR(128) NOT NULL DEFAULT '',
+  remark VARCHAR(255) NOT NULL DEFAULT '',
+  paid_at TIMESTAMP NULL DEFAULT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_vip_payment_order_order_id (order_id),
+  KEY idx_vip_payment_order_user_id (user_id),
+  KEY idx_vip_payment_order_status (status),
+  KEY idx_vip_payment_order_product_id (product_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

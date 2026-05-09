@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 
 	"github.com/gin-gonic/gin"
@@ -24,6 +25,7 @@ func main() {
 	collegeRepo := repository.NewCollegeRepository(db)
 	expertRepo := repository.NewExpertRepository(db)
 	authRepo := repository.NewAuthRepository(db)
+	adminRepo := repository.NewAdminRepository(db)
 	taskRepo := repository.NewTaskRepository(db)
 	feedbackRepo, err := repository.NewFeedbackRepository(db, cfg.DBDriver)
 	if err != nil {
@@ -41,13 +43,17 @@ func main() {
 	authService := service.NewAuthService(cfg.WeChatAppID, cfg.WeChatAppSecret, authRepo)
 	taskService := service.NewTaskService(taskRepo, aiService)
 	feedbackService := service.NewFeedbackService(feedbackRepo)
+	adminService := service.NewAdminService(adminRepo)
+	if err := adminService.EnsureBootstrap(context.Background()); err != nil {
+		log.Fatalf("init admin bootstrap failed: %v", err)
+	}
 	var payService *service.PayService
-	payService, err = service.NewPayService(cfg.WeChatAppID, cfg.WeChatPayMchID, cfg.WeChatPayCertSerial, cfg.WeChatPayPrivateKeyPath, cfg.WeChatPayNotifyURL, authRepo)
+	payService, err = service.NewPayService(cfg.WeChatAppID, cfg.WeChatPayMchID, cfg.WeChatPayCertSerial, cfg.WeChatPayPrivateKeyPath, cfg.WeChatPayNotifyURL, authRepo, adminRepo)
 	if err != nil {
 		log.Printf("init pay service failed: %v", err)
 	}
 
-	router := api.NewRouter(recommendService, aiService, explorerService, authService, payService, taskService, feedbackService, cfg.TrustedProxies, cfg.UploadDir, cfg.PublicBaseURL)
+	router := api.NewRouter(recommendService, aiService, explorerService, authService, payService, taskService, feedbackService, adminService, cfg.TrustedProxies, cfg.UploadDir, cfg.PublicBaseURL)
 
 	if err := router.Run(cfg.ServerAddr); err != nil {
 		log.Fatalf("run server failed: %v", err)

@@ -1,0 +1,750 @@
+package repository
+
+import (
+	"context"
+	"database/sql"
+	"encoding/json"
+	"fmt"
+	"strings"
+
+	"gaokao-ai/backend/model"
+)
+
+type AdminRepository struct {
+	db *sql.DB
+}
+
+type defaultVIPProduct struct {
+	ProductID   string
+	Name        string
+	Description string
+	AmountFen   int
+	SortOrder   int
+}
+
+var defaultVIPProducts = []defaultVIPProduct{
+	{ProductID: "vip_single", Name: "VIP 次卡", Description: "单次深度服务", AmountFen: 1, SortOrder: 10},
+	{ProductID: "vip_day", Name: "VIP 天卡", Description: "1 天内不限次使用", AmountFen: 1, SortOrder: 20},
+	{ProductID: "vip_month", Name: "VIP 月卡", Description: "30 天内不限次使用", AmountFen: 1, SortOrder: 30},
+	{ProductID: "vip_season", Name: "VIP 季卡", Description: "90 天内不限次使用", AmountFen: 1, SortOrder: 40},
+}
+
+func NewAdminRepository(db *sql.DB) *AdminRepository {
+	return &AdminRepository{db: db}
+}
+
+func (r *AdminRepository) EnsureBootstrap(ctx context.Context, defaultPasswordHash string) error {
+	statements := []string{
+		`CREATE TABLE IF NOT EXISTS mis_admin_user (
+			id INT AUTO_INCREMENT PRIMARY KEY,
+			username VARCHAR(64) NOT NULL,
+			password_hash VARCHAR(255) NOT NULL,
+			display_name VARCHAR(100) NOT NULL DEFAULT '',
+			phone VARCHAR(32) NOT NULL DEFAULT '',
+			role VARCHAR(50) NOT NULL DEFAULT 'staff',
+			status VARCHAR(20) NOT NULL DEFAULT 'enabled',
+			last_login_at TIMESTAMP NULL DEFAULT NULL,
+			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			UNIQUE KEY uq_mis_admin_user_username (username),
+			KEY idx_mis_admin_user_status (status)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+		`CREATE TABLE IF NOT EXISTS vip_product_config (
+			id INT AUTO_INCREMENT PRIMARY KEY,
+			product_id VARCHAR(64) NOT NULL,
+			name VARCHAR(100) NOT NULL,
+			description VARCHAR(255) NOT NULL DEFAULT '',
+			amount_fen INT NOT NULL DEFAULT 1,
+			enabled TINYINT(1) NOT NULL DEFAULT 1,
+			validity_type VARCHAR(20) NOT NULL DEFAULT 'unlimited',
+			valid_times INT NOT NULL DEFAULT 0,
+			valid_from TIMESTAMP NULL DEFAULT NULL,
+			valid_until TIMESTAMP NULL DEFAULT NULL,
+			sort_order INT NOT NULL DEFAULT 0,
+			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			UNIQUE KEY uq_vip_product_config_product_id (product_id),
+			KEY idx_vip_product_config_sort_order (sort_order)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+		`CREATE TABLE IF NOT EXISTS vip_payment_order (
+			id INT AUTO_INCREMENT PRIMARY KEY,
+			order_id VARCHAR(64) NOT NULL,
+			user_id INT NOT NULL DEFAULT 0,
+			openid VARCHAR(128) NOT NULL DEFAULT '',
+			product_id VARCHAR(64) NOT NULL DEFAULT '',
+			product_name VARCHAR(100) NOT NULL DEFAULT '',
+			content VARCHAR(255) NOT NULL DEFAULT '',
+			amount_fen INT NOT NULL DEFAULT 0,
+			status VARCHAR(32) NOT NULL DEFAULT 'created',
+			payment_channel VARCHAR(32) NOT NULL DEFAULT 'wechat-pay',
+			prepay_id VARCHAR(128) NOT NULL DEFAULT '',
+			transaction_id VARCHAR(128) NOT NULL DEFAULT '',
+			remark VARCHAR(255) NOT NULL DEFAULT '',
+			paid_at TIMESTAMP NULL DEFAULT NULL,
+			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			UNIQUE KEY uq_vip_payment_order_order_id (order_id),
+			KEY idx_vip_payment_order_user_id (user_id),
+			KEY idx_vip_payment_order_status (status),
+			KEY idx_vip_payment_order_product_id (product_id)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+	}
+	for _, statement := range statements {
+		if _, err := r.db.ExecContext(ctx, statement); err != nil {
+			return err
+		}
+	}
+	alterStatements := []struct {
+		column    string
+		statement string
+	}{
+		{column: "validity_type", statement: `ALTER TABLE vip_product_config ADD COLUMN validity_type VARCHAR(20) NOT NULL DEFAULT 'unlimited' AFTER enabled`},
+		{column: "valid_times", statement: `ALTER TABLE vip_product_config ADD COLUMN valid_times INT NOT NULL DEFAULT 0 AFTER validity_type`},
+		{column: "valid_from", statement: `ALTER TABLE vip_product_config ADD COLUMN valid_from TIMESTAMP NULL DEFAULT NULL AFTER valid_times`},
+		{column: "valid_until", statement: `ALTER TABLE vip_product_config ADD COLUMN valid_until TIMESTAMP NULL DEFAULT NULL AFTER valid_from`},
+	}
+	for _, item := range alterStatements {
+		exists, err := r.columnExists(ctx, "vip_product_config", item.column)
+		if err != nil {
+			return err
+		}
+		if exists {
+			continue
+		}
+		if _, err := r.db.ExecContext(ctx, item.statement); err != nil {
+			return err
+		}
+	}
+	if _, err := r.db.ExecContext(ctx, `
+		INSERT INTO mis_admin_user (username, password_hash, display_name, phone, role, status)
+		SELECT 'admin', ?, '系统管理员', '', 'super-admin', 'enabled'
+		FROM DUAL
+		WHERE NOT EXISTS (SELECT 1 FROM mis_admin_user WHERE username = 'admin')
+	`, defaultPasswordHash); err != nil {
+		return err
+	}
+	for _, product := range defaultVIPProducts {
+		if _, err := r.db.ExecContext(ctx, `
+			INSERT IGNORE INTO vip_product_config (product_id, name, description, amount_fen, enabled, validity_type, valid_times, sort_order)
+			VALUES (?, ?, ?, ?, 1, 'unlimited', 0, ?)
+		`, product.ProductID, product.Name, product.Description, product.AmountFen, product.SortOrder); err != nil {
+			return err
+		}
+	}
+	return nil
+
+}
+
+func normalizePage(page, limit int) (int, int) {
+	if page <= 0 {
+		page = 1
+	}
+	if limit <= 0 {
+		limit = 20
+	}
+	if limit > 100 {
+		limit = 100
+	}
+	return page, limit
+}
+
+func buildLike(keyword string) string {
+	trimmed := strings.TrimSpace(keyword)
+	if trimmed == "" {
+		return "%"
+	}
+	return "%" + trimmed + "%"
+}
+
+func (r *AdminRepository) GetDashboard(ctx context.Context) (*model.AdminDashboard, error) {
+	queries := []struct {
+		query string
+		set   func(*model.AdminDashboard, int)
+	}{
+		{"SELECT COUNT(*) FROM college", func(d *model.AdminDashboard, value int) { d.CollegeCount = value }},
+		{"SELECT COUNT(*) FROM province_score_line", func(d *model.AdminDashboard, value int) { d.ProvinceLineCount = value }},
+		{"SELECT COUNT(*) FROM score_rank", func(d *model.AdminDashboard, value int) { d.ScoreRankCount = value }},
+		{"SELECT COUNT(*) FROM mini_auth_user", func(d *model.AdminDashboard, value int) { d.StudentCount = value }},
+		{"SELECT COUNT(*) FROM mis_admin_user", func(d *model.AdminDashboard, value int) { d.StaffCount = value }},
+		{"SELECT COUNT(*) FROM agent_recommend_task WHERE task_type = 'analyze'", func(d *model.AdminDashboard, value int) { d.VolunteerCount = value }},
+		{"SELECT COUNT(*) FROM agent_recommend_task", func(d *model.AdminDashboard, value int) { d.AITaskCount = value }},
+		{"SELECT COUNT(*) FROM vip_product_config", func(d *model.AdminDashboard, value int) { d.VIPProductCount = value }},
+	}
+	dashboard := &model.AdminDashboard{}
+	for _, item := range queries {
+		var value int
+		if err := r.db.QueryRowContext(ctx, item.query).Scan(&value); err != nil {
+			return nil, err
+		}
+		item.set(dashboard, value)
+	}
+	return dashboard, nil
+}
+
+func (r *AdminRepository) GetAdminUserAuthByUsername(ctx context.Context, username string) (*model.AdminUserAuth, error) {
+	row := r.db.QueryRowContext(ctx, `
+		SELECT id, username, display_name, phone, role, status,
+			COALESCE(last_login_at, CURRENT_TIMESTAMP), created_at, updated_at, password_hash
+		FROM mis_admin_user
+		WHERE username = ?
+	`, strings.TrimSpace(username))
+	var item model.AdminUserAuth
+	if err := row.Scan(&item.ID, &item.Username, &item.DisplayName, &item.Phone, &item.Role, &item.Status, &item.LastLoginAt, &item.CreatedAt, &item.UpdatedAt, &item.PasswordHash); err != nil {
+		return nil, err
+	}
+	return &item, nil
+}
+
+func (r *AdminRepository) GetAdminUserByID(ctx context.Context, id int) (*model.AdminUser, error) {
+	row := r.db.QueryRowContext(ctx, `
+		SELECT id, username, display_name, phone, role, status,
+			COALESCE(last_login_at, CURRENT_TIMESTAMP), created_at, updated_at
+		FROM mis_admin_user WHERE id = ?
+	`, id)
+	var item model.AdminUser
+	if err := row.Scan(&item.ID, &item.Username, &item.DisplayName, &item.Phone, &item.Role, &item.Status, &item.LastLoginAt, &item.CreatedAt, &item.UpdatedAt); err != nil {
+		return nil, err
+	}
+	return &item, nil
+}
+
+func (r *AdminRepository) TouchAdminLogin(ctx context.Context, id int) error {
+	_, err := r.db.ExecContext(ctx, `UPDATE mis_admin_user SET last_login_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, id)
+	return err
+}
+
+func (r *AdminRepository) ListAdminUsers(ctx context.Context, keyword string, page, limit int) ([]model.AdminUser, int, error) {
+	page, limit = normalizePage(page, limit)
+	like := buildLike(keyword)
+	var total int
+	if err := r.db.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM mis_admin_user
+		WHERE username LIKE ? OR display_name LIKE ? OR phone LIKE ?
+	`, like, like, like).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT id, username, display_name, phone, role, status,
+			COALESCE(last_login_at, CURRENT_TIMESTAMP), created_at, updated_at
+		FROM mis_admin_user
+		WHERE username LIKE ? OR display_name LIKE ? OR phone LIKE ?
+		ORDER BY id DESC LIMIT ? OFFSET ?
+	`, like, like, like, limit, (page-1)*limit)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+	items := make([]model.AdminUser, 0)
+	for rows.Next() {
+		var item model.AdminUser
+		if err := rows.Scan(&item.ID, &item.Username, &item.DisplayName, &item.Phone, &item.Role, &item.Status, &item.LastLoginAt, &item.CreatedAt, &item.UpdatedAt); err != nil {
+			return nil, 0, err
+		}
+		items = append(items, item)
+	}
+	return items, total, rows.Err()
+}
+
+func (r *AdminRepository) SaveAdminUser(ctx context.Context, item model.AdminUser, passwordHash string) (int, error) {
+	if item.ID > 0 {
+		if strings.TrimSpace(passwordHash) != "" {
+			_, err := r.db.ExecContext(ctx, `
+				UPDATE mis_admin_user
+				SET username = ?, display_name = ?, phone = ?, role = ?, status = ?, password_hash = ?, updated_at = CURRENT_TIMESTAMP
+				WHERE id = ?
+			`, strings.TrimSpace(item.Username), strings.TrimSpace(item.DisplayName), strings.TrimSpace(item.Phone), strings.TrimSpace(item.Role), strings.TrimSpace(item.Status), passwordHash, item.ID)
+			return item.ID, err
+		}
+		_, err := r.db.ExecContext(ctx, `
+			UPDATE mis_admin_user
+			SET username = ?, display_name = ?, phone = ?, role = ?, status = ?, updated_at = CURRENT_TIMESTAMP
+			WHERE id = ?
+		`, strings.TrimSpace(item.Username), strings.TrimSpace(item.DisplayName), strings.TrimSpace(item.Phone), strings.TrimSpace(item.Role), strings.TrimSpace(item.Status), item.ID)
+		return item.ID, err
+	}
+	result, err := r.db.ExecContext(ctx, `
+		INSERT INTO mis_admin_user (username, password_hash, display_name, phone, role, status)
+		VALUES (?, ?, ?, ?, ?, ?)
+	`, strings.TrimSpace(item.Username), passwordHash, strings.TrimSpace(item.DisplayName), strings.TrimSpace(item.Phone), strings.TrimSpace(item.Role), strings.TrimSpace(item.Status))
+	if err != nil {
+		return 0, err
+	}
+	insertID, _ := result.LastInsertId()
+	return int(insertID), nil
+}
+
+func (r *AdminRepository) DeleteAdminUser(ctx context.Context, id int) error {
+	_, err := r.db.ExecContext(ctx, `DELETE FROM mis_admin_user WHERE id = ?`, id)
+	return err
+}
+
+func (r *AdminRepository) ListColleges(ctx context.Context, keyword string, page, limit int) ([]model.AdminCollege, int, error) {
+	page, limit = normalizePage(page, limit)
+	like := buildLike(keyword)
+	var total int
+	if err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM college WHERE name LIKE ? OR province LIKE ? OR city LIKE ?`, like, like, like).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT id, name, province, city, level, is_985, is_211, is_double_first,
+			COALESCE(website, ''), COALESCE(ranking, ''), COALESCE(school_type, ''), COALESCE(ownership_type, ''),
+			CAST(recommended_postgraduate_rate AS CHAR), updated_at
+		FROM college
+		WHERE name LIKE ? OR province LIKE ? OR city LIKE ?
+		ORDER BY id DESC LIMIT ? OFFSET ?
+	`, like, like, like, limit, (page-1)*limit)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+	items := make([]model.AdminCollege, 0)
+	for rows.Next() {
+		var item model.AdminCollege
+		if err := rows.Scan(&item.ID, &item.Name, &item.Province, &item.City, &item.Level, &item.Is985, &item.Is211, &item.IsDoubleFirst, &item.Website, &item.Ranking, &item.SchoolType, &item.OwnershipType, &item.RecommendedPostgraduateRate, &item.UpdatedAt); err != nil {
+			return nil, 0, err
+		}
+		items = append(items, item)
+	}
+	return items, total, rows.Err()
+}
+
+func (r *AdminRepository) SaveCollege(ctx context.Context, item model.AdminCollege) (int, error) {
+	if item.ID > 0 {
+		_, err := r.db.ExecContext(ctx, `
+			UPDATE college
+			SET name = ?, province = ?, city = ?, level = ?, is_985 = ?, is_211 = ?, is_double_first = ?,
+				website = ?, ranking = ?, school_type = ?, ownership_type = ?, recommended_postgraduate_rate = ?, updated_at = CURRENT_TIMESTAMP
+			WHERE id = ?
+		`, item.Name, item.Province, item.City, item.Level, item.Is985, item.Is211, item.IsDoubleFirst, item.Website, item.Ranking, item.SchoolType, item.OwnershipType, item.RecommendedPostgraduateRate, item.ID)
+		return item.ID, err
+	}
+	result, err := r.db.ExecContext(ctx, `
+		INSERT INTO college (name, province, city, level, is_985, is_211, is_double_first, website, ranking, school_type, ownership_type, recommended_postgraduate_rate, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+	`, item.Name, item.Province, item.City, item.Level, item.Is985, item.Is211, item.IsDoubleFirst, item.Website, item.Ranking, item.SchoolType, item.OwnershipType, item.RecommendedPostgraduateRate)
+	if err != nil {
+		return 0, err
+	}
+	id, _ := result.LastInsertId()
+	return int(id), nil
+}
+
+func (r *AdminRepository) ListProvinceScoreLines(ctx context.Context, keyword string, page, limit int) ([]model.AdminProvinceScoreLine, int, error) {
+	page, limit = normalizePage(page, limit)
+	like := buildLike(keyword)
+	var total int
+	if err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM province_score_line WHERE province LIKE ? OR subject LIKE ? OR batch LIKE ?`, like, like, like).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT id, province, year, subject, batch, score, COALESCE(source_name, ''), COALESCE(source_url, ''), updated_at
+		FROM province_score_line
+		WHERE province LIKE ? OR subject LIKE ? OR batch LIKE ?
+		ORDER BY year DESC, id DESC LIMIT ? OFFSET ?
+	`, like, like, like, limit, (page-1)*limit)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+	items := make([]model.AdminProvinceScoreLine, 0)
+	for rows.Next() {
+		var item model.AdminProvinceScoreLine
+		if err := rows.Scan(&item.ID, &item.Province, &item.Year, &item.Subject, &item.Batch, &item.Score, &item.SourceName, &item.SourceURL, &item.UpdatedAt); err != nil {
+			return nil, 0, err
+		}
+		items = append(items, item)
+	}
+	return items, total, rows.Err()
+}
+
+func (r *AdminRepository) SaveProvinceScoreLine(ctx context.Context, item model.AdminProvinceScoreLine) (int, error) {
+	if item.ID > 0 {
+		_, err := r.db.ExecContext(ctx, `
+			UPDATE province_score_line SET province = ?, year = ?, subject = ?, batch = ?, score = ?, source_name = ?, source_url = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
+		`, item.Province, item.Year, item.Subject, item.Batch, item.Score, item.SourceName, item.SourceURL, item.ID)
+		return item.ID, err
+	}
+	result, err := r.db.ExecContext(ctx, `
+		INSERT INTO province_score_line (province, year, subject, batch, score, source_name, source_url, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+	`, item.Province, item.Year, item.Subject, item.Batch, item.Score, item.SourceName, item.SourceURL)
+	if err != nil {
+		return 0, err
+	}
+	id, _ := result.LastInsertId()
+	return int(id), nil
+}
+
+func (r *AdminRepository) DeleteProvinceScoreLine(ctx context.Context, id int) error {
+	_, err := r.db.ExecContext(ctx, `DELETE FROM province_score_line WHERE id = ?`, id)
+	return err
+}
+
+func (r *AdminRepository) ListScoreRanks(ctx context.Context, keyword string, page, limit int) ([]model.AdminScoreRank, int, error) {
+	page, limit = normalizePage(page, limit)
+	like := buildLike(keyword)
+	var total int
+	if err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM score_rank WHERE province LIKE ? OR subject LIKE ?`, like, like).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT id, province, year, subject, score, rank, count, updated_at
+		FROM score_rank
+		WHERE province LIKE ? OR subject LIKE ?
+		ORDER BY year DESC, score DESC, id DESC LIMIT ? OFFSET ?
+	`, like, like, limit, (page-1)*limit)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+	items := make([]model.AdminScoreRank, 0)
+	for rows.Next() {
+		var item model.AdminScoreRank
+		if err := rows.Scan(&item.ID, &item.Province, &item.Year, &item.Subject, &item.Score, &item.Rank, &item.Count, &item.UpdatedAt); err != nil {
+			return nil, 0, err
+		}
+		items = append(items, item)
+	}
+	return items, total, rows.Err()
+}
+
+func (r *AdminRepository) SaveScoreRank(ctx context.Context, item model.AdminScoreRank) (int, error) {
+	if item.ID > 0 {
+		_, err := r.db.ExecContext(ctx, `
+			UPDATE score_rank SET province = ?, year = ?, subject = ?, score = ?, rank = ?, count = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
+		`, item.Province, item.Year, item.Subject, item.Score, item.Rank, item.Count, item.ID)
+		return item.ID, err
+	}
+	result, err := r.db.ExecContext(ctx, `
+		INSERT INTO score_rank (province, year, subject, score, rank, count, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+	`, item.Province, item.Year, item.Subject, item.Score, item.Rank, item.Count)
+	if err != nil {
+		return 0, err
+	}
+	id, _ := result.LastInsertId()
+	return int(id), nil
+}
+
+func (r *AdminRepository) DeleteScoreRank(ctx context.Context, id int) error {
+	_, err := r.db.ExecContext(ctx, `DELETE FROM score_rank WHERE id = ?`, id)
+	return err
+}
+
+func (r *AdminRepository) ListStudents(ctx context.Context, keyword string, page, limit int) ([]model.AdminStudent, int, error) {
+	page, limit = normalizePage(page, limit)
+	like := buildLike(keyword)
+	var total int
+	if err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM mini_auth_user WHERE openid LIKE ? OR phone LIKE ? OR nickname LIKE ?`, like, like, like).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT id, openid, phone, nickname, COALESCE(avatar_url, ''), login_type, created_at, updated_at, last_login_at
+		FROM mini_auth_user
+		WHERE openid LIKE ? OR phone LIKE ? OR nickname LIKE ?
+		ORDER BY id DESC LIMIT ? OFFSET ?
+	`, like, like, like, limit, (page-1)*limit)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+	items := make([]model.AdminStudent, 0)
+	for rows.Next() {
+		var item model.AdminStudent
+		if err := rows.Scan(&item.ID, &item.OpenID, &item.Phone, &item.Nickname, &item.AvatarURL, &item.LoginType, &item.CreatedAt, &item.UpdatedAt, &item.LastLoginAt); err != nil {
+			return nil, 0, err
+		}
+		items = append(items, item)
+	}
+	return items, total, rows.Err()
+}
+
+func (r *AdminRepository) SaveStudent(ctx context.Context, item model.AdminStudent) error {
+	_, err := r.db.ExecContext(ctx, `
+		UPDATE mini_auth_user
+		SET phone = ?, nickname = ?, avatar_url = ?, login_type = ?, updated_at = CURRENT_TIMESTAMP
+		WHERE id = ?
+	`, item.Phone, item.Nickname, item.AvatarURL, item.LoginType, item.ID)
+	return err
+}
+
+func (r *AdminRepository) ListTasks(ctx context.Context, keyword, taskType, status string, page, limit int) ([]model.AdminTask, int, error) {
+	page, limit = normalizePage(page, limit)
+	conditions := []string{"1 = 1"}
+	args := make([]any, 0)
+	if strings.TrimSpace(keyword) != "" {
+		like := buildLike(keyword)
+		conditions = append(conditions, `(title LIKE ? OR demand LIKE ? OR report LIKE ?)`)
+		args = append(args, like, like, like)
+	}
+	if strings.TrimSpace(taskType) != "" {
+		conditions = append(conditions, `task_type = ?`)
+		args = append(args, strings.TrimSpace(taskType))
+	}
+	if strings.TrimSpace(status) != "" {
+		conditions = append(conditions, `status = ?`)
+		args = append(args, strings.TrimSpace(status))
+	}
+	where := strings.Join(conditions, " AND ")
+	countQuery := `SELECT COUNT(*) FROM agent_recommend_task WHERE ` + where
+	var total int
+	if err := r.db.QueryRowContext(ctx, countQuery, args...).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+	queryArgs := append(append([]any{}, args...), limit, (page-1)*limit)
+	query := `
+		SELECT id, title, task_type, status, provider, demand,
+			CAST(student AS CHAR), COALESCE(report, ''), COALESCE(error_message, ''), attempt_count,
+			created_at, updated_at, COALESCE(completed_at, CURRENT_TIMESTAMP)
+		FROM agent_recommend_task WHERE ` + where + `
+		ORDER BY id DESC LIMIT ? OFFSET ?`
+	rows, err := r.db.QueryContext(ctx, query, queryArgs...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+	items := make([]model.AdminTask, 0)
+	for rows.Next() {
+		var item model.AdminTask
+		if err := rows.Scan(&item.ID, &item.Title, &item.TaskType, &item.Status, &item.Provider, &item.Demand, &item.Student, &item.Report, &item.ErrorMessage, &item.AttemptCount, &item.CreatedAt, &item.UpdatedAt, &item.CompletedAt); err != nil {
+			return nil, 0, err
+		}
+		items = append(items, item)
+	}
+	return items, total, rows.Err()
+}
+
+func (r *AdminRepository) DeleteTask(ctx context.Context, id int) error {
+	_, err := r.db.ExecContext(ctx, `DELETE FROM agent_recommend_task WHERE id = ?`, id)
+	return err
+}
+
+func (r *AdminRepository) UpsertPaymentOrder(ctx context.Context, item model.AdminOrder) error {
+	_, err := r.db.ExecContext(ctx, `
+		INSERT INTO vip_payment_order (
+			order_id, user_id, openid, product_id, product_name, content, amount_fen,
+			status, payment_channel, prepay_id, transaction_id, remark, paid_at
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		ON DUPLICATE KEY UPDATE
+			user_id = VALUES(user_id),
+			openid = VALUES(openid),
+			product_id = VALUES(product_id),
+			product_name = VALUES(product_name),
+			content = VALUES(content),
+			amount_fen = VALUES(amount_fen),
+			status = VALUES(status),
+			payment_channel = VALUES(payment_channel),
+			prepay_id = VALUES(prepay_id),
+			transaction_id = VALUES(transaction_id),
+			remark = VALUES(remark),
+			paid_at = VALUES(paid_at),
+			updated_at = CURRENT_TIMESTAMP
+	`, strings.TrimSpace(item.OrderID), item.UserID, strings.TrimSpace(item.OpenID), strings.TrimSpace(item.ProductID), strings.TrimSpace(item.ProductName), strings.TrimSpace(item.Content), item.AmountFen, strings.TrimSpace(item.Status), strings.TrimSpace(item.PaymentChannel), strings.TrimSpace(item.PrepayID), strings.TrimSpace(item.TransactionID), strings.TrimSpace(item.Remark), item.PaidAt)
+	return err
+}
+
+func (r *AdminRepository) ListOrders(ctx context.Context, keyword, status, productID string, page, limit int) ([]model.AdminOrder, int, error) {
+	page, limit = normalizePage(page, limit)
+	conditions := []string{"1 = 1"}
+	args := make([]any, 0)
+	if strings.TrimSpace(keyword) != "" {
+		like := buildLike(keyword)
+		conditions = append(conditions, `(o.order_id LIKE ? OR o.product_id LIKE ? OR o.product_name LIKE ? OR o.content LIKE ? OR u.nickname LIKE ? OR u.phone LIKE ?)`)
+		args = append(args, like, like, like, like, like, like)
+	}
+	if strings.TrimSpace(status) != "" {
+		conditions = append(conditions, `o.status = ?`)
+		args = append(args, strings.TrimSpace(status))
+	}
+	if strings.TrimSpace(productID) != "" {
+		conditions = append(conditions, `o.product_id = ?`)
+		args = append(args, strings.TrimSpace(productID))
+	}
+	where := strings.Join(conditions, " AND ")
+	countQuery := `
+		SELECT COUNT(*)
+		FROM vip_payment_order o
+		LEFT JOIN mini_auth_user u ON u.id = o.user_id
+		WHERE ` + where
+	var total int
+	if err := r.db.QueryRowContext(ctx, countQuery, args...).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+	queryArgs := append(append([]any{}, args...), limit, (page-1)*limit)
+	query := `
+		SELECT o.id, o.order_id, o.user_id, COALESCE(u.nickname, ''), COALESCE(u.phone, ''), o.openid,
+			o.product_id, o.product_name, o.content, o.amount_fen, o.status, o.payment_channel,
+			o.prepay_id, o.transaction_id, o.remark, o.paid_at, o.created_at, o.updated_at
+		FROM vip_payment_order o
+		LEFT JOIN mini_auth_user u ON u.id = o.user_id
+		WHERE ` + where + `
+		ORDER BY o.id DESC LIMIT ? OFFSET ?`
+	rows, err := r.db.QueryContext(ctx, query, queryArgs...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+	items := make([]model.AdminOrder, 0)
+	for rows.Next() {
+		var item model.AdminOrder
+		var paidAt sql.NullTime
+		if err := rows.Scan(&item.ID, &item.OrderID, &item.UserID, &item.UserNickname, &item.UserPhone, &item.OpenID, &item.ProductID, &item.ProductName, &item.Content, &item.AmountFen, &item.Status, &item.PaymentChannel, &item.PrepayID, &item.TransactionID, &item.Remark, &paidAt, &item.CreatedAt, &item.UpdatedAt); err != nil {
+			return nil, 0, err
+		}
+		if paidAt.Valid {
+			item.PaidAt = &paidAt.Time
+		}
+		items = append(items, item)
+	}
+	return items, total, rows.Err()
+}
+
+func (r *AdminRepository) SaveOrder(ctx context.Context, item model.AdminOrder) (int, error) {
+	if item.ID > 0 {
+		_, err := r.db.ExecContext(ctx, `
+			UPDATE vip_payment_order
+			SET order_id = ?, user_id = ?, openid = ?, product_id = ?, product_name = ?, content = ?, amount_fen = ?,
+				status = ?, payment_channel = ?, prepay_id = ?, transaction_id = ?, remark = ?, paid_at = ?, updated_at = CURRENT_TIMESTAMP
+			WHERE id = ?
+		`, strings.TrimSpace(item.OrderID), item.UserID, strings.TrimSpace(item.OpenID), strings.TrimSpace(item.ProductID), strings.TrimSpace(item.ProductName), strings.TrimSpace(item.Content), item.AmountFen, strings.TrimSpace(item.Status), strings.TrimSpace(item.PaymentChannel), strings.TrimSpace(item.PrepayID), strings.TrimSpace(item.TransactionID), strings.TrimSpace(item.Remark), item.PaidAt, item.ID)
+		return item.ID, err
+	}
+	result, err := r.db.ExecContext(ctx, `
+		INSERT INTO vip_payment_order (
+			order_id, user_id, openid, product_id, product_name, content, amount_fen,
+			status, payment_channel, prepay_id, transaction_id, remark, paid_at
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, strings.TrimSpace(item.OrderID), item.UserID, strings.TrimSpace(item.OpenID), strings.TrimSpace(item.ProductID), strings.TrimSpace(item.ProductName), strings.TrimSpace(item.Content), item.AmountFen, strings.TrimSpace(item.Status), strings.TrimSpace(item.PaymentChannel), strings.TrimSpace(item.PrepayID), strings.TrimSpace(item.TransactionID), strings.TrimSpace(item.Remark), item.PaidAt)
+	if err != nil {
+		return 0, err
+	}
+	id, _ := result.LastInsertId()
+	return int(id), nil
+}
+
+func (r *AdminRepository) ListVIPProducts(ctx context.Context) ([]model.VIPProductConfig, error) {
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT p.id, p.product_id, p.name, p.description, p.amount_fen, p.enabled,
+			COALESCE(p.validity_type, 'unlimited'), COALESCE(p.valid_times, 0), p.valid_from, p.valid_until,
+			COALESCE(o.order_count, 0), p.sort_order, p.created_at, p.updated_at
+		FROM vip_product_config p
+		LEFT JOIN (
+			SELECT product_id, COUNT(*) AS order_count
+			FROM vip_payment_order
+			GROUP BY product_id
+		) o ON o.product_id = p.product_id
+		ORDER BY p.sort_order ASC, p.id ASC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := make([]model.VIPProductConfig, 0)
+	for rows.Next() {
+		var item model.VIPProductConfig
+		var validFrom sql.NullTime
+		var validUntil sql.NullTime
+		if err := rows.Scan(&item.ID, &item.ProductID, &item.Name, &item.Description, &item.AmountFen, &item.Enabled, &item.ValidityType, &item.ValidTimes, &validFrom, &validUntil, &item.OrderCount, &item.SortOrder, &item.CreatedAt, &item.UpdatedAt); err != nil {
+			return nil, err
+		}
+		if validFrom.Valid {
+			item.ValidFrom = &validFrom.Time
+		}
+		if validUntil.Valid {
+			item.ValidUntil = &validUntil.Time
+		}
+		items = append(items, item)
+	}
+	return items, rows.Err()
+}
+
+func (r *AdminRepository) GetVIPProductByProductID(ctx context.Context, productID string) (*model.VIPProductConfig, error) {
+	row := r.db.QueryRowContext(ctx, `
+		SELECT p.id, p.product_id, p.name, p.description, p.amount_fen, p.enabled,
+			COALESCE(p.validity_type, 'unlimited'), COALESCE(p.valid_times, 0), p.valid_from, p.valid_until,
+			COALESCE(o.order_count, 0), p.sort_order, p.created_at, p.updated_at
+		FROM vip_product_config p
+		LEFT JOIN (
+			SELECT product_id, COUNT(*) AS order_count
+			FROM vip_payment_order
+			GROUP BY product_id
+		) o ON o.product_id = p.product_id
+		WHERE p.product_id = ?
+	`, strings.TrimSpace(productID))
+	var item model.VIPProductConfig
+	var validFrom sql.NullTime
+	var validUntil sql.NullTime
+	if err := row.Scan(&item.ID, &item.ProductID, &item.Name, &item.Description, &item.AmountFen, &item.Enabled, &item.ValidityType, &item.ValidTimes, &validFrom, &validUntil, &item.OrderCount, &item.SortOrder, &item.CreatedAt, &item.UpdatedAt); err != nil {
+		return nil, err
+	}
+	if validFrom.Valid {
+		item.ValidFrom = &validFrom.Time
+	}
+	if validUntil.Valid {
+		item.ValidUntil = &validUntil.Time
+	}
+	return &item, nil
+}
+
+func (r *AdminRepository) SaveVIPProduct(ctx context.Context, item model.VIPProductConfig) (int, error) {
+	validityType := strings.TrimSpace(item.ValidityType)
+	if validityType == "" {
+		validityType = "unlimited"
+	}
+	if item.ID > 0 {
+		_, err := r.db.ExecContext(ctx, `
+			UPDATE vip_product_config SET product_id = ?, name = ?, description = ?, amount_fen = ?, enabled = ?, validity_type = ?, valid_times = ?, valid_from = ?, valid_until = ?, sort_order = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
+		`, item.ProductID, item.Name, item.Description, item.AmountFen, item.Enabled, validityType, item.ValidTimes, item.ValidFrom, item.ValidUntil, item.SortOrder, item.ID)
+		return item.ID, err
+	}
+	result, err := r.db.ExecContext(ctx, `
+		INSERT INTO vip_product_config (product_id, name, description, amount_fen, enabled, validity_type, valid_times, valid_from, valid_until, sort_order)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, item.ProductID, item.Name, item.Description, item.AmountFen, item.Enabled, validityType, item.ValidTimes, item.ValidFrom, item.ValidUntil, item.SortOrder)
+	if err != nil {
+		return 0, err
+	}
+	id, _ := result.LastInsertId()
+	return int(id), nil
+}
+
+func (r *AdminRepository) SetVIPProductEnabled(ctx context.Context, id int, enabled bool) error {
+	_, err := r.db.ExecContext(ctx, `
+		UPDATE vip_product_config SET enabled = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
+	`, enabled, id)
+	return err
+}
+
+func (r *AdminRepository) DeleteVIPProduct(ctx context.Context, id int) error {
+	_, err := r.db.ExecContext(ctx, `DELETE FROM vip_product_config WHERE id = ?`, id)
+	return err
+}
+
+func compactStudent(raw string) string {
+	var parsed map[string]any
+	if err := json.Unmarshal([]byte(raw), &parsed); err != nil {
+		return raw
+	}
+	parts := make([]string, 0, 4)
+	for _, key := range []string{"province", "subject", "score", "rank", "targetMajor"} {
+		if value, ok := parsed[key]; ok {
+			parts = append(parts, fmt.Sprintf("%s:%v", key, value))
+		}
+	}
+	if len(parts) == 0 {
+		return raw
+	}
+	return strings.Join(parts, " | ")
+}
+
+func (r *AdminRepository) columnExists(ctx context.Context, tableName, columnName string) (bool, error) {
+	var count int
+	if err := r.db.QueryRowContext(ctx, `
+		SELECT COUNT(*)
+		FROM information_schema.columns
+		WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ?
+	`, strings.TrimSpace(tableName), strings.TrimSpace(columnName)).Scan(&count); err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}

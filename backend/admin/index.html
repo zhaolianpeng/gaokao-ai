@@ -1,0 +1,1454 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>高报 MIS 管理平台</title>
+  <style>
+    :root {
+      --bg: #f5f1e8;
+      --panel: rgba(255,255,255,0.9);
+      --line: rgba(32, 42, 68, 0.12);
+      --text: #1f2937;
+      --muted: #6b7280;
+      --brand: #0b6bcb;
+      --brand-strong: #084f98;
+      --accent: #d17b0f;
+      --danger: #c0392b;
+      --shadow: 0 16px 48px rgba(31, 41, 55, 0.12);
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "PingFang SC", "Helvetica Neue", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(209,123,15,0.16), transparent 32%),
+        radial-gradient(circle at bottom right, rgba(11,107,203,0.18), transparent 28%),
+        linear-gradient(180deg, #f9f6ef 0%, #efe8db 100%);
+      min-height: 100vh;
+    }
+
+    button, input, textarea, select {
+      font: inherit;
+    }
+
+    .hidden { display: none !important; }
+
+    .login-shell {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+
+    .login-card {
+      width: min(420px, 100%);
+      background: var(--panel);
+      backdrop-filter: blur(18px);
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      box-shadow: var(--shadow);
+      padding: 32px;
+    }
+
+    .eyebrow {
+      font-size: 12px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 12px;
+      font-weight: 700;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: 32px;
+      line-height: 1.1;
+    }
+
+    .sub {
+      color: var(--muted);
+      margin: 0 0 24px;
+      line-height: 1.6;
+    }
+
+    .stack { display: grid; gap: 14px; }
+    .field { display: grid; gap: 8px; }
+    .field label { font-size: 14px; color: var(--muted); }
+
+    input, textarea, select {
+      width: 100%;
+      border: 1px solid rgba(31,41,55,0.14);
+      background: rgba(255,255,255,0.92);
+      border-radius: 14px;
+      padding: 12px 14px;
+      outline: none;
+    }
+
+    input:focus, textarea:focus, select:focus {
+      border-color: rgba(11,107,203,0.5);
+      box-shadow: 0 0 0 4px rgba(11,107,203,0.08);
+    }
+
+    .btn {
+      border: none;
+      border-radius: 14px;
+      padding: 12px 16px;
+      cursor: pointer;
+      transition: transform 0.16s ease, opacity 0.16s ease, background 0.16s ease;
+    }
+
+    .btn:hover { transform: translateY(-1px); }
+    .btn:disabled { opacity: 0.56; cursor: not-allowed; transform: none; }
+    .btn-primary { background: linear-gradient(135deg, var(--brand), var(--brand-strong)); color: #fff; font-weight: 700; }
+    .btn-secondary { background: rgba(11,107,203,0.08); color: var(--brand-strong); }
+    .btn-danger { background: rgba(192,57,43,0.1); color: var(--danger); }
+
+    .tip {
+      margin-top: 16px;
+      padding: 14px;
+      border-radius: 14px;
+      background: rgba(11,107,203,0.06);
+      color: var(--muted);
+      line-height: 1.6;
+      font-size: 14px;
+    }
+
+    .app-shell {
+      display: grid;
+      grid-template-columns: 250px 1fr;
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      padding: 22px 18px;
+      border-right: 1px solid var(--line);
+      background: rgba(255,255,255,0.66);
+      backdrop-filter: blur(16px);
+    }
+
+    .brand {
+      padding: 12px 14px 18px;
+      border-bottom: 1px solid var(--line);
+      margin-bottom: 18px;
+    }
+
+    .brand strong { display: block; font-size: 22px; }
+    .brand span { color: var(--muted); font-size: 14px; }
+
+    .nav {
+      display: grid;
+      gap: 8px;
+    }
+
+    .nav button {
+      text-align: left;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--text);
+      cursor: pointer;
+    }
+
+    .nav button.active {
+      background: rgba(11,107,203,0.1);
+      border-color: rgba(11,107,203,0.16);
+      color: var(--brand-strong);
+      font-weight: 700;
+    }
+
+    .main {
+      padding: 22px;
+      display: grid;
+      gap: 18px;
+    }
+
+    .topbar, .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 18px 22px;
+    }
+
+    .topbar h2 { margin: 0; font-size: 26px; }
+    .topbar p { margin: 6px 0 0; color: var(--muted); }
+
+    .panel { padding: 18px; }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 14px;
+    }
+
+    .metric {
+      padding: 18px;
+      border-radius: 18px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(243,247,255,0.88));
+      border: 1px solid rgba(31,41,55,0.08);
+    }
+
+    .metric span { color: var(--muted); font-size: 13px; }
+    .metric strong { display: block; margin-top: 10px; font-size: 28px; }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+
+    .toolbar-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .table-wrap {
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 960px;
+      background: rgba(255,255,255,0.9);
+    }
+
+    th, td {
+      padding: 12px 14px;
+      border-bottom: 1px solid rgba(31,41,55,0.08);
+      text-align: left;
+      vertical-align: top;
+      font-size: 14px;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      background: #f7f8fb;
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      background: rgba(11,107,203,0.1);
+      color: var(--brand-strong);
+    }
+
+    .badge.danger { background: rgba(192,57,43,0.1); color: var(--danger); }
+    .badge.success { background: rgba(16,185,129,0.12); color: #0a7a57; }
+
+    .table-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .empty {
+      padding: 28px;
+      text-align: center;
+      color: var(--muted);
+    }
+
+    .pagination {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+
+    .pagination-summary {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .pagination-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .pagination-actions input,
+    .pagination-actions select {
+      width: auto;
+      min-width: 88px;
+      padding: 10px 12px;
+    }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(15,23,42,0.45);
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      z-index: 20;
+    }
+
+    .modal-card {
+      width: min(720px, 100%);
+      max-height: calc(100vh - 48px);
+      overflow: auto;
+      background: #fff;
+      border-radius: 24px;
+      padding: 22px;
+      box-shadow: var(--shadow);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .field.full { grid-column: 1 / -1; }
+
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 48px;
+    }
+
+    .viewer {
+      white-space: pre-wrap;
+      background: #f8fafc;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px;
+      line-height: 1.7;
+      max-height: 60vh;
+      overflow: auto;
+    }
+
+    .error {
+      margin-top: 12px;
+      color: var(--danger);
+      font-size: 14px;
+      min-height: 20px;
+    }
+
+    @media (max-width: 980px) {
+      .app-shell { grid-template-columns: 1fr; }
+      .sidebar { border-right: none; border-bottom: 1px solid var(--line); }
+      .form-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div id="loginShell" class="login-shell">
+    <div class="login-card">
+      <div class="eyebrow">Gaokao MIS</div>
+      <h1>高报后台管理平台</h1>
+      <p class="sub">管理院校、分数、考生、员工、志愿方案、AI 请求结果和 VIP 付费项目。默认账号已按你的要求预置。</p>
+      <form id="loginForm" class="stack">
+        <div class="field">
+          <label for="username">账号</label>
+          <input id="username" name="username" value="admin" autocomplete="username" />
+        </div>
+        <div class="field">
+          <label for="password">密码</label>
+          <input id="password" name="password" type="password" value="admin123" autocomplete="current-password" />
+        </div>
+        <button class="btn btn-primary" type="submit">登录管理台</button>
+        <div id="loginError" class="error"></div>
+      </form>
+      <div class="tip">默认登录账号：admin，默认密码：admin123。上线后建议你第一时间在“员工管理”里改掉默认密码，并新增正式员工账号。</div>
+    </div>
+  </div>
+
+  <div id="appShell" class="app-shell hidden">
+    <aside class="sidebar">
+      <div class="brand">
+        <strong>高报 MIS</strong>
+        <span>PC 端运营后台</span>
+      </div>
+      <div id="nav" class="nav"></div>
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+        <div>
+          <h2 id="pageTitle">管理总览</h2>
+          <p id="pageDesc">查看系统核心业务数据和最近运行状态。</p>
+        </div>
+        <div class="toolbar-actions">
+          <span id="currentUser" class="badge"></span>
+          <button id="logoutBtn" class="btn btn-secondary">退出登录</button>
+        </div>
+      </div>
+
+      <section id="contentPanel" class="panel"></section>
+    </main>
+  </div>
+
+  <div id="modal" class="modal hidden"></div>
+
+  <script>
+    const SECTION_DEFS = {
+      dashboard: {
+        label: '管理总览',
+        desc: '查看系统核心业务数据和最近运行状态。',
+        type: 'dashboard'
+      },
+      colleges: {
+        label: '院校管理',
+        desc: '维护院校基础资料、层次、地域和官网信息。',
+        endpoint: '/api/admin/colleges',
+        type: 'crud',
+        searchable: true,
+        creatable: true,
+        deletable: false,
+        columns: [
+          ['name', '院校'], ['province', '省份'], ['city', '城市'], ['level', '层次'], ['ranking', '排名'], ['recommendedPostgraduateRate', '保研率'], ['updatedAt', '更新时间']
+        ],
+        fields: [
+          { name: 'id', type: 'hidden' },
+          { name: 'name', label: '院校名称', type: 'text', required: true },
+          { name: 'province', label: '省份', type: 'text', required: true },
+          { name: 'city', label: '城市', type: 'text' },
+          { name: 'level', label: '层次', type: 'text' },
+          { name: 'ranking', label: '排名', type: 'text' },
+          { name: 'recommendedPostgraduateRate', label: '保研率', type: 'text' },
+          { name: 'schoolType', label: '办学类型', type: 'text' },
+          { name: 'ownershipType', label: '性质', type: 'text' },
+          { name: 'website', label: '官网', type: 'text', full: true },
+          { name: 'is985', label: '985', type: 'checkbox' },
+          { name: 'is211', label: '211', type: 'checkbox' },
+          { name: 'isDoubleFirst', label: '双一流', type: 'checkbox' }
+        ]
+      },
+      provinceLines: {
+        label: '省控线管理',
+        desc: '维护各省份批次线和来源信息。',
+        endpoint: '/api/admin/province-lines',
+        type: 'crud',
+        searchable: true,
+        creatable: true,
+        deletable: true,
+        columns: [
+          ['province', '省份'], ['year', '年份'], ['subject', '科类'], ['batch', '批次'], ['score', '分数线'], ['sourceName', '来源'], ['updatedAt', '更新时间']
+        ],
+        fields: [
+          { name: 'id', type: 'hidden' },
+          { name: 'province', label: '省份', type: 'text', required: true },
+          { name: 'year', label: '年份', type: 'number', required: true },
+          { name: 'subject', label: '科类', type: 'text', required: true },
+          { name: 'batch', label: '批次', type: 'text', required: true },
+          { name: 'score', label: '分数线', type: 'number', required: true },
+          { name: 'sourceName', label: '来源名称', type: 'text' },
+          { name: 'sourceUrl', label: '来源链接', type: 'text', full: true }
+        ]
+      },
+      scoreRanks: {
+        label: '一分一段管理',
+        desc: '维护分数位次映射数据。',
+        endpoint: '/api/admin/score-ranks',
+        type: 'crud',
+        searchable: true,
+        creatable: true,
+        deletable: true,
+        columns: [
+          ['province', '省份'], ['year', '年份'], ['subject', '科类'], ['score', '分数'], ['rank', '位次'], ['count', '同分人数'], ['updatedAt', '更新时间']
+        ],
+        fields: [
+          { name: 'id', type: 'hidden' },
+          { name: 'province', label: '省份', type: 'text', required: true },
+          { name: 'year', label: '年份', type: 'number', required: true },
+          { name: 'subject', label: '科类', type: 'text', required: true },
+          { name: 'score', label: '分数', type: 'number', required: true },
+          { name: 'rank', label: '位次', type: 'number', required: true },
+          { name: 'count', label: '同分人数', type: 'number', required: true }
+        ]
+      },
+      students: {
+        label: '考生管理',
+        desc: '管理小程序登录考生账号、昵称和手机号。',
+        endpoint: '/api/admin/students',
+        type: 'crud',
+        searchable: true,
+        creatable: false,
+        deletable: false,
+        columns: [
+          ['id', 'ID'], ['nickname', '昵称'], ['phone', '手机号'], ['loginType', '登录方式'], ['lastLoginAt', '最近登录'], ['createdAt', '创建时间']
+        ],
+        fields: [
+          { name: 'id', type: 'hidden' },
+          { name: 'nickname', label: '昵称', type: 'text' },
+          { name: 'phone', label: '手机号', type: 'text' },
+          { name: 'loginType', label: '登录方式', type: 'text' },
+          { name: 'avatarUrl', label: '头像链接', type: 'text', full: true }
+        ]
+      },
+      orders: {
+        label: '订单管理',
+        desc: '查看和修改高报小程序订单、支付状态和订单内容。',
+        endpoint: '/api/admin/orders',
+        type: 'crud',
+        searchable: true,
+        creatable: false,
+        deletable: false,
+        columns: [
+          ['orderId', '订单号'], ['userNickname', '用户昵称'], ['userPhone', '手机号'], ['productName', '产品'], ['amountFen', '金额(分)'], ['status', '状态'], ['paidAt', '支付时间'], ['createdAt', '创建时间']
+        ],
+        fields: [
+          { name: 'id', type: 'hidden' },
+          { name: 'orderId', label: '订单号', type: 'text', required: true, full: true },
+          { name: 'userId', label: '用户ID', type: 'number' },
+          { name: 'openId', label: 'OpenID', type: 'text', full: true },
+          { name: 'productId', label: '产品标识', type: 'text', required: true },
+          { name: 'productName', label: '产品名称', type: 'text', required: true },
+          { name: 'content', label: '订单内容', type: 'text', full: true },
+          { name: 'amountFen', label: '金额(分)', type: 'number', required: true },
+          { name: 'status', label: '订单状态', type: 'select', options: ['created', 'paid', 'closed', 'refunded'] },
+          { name: 'paymentChannel', label: '支付渠道', type: 'text' },
+          { name: 'prepayId', label: '预支付单号', type: 'text', full: true },
+          { name: 'transactionId', label: '微信交易号', type: 'text', full: true },
+          { name: 'remark', label: '备注', type: 'text', full: true }
+        ]
+      },
+      staff: {
+        label: '员工管理',
+        desc: '维护 MIS 账号、角色、状态和密码。',
+        endpoint: '/api/admin/staff',
+        type: 'crud',
+        searchable: true,
+        creatable: true,
+        deletable: true,
+        columns: [
+          ['username', '账号'], ['displayName', '姓名'], ['phone', '手机号'], ['role', '角色'], ['status', '状态'], ['lastLoginAt', '最近登录']
+        ],
+        fields: [
+          { name: 'id', type: 'hidden' },
+          { name: 'username', label: '账号', type: 'text', required: true },
+          { name: 'displayName', label: '姓名', type: 'text', required: true },
+          { name: 'phone', label: '手机号', type: 'text' },
+          { name: 'role', label: '角色', type: 'select', options: ['super-admin', 'admin', 'staff'] },
+          { name: 'status', label: '状态', type: 'select', options: ['enabled', 'disabled'] },
+          { name: 'password', label: '密码', type: 'password', full: true }
+        ]
+      },
+      volunteers: {
+        label: '志愿管理',
+        desc: '查看考生生成的志愿分析任务和报告。',
+        endpoint: '/api/admin/tasks?taskType=analyze',
+        type: 'tasks',
+        searchable: true
+      },
+      aiTasks: {
+        label: 'AI 请求结果管理',
+        desc: '查看全部 AI 任务状态、提供方和错误信息。',
+        endpoint: '/api/admin/tasks',
+        type: 'tasks',
+        searchable: true
+      },
+      paymentItems: {
+        label: '付费项目管理',
+        desc: '统一维护金额、上下架、有效次数和有效期范围。',
+        endpoint: '/api/admin/vip-products',
+		creatable: true,
+        type: 'vip'
+      }
+    }
+
+    const navOrder = ['dashboard', 'colleges', 'provinceLines', 'scoreRanks', 'students', 'orders', 'staff', 'volunteers', 'aiTasks', 'paymentItems']
+    const DEFAULT_PAGE_LIMIT = 20
+    const PAGE_SIZE_OPTIONS = [20, 50, 100]
+    const ORDER_STATUS_OPTIONS = ['', 'created', 'paid', 'closed', 'refunded']
+    const state = { currentUser: null, active: 'dashboard', cache: {}, keyword: '', paging: {}, pageSize: {}, orderProductId: '', orderStatus: '' }
+
+    function escapeHtml(value) {
+      return String(value == null ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;')
+    }
+
+    function fmtDate(value) {
+      if (!value) return '-'
+      const date = new Date(value)
+      if (Number.isNaN(date.getTime())) return value
+      return date.toLocaleString('zh-CN')
+    }
+
+    function fmtDateTimeLocal(value) {
+      if (!value) return ''
+      const date = new Date(value)
+      if (Number.isNaN(date.getTime())) return ''
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      const hours = String(date.getHours()).padStart(2, '0')
+      const minutes = String(date.getMinutes()).padStart(2, '0')
+      return `${year}-${month}-${day}T${hours}:${minutes}`
+    }
+
+    function getCurrentPage(sectionKey) {
+      return Math.max(1, Number(state.paging[sectionKey] || 1))
+    }
+
+    function setCurrentPage(sectionKey, page) {
+      state.paging[sectionKey] = Math.max(1, Number(page || 1))
+    }
+
+    function resetCurrentPage(sectionKey) {
+      setCurrentPage(sectionKey, 1)
+    }
+
+    function getCurrentPageSize(sectionKey) {
+      const pageSize = Number(state.pageSize[sectionKey] || DEFAULT_PAGE_LIMIT)
+      return PAGE_SIZE_OPTIONS.includes(pageSize) ? pageSize : DEFAULT_PAGE_LIMIT
+    }
+
+    function setCurrentPageSize(sectionKey, pageSize) {
+      const normalized = Number(pageSize || DEFAULT_PAGE_LIMIT)
+      state.pageSize[sectionKey] = PAGE_SIZE_OPTIONS.includes(normalized) ? normalized : DEFAULT_PAGE_LIMIT
+    }
+
+    function showLogin(errorMessage = '') {
+      state.currentUser = null
+      document.getElementById('modal').classList.add('hidden')
+      document.getElementById('modal').innerHTML = ''
+      document.getElementById('appShell').classList.add('hidden')
+      document.getElementById('loginShell').classList.remove('hidden')
+      document.getElementById('loginError').textContent = errorMessage
+    }
+
+    async function api(url, options = {}) {
+      const response = await fetch(url, {
+        credentials: 'include',
+        headers: { ...(options.headers || {}) },
+        ...options
+      })
+      const data = await response.json().catch(() => ({}))
+      if (response.status === 401 && !/\/api\/admin\/login$/.test(url)) {
+        showLogin('登录状态已失效，请重新登录')
+        throw new Error(data.error || '登录状态已失效，请重新登录')
+      }
+      if (!response.ok) {
+        throw new Error(data.error || `HTTP ${response.status}`)
+      }
+      return data
+    }
+
+    function renderNav() {
+      document.getElementById('nav').innerHTML = navOrder.map((key) => {
+        const item = SECTION_DEFS[key]
+        return `<button data-key="${key}" class="${state.active === key ? 'active' : ''}">${item.label}</button>`
+      }).join('')
+    }
+
+    function bindNav() {
+      document.getElementById('nav').querySelectorAll('button').forEach((button) => {
+        button.addEventListener('click', () => {
+          state.active = button.dataset.key
+          state.keyword = ''
+          if (state.active !== 'orders') {
+            state.orderProductId = ''
+            state.orderStatus = ''
+          }
+          resetCurrentPage(state.active)
+          renderApp()
+        })
+      })
+    }
+
+    function setHeader() {
+      const section = SECTION_DEFS[state.active]
+      document.getElementById('pageTitle').textContent = section.label
+      document.getElementById('pageDesc').textContent = section.desc
+      document.getElementById('currentUser').textContent = `${state.currentUser.displayName || state.currentUser.username} / ${state.currentUser.role}`
+    }
+
+    async function renderDashboard() {
+      const data = await api('/api/admin/dashboard', { method: 'POST' })
+      document.getElementById('contentPanel').innerHTML = `
+        <div class="metrics">
+          ${[
+            ['院校总数', data.collegeCount],
+            ['省控线', data.provinceLineCount],
+            ['一分一段', data.scoreRankCount],
+            ['考生账号', data.studentCount],
+            ['员工账号', data.staffCount],
+            ['志愿任务', data.volunteerCount],
+            ['AI 任务', data.aiTaskCount],
+            ['付费项目', data.vipProductCount]
+          ].map(([label, value]) => `<div class="metric"><span>${label}</span><strong>${value}</strong></div>`).join('')}
+        </div>
+      `
+    }
+
+    function buildToolbar(section, extra = '') {
+      return `
+        <div class="toolbar">
+          <div class="toolbar-actions">
+            ${section.searchable ? `<input id="searchInput" placeholder="输入关键词筛选" value="${escapeHtml(state.keyword)}" style="width:280px;" />` : ''}
+            ${section.creatable ? `<button id="createBtn" class="btn btn-primary">新增</button>` : ''}
+            <button id="refreshBtn" class="btn btn-secondary">刷新</button>
+          </div>
+          <div class="toolbar-actions">${extra}</div>
+        </div>
+      `
+    }
+
+    function bindToolbar(sectionKey, section, refreshFn, createFn) {
+      const refreshBtn = document.getElementById('refreshBtn')
+      if (refreshBtn) refreshBtn.addEventListener('click', refreshFn)
+      const createBtn = document.getElementById('createBtn')
+      if (createBtn && createFn) createBtn.addEventListener('click', createFn)
+      const searchInput = document.getElementById('searchInput')
+      if (searchInput) {
+        searchInput.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter') {
+            state.keyword = event.target.value.trim()
+            resetCurrentPage(sectionKey)
+            refreshFn()
+          }
+        })
+        searchInput.addEventListener('change', (event) => {
+          state.keyword = event.target.value.trim()
+        })
+      }
+    }
+
+    function buildPagination(total, page, limit) {
+      if (!total) return ''
+      const totalPages = Math.max(1, Math.ceil(total / limit))
+      return `
+        <div class="pagination">
+          <div class="pagination-summary">第 ${page} / ${totalPages} 页，共 ${total} 条，每页 ${limit} 条</div>
+          <div class="pagination-actions">
+            <label>每页
+              <select id="pageSizeSelect">
+                ${PAGE_SIZE_OPTIONS.map((size) => `<option value="${size}" ${size === limit ? 'selected' : ''}>${size}</option>`).join('')}
+              </select>
+            </label>
+            <button class="btn btn-secondary" data-page-target="${page - 1}" ${page <= 1 ? 'disabled' : ''}>上一页</button>
+            <span class="badge">第 ${page} 页</span>
+            <button class="btn btn-secondary" data-page-target="${page + 1}" ${page >= totalPages ? 'disabled' : ''}>下一页</button>
+            <label>跳至
+              <input id="pageJumpInput" type="number" min="1" max="${totalPages}" value="${page}" />
+            </label>
+            <button class="btn btn-secondary" id="pageJumpBtn">跳转</button>
+          </div>
+        </div>
+      `
+    }
+
+    function bindPagination(sectionKey, renderFn, total, limit) {
+      const totalPages = Math.max(1, Math.ceil(total / limit))
+      document.querySelectorAll('[data-page-target]').forEach((button) => {
+        button.addEventListener('click', () => {
+          const targetPage = Number(button.dataset.pageTarget || '1')
+          setCurrentPage(sectionKey, targetPage)
+          renderFn()
+        })
+      })
+      const pageSizeSelect = document.getElementById('pageSizeSelect')
+      if (pageSizeSelect) {
+        pageSizeSelect.addEventListener('change', (event) => {
+          setCurrentPageSize(sectionKey, Number(event.target.value || DEFAULT_PAGE_LIMIT))
+          resetCurrentPage(sectionKey)
+          renderFn()
+        })
+      }
+      const pageJumpInput = document.getElementById('pageJumpInput')
+      const pageJumpBtn = document.getElementById('pageJumpBtn')
+      const jump = () => {
+        if (!pageJumpInput) return
+        const targetPage = Math.min(totalPages, Math.max(1, Number(pageJumpInput.value || '1')))
+        setCurrentPage(sectionKey, targetPage)
+        renderFn()
+      }
+      if (pageJumpBtn) pageJumpBtn.addEventListener('click', jump)
+      if (pageJumpInput) {
+        pageJumpInput.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter') {
+            jump()
+          }
+        })
+      }
+    }
+
+    async function renderCRUD(sectionKey) {
+      const section = SECTION_DEFS[sectionKey]
+      const currentPage = getCurrentPage(sectionKey)
+      const currentLimit = getCurrentPageSize(sectionKey)
+      const query = new URLSearchParams({
+        keyword: state.keyword || '',
+        page: String(currentPage),
+        limit: String(currentLimit)
+      }).toString()
+      const data = await api(`${section.endpoint}/list?${query}`, { method: 'POST' })
+      const items = data.items || []
+      const page = Math.max(1, Number(data.page || currentPage))
+      const limit = Math.max(1, Number(data.limit || currentLimit))
+      const total = Math.max(0, Number(data.total || items.length))
+      const totalPages = Math.max(1, Math.ceil(total / limit))
+      if (total > 0 && page > totalPages) {
+        setCurrentPage(sectionKey, totalPages)
+        return renderCRUD(sectionKey)
+      }
+      setCurrentPage(sectionKey, page)
+      const rows = items.map((item) => `
+        <tr>
+          ${section.columns.map(([key]) => `<td>${renderCell(key, item[key], item)}</td>`).join('')}
+          <td>
+            <div class="table-actions">
+              <button class="btn btn-secondary" data-action="edit" data-id="${item.id}">编辑</button>
+              ${section.deletable ? `<button class="btn btn-danger" data-action="delete" data-id="${item.id}">删除</button>` : ''}
+            </div>
+          </td>
+        </tr>
+      `).join('')
+
+      document.getElementById('contentPanel').innerHTML = `
+        ${buildToolbar(section, `<span class="badge">共 ${total} 条</span>`)}
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                ${section.columns.map(([, label]) => `<th>${label}</th>`).join('')}
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows || `<tr><td class="empty" colspan="${section.columns.length + 1}">暂无数据</td></tr>`}
+            </tbody>
+          </table>
+        </div>
+        ${buildPagination(total, page, limit)}
+      `
+
+        bindToolbar(sectionKey, section, () => renderCRUD(sectionKey), section.creatable ? () => openForm(sectionKey, {}) : null)
+        bindPagination(sectionKey, () => renderCRUD(sectionKey), total, limit)
+      document.querySelectorAll('[data-action="edit"]').forEach((button) => {
+        button.addEventListener('click', () => {
+          const item = items.find((entry) => String(entry.id) === String(button.dataset.id))
+          openForm(sectionKey, item || {})
+        })
+      })
+      document.querySelectorAll('[data-action="delete"]').forEach((button) => {
+        button.addEventListener('click', async () => {
+          if (!confirm('确认删除这条记录？')) return
+          try {
+            await api(`${section.endpoint}/${button.dataset.id}`, { method: 'DELETE' })
+            renderCRUD(sectionKey)
+          } catch (error) {
+            alert(error.message)
+          }
+        })
+      })
+    }
+
+    function defaultBackfillDates() {
+      const end = new Date()
+      end.setDate(end.getDate() - 1)
+      const start = new Date(end)
+      start.setDate(start.getDate() - 89)
+      const format = (value) => {
+        const year = value.getFullYear()
+        const month = String(value.getMonth() + 1).padStart(2, '0')
+        const day = String(value.getDate()).padStart(2, '0')
+        return `${year}-${month}-${day}`
+      }
+      return { startDate: format(start), endDate: format(end) }
+    }
+
+    async function backfillOrders() {
+      const defaults = defaultBackfillDates()
+      const startDate = prompt('输入回填起始日期，格式 YYYY-MM-DD', defaults.startDate)
+      if (!startDate) return
+      const endDate = prompt('输入回填结束日期，格式 YYYY-MM-DD', defaults.endDate)
+      if (!endDate) return
+      try {
+        const result = await api('/api/admin/orders/backfill', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ startDate: startDate.trim(), endDate: endDate.trim() })
+        })
+        const skipText = (result.skippedDays || []).length ? `\n跳过账单日: ${(result.skippedDays || []).join(', ')}` : ''
+        alert(`回填完成，处理 ${result.processed || 0} 条订单${skipText}`)
+        renderOrders()
+      } catch (error) {
+        alert(error.message)
+      }
+    }
+
+    async function renderOrders() {
+      const section = SECTION_DEFS.orders
+      const currentPage = getCurrentPage('orders')
+      const currentLimit = getCurrentPageSize('orders')
+      const [productsData, data] = await Promise.all([
+        api('/api/admin/vip-products/list', { method: 'POST' }),
+        api(`/api/admin/orders/list?${new URLSearchParams({
+          keyword: state.keyword || '',
+          productId: state.orderProductId || '',
+          status: state.orderStatus || '',
+          page: String(currentPage),
+          limit: String(currentLimit)
+        }).toString()}`, { method: 'POST' })
+      ])
+      const products = productsData.items || []
+      const items = data.items || []
+      const page = Math.max(1, Number(data.page || currentPage))
+      const limit = Math.max(1, Number(data.limit || currentLimit))
+      const total = Math.max(0, Number(data.total || items.length))
+      const totalPages = Math.max(1, Math.ceil(total / limit))
+      if (total > 0 && page > totalPages) {
+        setCurrentPage('orders', totalPages)
+        return renderOrders()
+      }
+      setCurrentPage('orders', page)
+      document.getElementById('contentPanel').innerHTML = `
+        ${buildToolbar(section, `
+          <label>产品
+            <select id="orderProductFilter">
+              <option value="">全部产品</option>
+              ${products.map((item) => `<option value="${escapeHtml(item.productId)}" ${state.orderProductId === item.productId ? 'selected' : ''}>${escapeHtml(item.name)}</option>`).join('')}
+            </select>
+          </label>
+          <label>状态
+            <select id="orderStatusFilter">
+              ${ORDER_STATUS_OPTIONS.map((status) => `<option value="${status}" ${state.orderStatus === status ? 'selected' : ''}>${status || '全部状态'}</option>`).join('')}
+            </select>
+          </label>
+          <button id="backfillOrdersBtn" class="btn btn-secondary">回填历史订单</button>
+          <span class="badge">共 ${total} 条</span>
+        `)}
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                ${section.columns.map(([, label]) => `<th>${label}</th>`).join('')}
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${items.map((item) => `
+                <tr>
+                  ${section.columns.map(([key]) => `<td>${renderCell(key, item[key], item)}</td>`).join('')}
+                  <td>
+                    <div class="table-actions">
+                      <button class="btn btn-secondary" data-action="edit" data-id="${item.id}">编辑</button>
+                    </div>
+                  </td>
+                </tr>
+              `).join('') || `<tr><td class="empty" colspan="${section.columns.length + 1}">暂无数据</td></tr>`}
+            </tbody>
+          </table>
+        </div>
+        ${buildPagination(total, page, limit)}
+      `
+      bindToolbar('orders', section, () => renderOrders(), null)
+      bindPagination('orders', () => renderOrders(), total, limit)
+      const productFilter = document.getElementById('orderProductFilter')
+      if (productFilter) {
+        productFilter.addEventListener('change', (event) => {
+          state.orderProductId = event.target.value || ''
+          resetCurrentPage('orders')
+          renderOrders()
+        })
+      }
+      const orderStatusFilter = document.getElementById('orderStatusFilter')
+      if (orderStatusFilter) {
+        orderStatusFilter.addEventListener('change', (event) => {
+          state.orderStatus = event.target.value || ''
+          resetCurrentPage('orders')
+          renderOrders()
+        })
+      }
+      const backfillOrdersBtn = document.getElementById('backfillOrdersBtn')
+      if (backfillOrdersBtn) backfillOrdersBtn.addEventListener('click', backfillOrders)
+      document.querySelectorAll('[data-action="edit"]').forEach((button) => {
+        button.addEventListener('click', () => {
+          const item = items.find((entry) => String(entry.id) === String(button.dataset.id))
+          openForm('orders', item || {})
+        })
+      })
+    }
+
+    async function renderTasks(sectionKey) {
+      const section = SECTION_DEFS[sectionKey]
+      const currentPage = getCurrentPage(sectionKey)
+      const currentLimit = getCurrentPageSize(sectionKey)
+      const query = new URLSearchParams({
+        keyword: state.keyword || '',
+        page: String(currentPage),
+        limit: String(currentLimit),
+        taskType: sectionKey === 'volunteers' ? 'analyze' : ''
+      }).toString()
+      const data = await api(`/api/admin/tasks/list?${query}`, { method: 'POST' })
+      const items = data.items || []
+      const page = Math.max(1, Number(data.page || currentPage))
+      const limit = Math.max(1, Number(data.limit || currentLimit))
+      const total = Math.max(0, Number(data.total || items.length))
+      const totalPages = Math.max(1, Math.ceil(total / limit))
+      if (total > 0 && page > totalPages) {
+        setCurrentPage(sectionKey, totalPages)
+        return renderTasks(sectionKey)
+      }
+      setCurrentPage(sectionKey, page)
+      document.getElementById('contentPanel').innerHTML = `
+        ${buildToolbar(section, `<span class="badge">共 ${total} 条</span>`)}
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>标题</th>
+                <th>任务类型</th>
+                <th>状态</th>
+                <th>提供方</th>
+                <th>考生</th>
+                <th>错误</th>
+                <th>创建时间</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${items.map((item) => `
+                <tr>
+                  <td>${item.id}</td>
+                  <td>${escapeHtml(item.title || '')}</td>
+                  <td>${escapeHtml(item.taskType || '')}</td>
+                  <td>${renderStatus(item.status)}</td>
+                  <td>${escapeHtml(item.provider || '-')}</td>
+                  <td>${escapeHtml(compactStudent(item.student))}</td>
+                  <td>${escapeHtml((item.errorMessage || '').slice(0, 40) || '-')}</td>
+                  <td>${fmtDate(item.createdAt)}</td>
+                  <td>
+                    <div class="table-actions">
+                      <button class="btn btn-secondary" data-action="view" data-id="${item.id}">查看</button>
+                      <button class="btn btn-danger" data-action="delete" data-id="${item.id}">删除</button>
+                    </div>
+                  </td>
+                </tr>
+              `).join('') || `<tr><td class="empty" colspan="9">暂无数据</td></tr>`}
+            </tbody>
+          </table>
+        </div>
+        ${buildPagination(total, page, limit)}
+      `
+      bindToolbar(sectionKey, section, () => renderTasks(sectionKey), null)
+      bindPagination(sectionKey, () => renderTasks(sectionKey), total, limit)
+      document.querySelectorAll('[data-action="view"]').forEach((button) => {
+        button.addEventListener('click', () => {
+          const item = items.find((entry) => String(entry.id) === String(button.dataset.id))
+          openViewer(item)
+        })
+      })
+      document.querySelectorAll('[data-action="delete"]').forEach((button) => {
+        button.addEventListener('click', async () => {
+          if (!confirm('确认删除这条任务记录？')) return
+          try {
+            await api(`/api/admin/tasks/${button.dataset.id}`, { method: 'DELETE' })
+            renderTasks(sectionKey)
+          } catch (error) {
+            alert(error.message)
+          }
+        })
+      })
+    }
+
+    async function renderVIP(sectionKey) {
+      const section = SECTION_DEFS[sectionKey]
+      const data = await api('/api/admin/vip-products/list', { method: 'POST' })
+      const items = data.items || []
+      document.getElementById('contentPanel').innerHTML = `
+        ${buildToolbar(section, `<span class="badge">共 ${items.length} 项</span>`)}
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>产品标识</th>
+                <th>名称</th>
+                <th>描述</th>
+                <th>金额(分)</th>
+                <th>有效规则</th>
+                <th>关联订单</th>
+                <th>启用</th>
+                <th>排序</th>
+                <th>更新时间</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${items.map((item) => `
+                <tr>
+                  <td>${escapeHtml(item.productId)}</td>
+                  <td>${escapeHtml(item.name)}</td>
+                  <td>${escapeHtml(item.description)}</td>
+                  <td>${item.amountFen}</td>
+                  <td>${escapeHtml(renderValidity(item))}</td>
+                  <td><button class="btn btn-secondary" data-action="view-orders" data-product-id="${escapeHtml(item.productId)}">${item.orderCount || 0}</button></td>
+                  <td>${item.enabled ? renderStatus('enabled') : renderStatus('disabled')}</td>
+                  <td>${item.sortOrder}</td>
+                  <td>${fmtDate(item.updatedAt)}</td>
+                  <td>
+                    <div class="table-actions">
+                      <button class="btn btn-secondary" data-action="edit" data-id="${item.id}">编辑</button>
+                      <button class="btn btn-secondary" data-action="toggle" data-id="${item.id}">${item.enabled ? '下架' : '上架'}</button>
+                      <button class="btn btn-danger" data-action="delete" data-id="${item.id}">删除</button>
+                    </div>
+                  </td>
+                </tr>
+              `).join('') || `<tr><td class="empty" colspan="10">暂无数据</td></tr>`}
+            </tbody>
+          </table>
+        </div>
+      `
+      bindToolbar(sectionKey, section, () => renderVIP(sectionKey), () => openVIPForm({ enabled: true, sortOrder: 10 }))
+      document.querySelectorAll('[data-action="edit"]').forEach((button) => {
+        button.addEventListener('click', () => {
+          const item = items.find((entry) => String(entry.id) === String(button.dataset.id))
+          openVIPForm(item || {})
+        })
+      })
+      document.querySelectorAll('[data-action="toggle"]').forEach((button) => {
+        button.addEventListener('click', async () => {
+          const item = items.find((entry) => String(entry.id) === String(button.dataset.id))
+          if (!item) return
+          try {
+            await api(`/api/admin/vip-products/${button.dataset.id}/toggle`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ enabled: !item.enabled })
+            })
+            renderVIP(sectionKey)
+          } catch (error) {
+            alert(error.message)
+          }
+        })
+      })
+      document.querySelectorAll('[data-action="delete"]').forEach((button) => {
+        button.addEventListener('click', async () => {
+          const item = items.find((entry) => String(entry.id) === String(button.dataset.id))
+          if (!item) return
+          const tip = item.orderCount > 0 ? `该项目已关联 ${item.orderCount} 个订单，删除后历史订单仍保留原产品信息。确认删除？` : '确认删除这个付费项目？'
+          if (!confirm(tip)) return
+          try {
+            await api(`/api/admin/vip-products/${button.dataset.id}`, { method: 'DELETE' })
+            renderVIP(sectionKey)
+          } catch (error) {
+            alert(error.message)
+          }
+        })
+      })
+      document.querySelectorAll('[data-action="view-orders"]').forEach((button) => {
+        button.addEventListener('click', () => {
+          state.active = 'orders'
+          state.keyword = ''
+          state.orderProductId = button.dataset.productId || ''
+          resetCurrentPage('orders')
+          renderApp()
+        })
+      })
+    }
+
+    function renderCell(key, value) {
+      if (key === 'updatedAt' || key === 'createdAt' || key === 'lastLoginAt' || key === 'paidAt') return fmtDate(value)
+      if (typeof value === 'boolean') return value ? renderStatus('enabled') : renderStatus('disabled')
+      if (key === 'status') return renderStatus(value)
+      return escapeHtml(value == null || value === '' ? '-' : value)
+    }
+
+    function renderValidity(item) {
+      if (!item || !item.validityType || item.validityType === 'unlimited') return '长期有效'
+      if (item.validityType === 'times') return `${Number(item.validTimes || 0)} 次有效`
+      if (item.validityType === 'range') {
+        const fromText = item.validFrom ? fmtDate(item.validFrom) : '未设置开始'
+        const untilText = item.validUntil ? fmtDate(item.validUntil) : '未设置结束'
+        return `${fromText} 至 ${untilText}`
+      }
+      return '长期有效'
+    }
+
+    function renderStatus(status) {
+      const text = status || '-'
+      const cls = /fail|disabled/.test(text) ? 'danger' : /success|enabled|succeeded/.test(text) ? 'success' : ''
+      return `<span class="badge ${cls}">${escapeHtml(text)}</span>`
+    }
+
+    function compactStudent(raw) {
+      if (!raw) return '-'
+      try {
+        const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
+        return [parsed.province, parsed.subject, parsed.score ? `${parsed.score}分` : '', parsed.rank ? `${parsed.rank}名` : '', parsed.targetMajor || '']
+          .filter(Boolean)
+          .join(' / ')
+      } catch (_) {
+        return String(raw).slice(0, 48)
+      }
+    }
+
+    function openForm(sectionKey, item) {
+      const section = SECTION_DEFS[sectionKey]
+      const fieldsHtml = section.fields.map((field) => {
+        if (field.type === 'hidden') {
+          return `<input type="hidden" name="${field.name}" value="${escapeHtml(item[field.name] || '')}" />`
+        }
+        if (field.type === 'checkbox') {
+          return `
+            <div class="field ${field.full ? 'full' : ''}">
+              <label>${field.label}</label>
+              <label class="checkbox-row"><input type="checkbox" name="${field.name}" ${item[field.name] ? 'checked' : ''} /> 启用</label>
+            </div>
+          `
+        }
+        if (field.type === 'select') {
+          return `
+            <div class="field ${field.full ? 'full' : ''}">
+              <label>${field.label}</label>
+              <select name="${field.name}">
+                ${field.options.map((option) => `<option value="${option}" ${String(item[field.name] || '') === option ? 'selected' : ''}>${option}</option>`).join('')}
+              </select>
+            </div>
+          `
+        }
+        return `
+          <div class="field ${field.full ? 'full' : ''}">
+            <label>${field.label}</label>
+            <input type="${field.type}" name="${field.name}" value="${escapeHtml(item[field.name] || '')}" ${field.required ? 'required' : ''} />
+          </div>
+        `
+      }).join('')
+
+      document.getElementById('modal').innerHTML = `
+        <div class="modal-card">
+          <div class="modal-header">
+            <div>
+              <div class="eyebrow">编辑记录</div>
+              <h3 style="margin:0;">${item.id ? '编辑' : '新增'}${section.label}</h3>
+            </div>
+            <button id="closeModalBtn" class="btn btn-secondary">关闭</button>
+          </div>
+          <form id="entityForm" class="stack">
+            <div class="form-grid">${fieldsHtml}</div>
+            <div class="toolbar-actions" style="justify-content:flex-end;">
+              <button type="button" id="cancelBtn" class="btn btn-secondary">取消</button>
+              <button type="submit" class="btn btn-primary">保存</button>
+            </div>
+            <div id="formError" class="error"></div>
+          </form>
+        </div>
+      `
+      document.getElementById('modal').classList.remove('hidden')
+      document.getElementById('closeModalBtn').addEventListener('click', closeModal)
+      document.getElementById('cancelBtn').addEventListener('click', closeModal)
+      document.getElementById('entityForm').addEventListener('submit', async (event) => {
+        event.preventDefault()
+        const payload = collectFormData(event.target, section.fields)
+        try {
+          await api(section.endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+          closeModal()
+          renderCRUD(sectionKey)
+        } catch (error) {
+          document.getElementById('formError').textContent = error.message
+        }
+      })
+    }
+
+    function openVIPForm(item) {
+      const fields = [
+        { name: 'id', type: 'hidden' },
+        { name: 'productId', label: '产品标识', type: 'text', required: true },
+        { name: 'name', label: '产品名称', type: 'text', required: true },
+        { name: 'description', label: '描述', type: 'text', full: true },
+        { name: 'amountFen', label: '金额(分)', type: 'number', required: true },
+        { name: 'validityType', label: '有效方式', type: 'select', options: [
+          { value: 'unlimited', label: '长期有效' },
+          { value: 'times', label: '按次数有效' },
+          { value: 'range', label: '按时间范围有效' }
+        ] },
+        { name: 'validTimes', label: '有效次数', type: 'number' },
+        { name: 'validFrom', label: '开始时间', type: 'datetime-local', full: true },
+        { name: 'validUntil', label: '结束时间', type: 'datetime-local', full: true },
+        { name: 'sortOrder', label: '排序', type: 'number', required: true },
+        { name: 'enabled', label: '启用', type: 'checkbox', full: true }
+      ]
+      document.getElementById('modal').innerHTML = `
+        <div class="modal-card">
+          <div class="modal-header">
+            <div>
+              <div class="eyebrow">VIP 配置</div>
+              <h3 style="margin:0;">${item.id ? '编辑产品' : '新增产品'}</h3>
+            </div>
+            <button id="closeModalBtn" class="btn btn-secondary">关闭</button>
+          </div>
+          <form id="vipForm" class="stack">
+            <div class="form-grid">${fields.map((field) => {
+              if (field.type === 'hidden') return `<input type="hidden" name="${field.name}" value="${escapeHtml(item[field.name] || '')}" />`
+              if (field.type === 'checkbox') return `<div class="field full"><label>${field.label}</label><label class="checkbox-row"><input type="checkbox" name="${field.name}" ${item[field.name] ? 'checked' : ''} /> 启用售卖</label></div>`
+              if (field.type === 'select') {
+                return `<div class="field ${field.full ? 'full' : ''}"><label>${field.label}</label><select name="${field.name}">${field.options.map((option) => `<option value="${option.value}" ${String(item[field.name] || 'unlimited') === option.value ? 'selected' : ''}>${option.label}</option>`).join('')}</select></div>`
+              }
+              const inputValue = field.type === 'datetime-local' ? fmtDateTimeLocal(item[field.name]) : (item[field.name] || '')
+              return `<div class="field ${field.full ? 'full' : ''}"><label>${field.label}</label><input type="${field.type}" name="${field.name}" value="${escapeHtml(inputValue)}" ${field.required ? 'required' : ''}></div>`
+            }).join('')}</div>
+            <div class="toolbar-actions" style="justify-content:flex-end;">
+              <button type="button" id="cancelBtn" class="btn btn-secondary">取消</button>
+              <button type="submit" class="btn btn-primary">保存</button>
+            </div>
+            <div id="formError" class="error"></div>
+          </form>
+        </div>
+      `
+      document.getElementById('modal').classList.remove('hidden')
+      document.getElementById('closeModalBtn').addEventListener('click', closeModal)
+      document.getElementById('cancelBtn').addEventListener('click', closeModal)
+      document.getElementById('vipForm').addEventListener('submit', async (event) => {
+        event.preventDefault()
+        const payload = collectFormData(event.target, fields)
+        try {
+          await api('/api/admin/vip-products', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+          closeModal()
+          renderVIP(state.active)
+        } catch (error) {
+          document.getElementById('formError').textContent = error.message
+        }
+      })
+    }
+
+    function collectFormData(form, fields) {
+      const data = {}
+      fields.forEach((field) => {
+        const element = form.elements[field.name]
+        if (!element) return
+        if (field.type === 'checkbox') {
+          data[field.name] = !!element.checked
+          return
+        }
+        if (field.type === 'number' || field.name === 'id') {
+          data[field.name] = element.value === '' ? 0 : Number(element.value)
+          return
+        }
+        if (field.type === 'datetime-local') {
+          data[field.name] = element.value ? new Date(element.value).toISOString() : ''
+          return
+        }
+        data[field.name] = element.value
+      })
+      return data
+    }
+
+    function openViewer(item) {
+      document.getElementById('modal').innerHTML = `
+        <div class="modal-card">
+          <div class="modal-header">
+            <div>
+              <div class="eyebrow">任务详情</div>
+              <h3 style="margin:0;">${escapeHtml(item.title || '任务详情')}</h3>
+            </div>
+            <button id="closeModalBtn" class="btn btn-secondary">关闭</button>
+          </div>
+          <div class="stack">
+            <div><strong>状态：</strong> ${renderStatus(item.status)}</div>
+            <div><strong>提供方：</strong> ${escapeHtml(item.provider || '-')}</div>
+            <div><strong>考生：</strong> ${escapeHtml(compactStudent(item.student))}</div>
+            <div><strong>需求：</strong><div class="viewer">${escapeHtml(item.demand || '-')}</div></div>
+            <div><strong>报告：</strong><div class="viewer">${escapeHtml(item.report || '-')}</div></div>
+            <div><strong>错误信息：</strong><div class="viewer">${escapeHtml(item.errorMessage || '-')}</div></div>
+          </div>
+        </div>
+      `
+      document.getElementById('modal').classList.remove('hidden')
+      document.getElementById('closeModalBtn').addEventListener('click', closeModal)
+    }
+
+    function closeModal() {
+      document.getElementById('modal').classList.add('hidden')
+      document.getElementById('modal').innerHTML = ''
+    }
+
+    async function renderApp() {
+      renderNav()
+      bindNav()
+      setHeader()
+      if (state.active === 'dashboard') return renderDashboard()
+      if (state.active === 'orders') return renderOrders()
+      if (state.active === 'volunteers' || state.active === 'aiTasks') return renderTasks(state.active)
+      if (state.active === 'vipProducts' || state.active === 'paymentItems') return renderVIP('paymentItems')
+      return renderCRUD(state.active)
+    }
+
+    async function checkLogin() {
+      try {
+        const data = await api('/api/admin/me', { method: 'POST' })
+        state.currentUser = data.user
+        document.getElementById('loginShell').classList.add('hidden')
+        document.getElementById('appShell').classList.remove('hidden')
+        renderApp()
+      } catch (_) {
+        showLogin('')
+      }
+    }
+
+    document.getElementById('loginForm').addEventListener('submit', async (event) => {
+      event.preventDefault()
+      document.getElementById('loginError').textContent = ''
+      try {
+        const payload = {
+          username: event.target.username.value.trim(),
+          password: event.target.password.value
+        }
+        const data = await api('/api/admin/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+        state.currentUser = data.user
+        document.getElementById('loginShell').classList.add('hidden')
+        document.getElementById('appShell').classList.remove('hidden')
+        renderApp()
+      } catch (error) {
+        document.getElementById('loginError').textContent = error.message
+      }
+    })
+
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      try {
+        await api('/api/admin/logout', { method: 'POST' })
+      } finally {
+        showLogin('')
+      }
+    })
+
+    checkLogin()
+  </script>
+</body>
+</html>
