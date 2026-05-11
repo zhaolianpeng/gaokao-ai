@@ -4,6 +4,8 @@
     <view class="share-title">{{payload.title}}</view>
     <view class="share-sub" wx:if="{{payload.sourceTitle}}">来源：{{payload.sourceTitle}}</view>
     <view class="share-student" wx:if="{{payload.student}}">黑龙江 {{payload.student.subject}} · {{payload.student.score}}分 / {{payload.student.rank}}名</view>
+    <view class="share-sub" wx:if="{{archiveText}}">档案上下文：{{archiveText}}</view>
+    <view class="share-sub" wx:if="{{fromRecommendText}}">{{fromRecommendText}}</view>
   </view>
 
   <view class="poster-card">

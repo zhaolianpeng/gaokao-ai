@@ -233,6 +233,8 @@
       <view class="history-item" data-index="{{index}}" bindtap="useHistory">
         <view class="history-title">黑龙江 {{item.student.subject}} · {{item.student.score}}分 / {{item.student.rank}}名</view>
         <view class="history-sub">{{item.student.targetMajor || '未填写意向专业'}}</view>
+        <view class="history-sub" wx:if="{{item.archiveText}}">档案上下文：{{item.archiveText}}</view>
+        <view class="history-sub" wx:if="{{item.fromRecommendText}}">{{item.fromRecommendText}}</view>
       </view>
     </block>
   </view>

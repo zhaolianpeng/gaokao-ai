@@ -85,6 +85,9 @@
       <view class="link-btn" bindtap="onClearPlan">清空</view>
     </view>
     <view class="tip">先收藏专业组，再生成正式志愿表；也可以从推荐结果直接加入。</view>
+    <view class="tip" wx:if="{{studentSummary && studentSummary.baseText}}">{{studentSummary.baseText}}</view>
+    <view class="tip" wx:if="{{studentSummary && studentSummary.archiveText}}">档案上下文：{{studentSummary.archiveText}}</view>
+    <view class="tip" wx:if="{{studentSummary && studentSummary.sourceText}}">{{studentSummary.sourceText}}</view>
     <view class="toolbar-row">
       <picker mode="selector" range="{{sortOptions}}" range-key="label" bindchange="onSortChange">
         <view class="filter-pill">排序：{{currentSortLabel}}</view>

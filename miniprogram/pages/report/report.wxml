@@ -2,6 +2,8 @@
   <view class="card">
     <view class="section-title">{{title}}</view>
     <view class="student-meta" wx:if="{{student}}">黑龙江 {{student.subject}} · {{student.score}}分 / {{student.rank}}名</view>
+    <view class="student-meta" wx:if="{{archiveText}}">档案上下文：{{archiveText}}</view>
+    <view class="student-meta" wx:if="{{fromRecommendText}}">{{fromRecommendText}}</view>
     <view class="student-meta" wx:if="{{student.targetMajor}}">意向专业：{{student.targetMajor}}</view>
     <view class="stats-row" wx:if="{{stats}}">
       <view class="stat-chip">段落 {{stats.blockCount}}</view>

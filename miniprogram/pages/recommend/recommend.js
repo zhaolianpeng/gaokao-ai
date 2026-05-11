@@ -485,11 +485,18 @@ function buildLensDecisionSteps(activeLens, student, sections) {
 function buildLensFamilySummary(student, activeLens, sections) {
   var focusText = activeLens === 'major' ? '当前这版方案优先保专业。' : activeLens === 'city' ? '当前这版方案优先保城市。' : '当前这版方案优先保学校层次和录取结果。'
   var top = sections.length ? getTopItem(sections[0].items) : null
+  var archiveText = [student.schoolName, student.schoolYear, student.className].filter(Boolean).join(' / ')
   var lines = [
     `黑龙江 ${student.subject || ''} 考生，分数 ${student.score || ''}，位次 ${student.rank || ''}。`,
     focusText,
     '正式填报前，建议家长和考生先统一保学校 / 保专业 / 保城市三者顺序。'
   ]
+  if (archiveText) {
+    lines.splice(1, 0, `档案上下文：${archiveText}。`)
+  }
+  if (student.fromRecommend) {
+    lines.splice(archiveText ? 2 : 1, 0, '当前考生已标记为通过推荐链路进入。')
+  }
   if (top) {
     lines.push(`当前优先讨论的专业组：${top.college_name}${top.city ? '（' + top.city + '）' : ''} ${top.groupLabel}。`)
   }

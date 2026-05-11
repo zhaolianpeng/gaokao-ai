@@ -18,10 +18,23 @@ function buildShareText(payload) {
   if (student.subject || student.score || student.rank) {
     lines.push(`黑龙江 ${student.subject || ''}，${student.score || ''}分，${student.rank || ''}名`)
   }
+  const archiveText = buildArchiveText(student)
+  if (archiveText) {
+    lines.push(`档案上下文：${archiveText}`)
+  }
+  if (student.fromRecommend) {
+    lines.push('推荐来源：是')
+  }
   ;(payload.summary || []).forEach((item) => lines.push(item))
   ;(payload.conclusions || []).forEach((item) => lines.push(item))
   ;(payload.footer ? [payload.footer] : []).forEach((item) => lines.push(item))
   return lines.join('\n')
+}
+
+function buildArchiveText(student) {
+  const safeStudent = student || {}
+  const parts = [safeStudent.schoolName, safeStudent.schoolYear, safeStudent.className].filter(Boolean)
+  return parts.length ? parts.join(' / ') : ''
 }
 
 function buildPosterMetrics(payload) {
@@ -65,17 +78,22 @@ Page({
     shareText: '',
     posterMetrics: [],
     posterLead: '',
-    signatureText: ''
+    signatureText: '',
+    archiveText: '',
+    fromRecommendText: ''
   },
 
   onLoad(query) {
     const payload = decodePayload(query.payload)
+    const student = (payload && payload.student) || {}
     this.setData({
       payload,
       shareText: buildShareText(payload),
       posterMetrics: buildPosterMetrics(payload),
       posterLead: buildPosterLead(payload),
-      signatureText: buildSignature(payload)
+      signatureText: buildSignature(payload),
+      archiveText: buildArchiveText(student),
+      fromRecommendText: student.fromRecommend ? '推荐来源：是' : ''
     })
     wx.setNavigationBarTitle({ title: (payload && payload.title) || '家长沟通卡片' })
   },

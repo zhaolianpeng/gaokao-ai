@@ -125,21 +125,28 @@ func (r *AdminRepository) EnsureBootstrap(ctx context.Context, defaultPasswordHa
 	}
 	alterStatements := []struct {
 		column    string
+		tableName string
 		statement string
 	}{
-		{column: "validity_type", statement: `ALTER TABLE vip_product_config ADD COLUMN validity_type VARCHAR(20) NOT NULL DEFAULT 'unlimited' AFTER enabled`},
-		{column: "valid_times", statement: `ALTER TABLE vip_product_config ADD COLUMN valid_times INT NOT NULL DEFAULT 0 AFTER validity_type`},
-		{column: "valid_from", statement: `ALTER TABLE vip_product_config ADD COLUMN valid_from TIMESTAMP NULL DEFAULT NULL AFTER valid_times`},
-		{column: "valid_until", statement: `ALTER TABLE vip_product_config ADD COLUMN valid_until TIMESTAMP NULL DEFAULT NULL AFTER valid_from`},
-		{column: "id_card", statement: `ALTER TABLE mini_auth_user ADD COLUMN id_card VARCHAR(64) NOT NULL DEFAULT '' AFTER avatar_url`},
-		{column: "school_name", statement: `ALTER TABLE mini_auth_user ADD COLUMN school_name VARCHAR(128) NOT NULL DEFAULT '' AFTER id_card`},
-		{column: "school_year", statement: `ALTER TABLE mini_auth_user ADD COLUMN school_year VARCHAR(64) NOT NULL DEFAULT '' AFTER school_name`},
-		{column: "class_name", statement: `ALTER TABLE mini_auth_user ADD COLUMN class_name VARCHAR(128) NOT NULL DEFAULT '' AFTER school_year`},
-		{column: "student_no", statement: `ALTER TABLE mini_auth_user ADD COLUMN student_no VARCHAR(64) NOT NULL DEFAULT '' AFTER class_name`},
-		{column: "from_recommend", statement: `ALTER TABLE mini_auth_user ADD COLUMN from_recommend TINYINT(1) NOT NULL DEFAULT 0 AFTER student_no`},
+		{tableName: "vip_product_config", column: "validity_type", statement: `ALTER TABLE vip_product_config ADD COLUMN validity_type VARCHAR(20) NOT NULL DEFAULT 'unlimited' AFTER enabled`},
+		{tableName: "vip_product_config", column: "valid_times", statement: `ALTER TABLE vip_product_config ADD COLUMN valid_times INT NOT NULL DEFAULT 0 AFTER validity_type`},
+		{tableName: "vip_product_config", column: "valid_from", statement: `ALTER TABLE vip_product_config ADD COLUMN valid_from TIMESTAMP NULL DEFAULT NULL AFTER valid_times`},
+		{tableName: "vip_product_config", column: "valid_until", statement: `ALTER TABLE vip_product_config ADD COLUMN valid_until TIMESTAMP NULL DEFAULT NULL AFTER valid_from`},
+		{tableName: "mini_auth_user", column: "id_card", statement: `ALTER TABLE mini_auth_user ADD COLUMN id_card VARCHAR(64) NOT NULL DEFAULT '' AFTER avatar_url`},
+		{tableName: "mini_auth_user", column: "school_name", statement: `ALTER TABLE mini_auth_user ADD COLUMN school_name VARCHAR(128) NOT NULL DEFAULT '' AFTER id_card`},
+		{tableName: "mini_auth_user", column: "school_year", statement: `ALTER TABLE mini_auth_user ADD COLUMN school_year VARCHAR(64) NOT NULL DEFAULT '' AFTER school_name`},
+		{tableName: "mini_auth_user", column: "class_name", statement: `ALTER TABLE mini_auth_user ADD COLUMN class_name VARCHAR(128) NOT NULL DEFAULT '' AFTER school_year`},
+		{tableName: "mini_auth_user", column: "student_no", statement: `ALTER TABLE mini_auth_user ADD COLUMN student_no VARCHAR(64) NOT NULL DEFAULT '' AFTER class_name`},
+		{tableName: "mini_auth_user", column: "from_recommend", statement: `ALTER TABLE mini_auth_user ADD COLUMN from_recommend TINYINT(1) NOT NULL DEFAULT 0 AFTER student_no`},
+		{tableName: "province_score_line", column: "source_name", statement: `ALTER TABLE province_score_line ADD COLUMN source_name VARCHAR(100) NOT NULL DEFAULT '' AFTER score`},
+		{tableName: "province_score_line", column: "source_url", statement: `ALTER TABLE province_score_line ADD COLUMN source_url TEXT NULL AFTER source_name`},
+		{tableName: "province_score_line", column: "updated_at", statement: `ALTER TABLE province_score_line ADD COLUMN updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP AFTER source_url`},
+		{tableName: "score_rank", column: "source_name", statement: `ALTER TABLE score_rank ADD COLUMN source_name VARCHAR(100) NOT NULL DEFAULT '' AFTER ` + "`count`" + ``},
+		{tableName: "score_rank", column: "source_url", statement: `ALTER TABLE score_rank ADD COLUMN source_url TEXT NULL AFTER source_name`},
+		{tableName: "score_rank", column: "updated_at", statement: `ALTER TABLE score_rank ADD COLUMN updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP AFTER source_url`},
 	}
 	for _, item := range alterStatements {
-		exists, err := r.columnExists(ctx, "vip_product_config", item.column)
+		exists, err := r.columnExists(ctx, item.tableName, item.column)
 		if err != nil {
 			return err
 		}
@@ -509,7 +516,7 @@ func (r *AdminRepository) DeleteProvinceScoreLine(ctx context.Context, id int) e
 func (r *AdminRepository) ListScoreRanks(ctx context.Context, keyword, province string, year int, subject string, score int, page, limit int) ([]model.AdminScoreRank, int, error) {
 	page, limit = normalizePage(page, limit)
 	like := buildLike(keyword)
-	clauses := []string{"(province LIKE ? OR subject LIKE ? OR CAST(score AS CHAR) LIKE ? OR CAST(rank AS CHAR) LIKE ?)"}
+	clauses := []string{"(province LIKE ? OR subject LIKE ? OR CAST(score AS CHAR) LIKE ? OR CAST(`rank` AS CHAR) LIKE ?)"}
 	args := []any{like, like, like, like}
 	appendAdminTextLikeFilter(&clauses, &args, "province", province)
 	appendAdminIntFilter(&clauses, &args, "year", year)
@@ -523,10 +530,10 @@ func (r *AdminRepository) ListScoreRanks(ctx context.Context, keyword, province 
 	}
 	listArgs := append(append([]any{}, args...), limit, (page-1)*limit)
 	listQuery := fmt.Sprintf(`
-		SELECT id, province, year, subject, score, rank, count, updated_at
+		SELECT id, province, year, subject, score, `+"`rank`"+`, `+"`count`"+`, updated_at
 		FROM score_rank
 		WHERE %s
-		ORDER BY year DESC, province ASC, subject ASC, score DESC, rank ASC, id DESC LIMIT ? OFFSET ?
+		ORDER BY year DESC, province ASC, subject ASC, score DESC, `+"`rank`"+` ASC, id DESC LIMIT ? OFFSET ?
 	`, whereSQL)
 	rows, err := r.db.QueryContext(ctx, listQuery, listArgs...)
 	if err != nil {
@@ -547,12 +554,12 @@ func (r *AdminRepository) ListScoreRanks(ctx context.Context, keyword, province 
 func (r *AdminRepository) SaveScoreRank(ctx context.Context, item model.AdminScoreRank) (int, error) {
 	if item.ID > 0 {
 		_, err := r.db.ExecContext(ctx, `
-			UPDATE score_rank SET province = ?, year = ?, subject = ?, score = ?, rank = ?, count = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
+			UPDATE score_rank SET province = ?, year = ?, subject = ?, score = ?, `+"`rank`"+` = ?, `+"`count`"+` = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
 		`, item.Province, item.Year, item.Subject, item.Score, item.Rank, item.Count, item.ID)
 		return item.ID, err
 	}
 	result, err := r.db.ExecContext(ctx, `
-		INSERT INTO score_rank (province, year, subject, score, rank, count, updated_at)
+		INSERT INTO score_rank (province, year, subject, score, `+"`rank`"+`, `+"`count`"+`, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
 	`, item.Province, item.Year, item.Subject, item.Score, item.Rank, item.Count)
 	if err != nil {

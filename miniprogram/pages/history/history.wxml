@@ -6,6 +6,8 @@
       <view class="history-item" data-index="{{index}}" bindtap="openRecord">
         <view class="history-title">{{item.student.province}} {{item.student.subject}} · {{item.student.score}}分 / {{item.student.rank}}名</view>
         <view class="history-sub">{{item.student.year}}年 · {{item.student.targetMajor || '未填写意向专业'}}</view>
+        <view class="history-sub" wx:if="{{item.archiveText}}">档案上下文：{{item.archiveText}}</view>
+        <view class="history-sub" wx:if="{{item.fromRecommendText}}">{{item.fromRecommendText}}</view>
         <view class="history-time">{{item.timeText}}</view>
       </view>
     </block>

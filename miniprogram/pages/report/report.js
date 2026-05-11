@@ -50,16 +50,29 @@ function buildChecklist(student, suggestions) {
 }
 
 function buildFamilyBrief(student, suggestions) {
+  const archiveText = buildArchiveText(student)
   const lines = [
     `这是一份黑龙江${student && student.subject ? student.subject : ''}考生的 AI 报告。`,
     `当前分数/位次：${student && student.score ? student.score : '未填'} 分，${student && student.rank ? student.rank : '未填'} 名。`,
     `建议重点讨论：是否优先保 ${student && student.targetMajor ? student.targetMajor : '目标专业'}，以及是否接受组内调剂。`
   ]
+  if (archiveText) {
+    lines.push(`档案上下文：${archiveText}。`)
+  }
+  if (student && student.fromRecommend) {
+    lines.push('当前考生已标记为通过推荐链路进入。')
+  }
   if (Array.isArray(suggestions) && suggestions.length) {
     lines.push(`可直接继续看的关键词：${suggestions.map((item) => item.title).slice(0, 3).join('、')}。`)
   }
   lines.push('先统一志愿策略，再排正式志愿表，效率会高很多。')
   return lines.join('\n')
+}
+
+function buildArchiveText(student) {
+  const safeStudent = student || {}
+  const parts = [safeStudent.schoolName, safeStudent.schoolYear, safeStudent.className].filter(Boolean)
+  return parts.length ? parts.join(' / ') : ''
 }
 
 function buildFamilySharePayload(title, student, familyBrief, checklist, suggestions) {
@@ -116,7 +129,9 @@ Page({
       stats: {
         blockCount: reportBlocks.length,
         charCount: report.length
-      }
+      },
+      archiveText: buildArchiveText(student),
+      fromRecommendText: student && student.fromRecommend ? '推荐来源：是' : ''
     })
     wx.setNavigationBarTitle({ title })
     saveReportHistory({ report, student })

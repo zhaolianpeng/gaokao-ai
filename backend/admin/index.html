@@ -542,7 +542,7 @@
         ]
       },
       profileOptions: {
-        label: '档案配置',
+        label: '学校档案配置',
         desc: '维护考生档案中的学校、学年、班级下拉项。',
         endpoint: '/api/admin/profile-options',
         type: 'crud',
@@ -1073,8 +1073,12 @@
         </tr>
       `).join('')
 
+      const extraActions = sectionKey === 'students'
+        ? `<button id="openProfileOptionsBtn" class="btn btn-secondary">学校档案配置</button><span class="badge">共 ${total} 条</span>`
+        : `<span class="badge">共 ${total} 条</span>`
+
       document.getElementById('contentPanel').innerHTML = `
-        ${buildToolbar(section, `<span class="badge">共 ${total} 条</span>`)}
+        ${buildToolbar(section, extraActions)}
         <div class="table-wrap">
           <table>
             <thead>
@@ -1092,6 +1096,7 @@
       `
 
         bindToolbar(sectionKey, section, () => renderCRUD(sectionKey), section.creatable ? () => openForm(sectionKey, {}) : null)
+  document.getElementById('openProfileOptionsBtn')?.addEventListener('click', () => navigateToSection('profileOptions'))
         bindPagination(sectionKey, () => renderCRUD(sectionKey), total, limit)
       document.querySelectorAll('[data-action="edit"]').forEach((button) => {
         button.addEventListener('click', () => {

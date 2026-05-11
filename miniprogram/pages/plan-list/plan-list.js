@@ -54,8 +54,37 @@ function buildGroupedPlanList(list, sortMode) {
     .filter((group) => group.items.length)
 }
 
-function buildExportText(groups) {
+function buildArchiveText(student) {
+  const safeStudent = student || {}
+  const parts = [safeStudent.schoolName, safeStudent.schoolYear, safeStudent.className].filter(Boolean)
+  return parts.length ? parts.join(' / ') : ''
+}
+
+function buildStudentSummary(student) {
+  const safeStudent = student || {}
+  const subjectText = safeStudent.subject || '未填写科类'
+  const scoreText = safeStudent.score ? `${safeStudent.score}分` : '未填分数'
+  const rankText = safeStudent.rank ? `${safeStudent.rank}名` : '未填位次'
+  const archiveText = buildArchiveText(safeStudent)
+  const sourceText = safeStudent.fromRecommend ? '推荐来源' : ''
+  return {
+    baseText: `黑龙江 ${subjectText} · ${scoreText} / ${rankText}`,
+    archiveText,
+    sourceText
+  }
+}
+
+function buildExportText(groups, summary) {
   const lines = ['黑龙江正式志愿表']
+  if (summary && summary.baseText) {
+    lines.push(summary.baseText)
+  }
+  if (summary && summary.archiveText) {
+    lines.push(`档案上下文：${summary.archiveText}`)
+  }
+  if (summary && summary.sourceText) {
+    lines.push(summary.sourceText)
+  }
   groups.forEach((group) => {
     lines.push(`\n【${group.title}】`)
     group.items.forEach((entry, index) => {
@@ -190,6 +219,7 @@ Page({
     favorites: [],
     applicationList: [],
     groupedApplicationList: [],
+    studentSummary: null,
     scenarios: [],
     compareBoard: null,
     sortMode: 'createdDesc',
@@ -230,12 +260,14 @@ Page({
       ...entry,
       timeText: formatTime(entry.createdAt)
     }))
+    const primaryStudent = (applicationList[0] && applicationList[0].student) || (rawScenarios[0] && rawScenarios[0].student) || null
     this.setData({
       favorites,
       scenarios,
       compareBoard: buildScenarioCompareBoard(scenarios),
       applicationList,
       groupedApplicationList: buildGroupedPlanList(applicationList, this.data.sortMode),
+      studentSummary: buildStudentSummary(primaryStudent),
       currentSortLabel: (this.data.sortOptions.find((option) => option.value === this.data.sortMode) || this.data.sortOptions[0]).label
     })
   },
@@ -250,7 +282,7 @@ Page({
   },
 
   onExportPlan() {
-    const text = buildExportText(this.data.groupedApplicationList)
+    const text = buildExportText(this.data.groupedApplicationList, this.data.studentSummary)
     wx.setClipboardData({
       data: text,
       success: () => wx.showToast({ title: '已复制填报清单', icon: 'none' })

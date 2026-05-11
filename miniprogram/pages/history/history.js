@@ -10,6 +10,12 @@ function formatTime(timestamp) {
   return `${year}-${month}-${day} ${hour}:${minute}`
 }
 
+function buildArchiveText(student) {
+  const safeStudent = student || {}
+  const parts = [safeStudent.schoolName, safeStudent.schoolYear, safeStudent.className].filter(Boolean)
+  return parts.length ? parts.join(' / ') : ''
+}
+
 Page({
   data: {
     history: []
@@ -18,7 +24,9 @@ Page({
   onShow() {
     const history = getRecommendHistory().map((item) => ({
       ...item,
-      timeText: formatTime(item.createdAt)
+      timeText: formatTime(item.createdAt),
+      archiveText: buildArchiveText(item.student),
+      fromRecommendText: item && item.student && item.student.fromRecommend ? '推荐来源' : ''
     }))
     this.setData({ history })
   },

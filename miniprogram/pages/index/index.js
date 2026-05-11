@@ -187,6 +187,12 @@ function buildHomeShareQuery(form) {
   return pairs.join('&')
 }
 
+function buildArchiveText(student) {
+  var safeStudent = student || {}
+  var parts = [safeStudent.schoolName, safeStudent.schoolYear, safeStudent.className].filter(Boolean)
+  return parts.length ? parts.join(' / ') : ''
+}
+
 function buildHomeShareTitle(form) {
   var safeForm = form || {}
   if (safeForm.score && safeForm.rank) {
@@ -320,7 +326,11 @@ Page({
 
   onShow() {
     enableShareMenus()
-    const history = getRecommendHistory().slice(0, 3)
+    const history = getRecommendHistory().slice(0, 3).map((item) => ({
+      ...item,
+      archiveText: buildArchiveText(item.student),
+      fromRecommendText: item && item.student && item.student.fromRecommend ? '推荐来源' : ''
+    }))
     const authUser = getAuthUser()
     const profile = getUserProfile()
     const nextForm = authUser ? buildFormFromProfile(this.data.form, profile) : this.data.form
