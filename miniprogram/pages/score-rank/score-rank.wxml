@@ -1,6 +1,6 @@
 <view class="container">
   <view class="card">
-    <view class="section-title">一分一段查分位次</view>
+    <view class="section-title">一分一段双向查询</view>
     <view class="filter-row">
       <picker mode="selector" range="{{yearOptions}}" bindchange="onYearChange">
         <view class="filter-pill">年份 {{year}}</view>
@@ -11,16 +11,17 @@
     </view>
     <view class="tip tip-highlight tip-highlight-{{yearHint.mappingTone}}">{{yearHint.mappingText}}</view>
     <view class="tip tip-highlight tip-highlight-{{yearHint.reliabilityTone}}">{{yearHint.reliabilityText}}</view>
-    <input class="input" type="number" placeholder="输入高考分数" value="{{score}}" bindinput="onScoreInput" />
-    <button class="primary-btn" loading="{{loading}}" bindtap="onSearch">查询全省位次</button>
+    <input class="input" type="number" placeholder="输入高考分数，自动带出排名" value="{{score}}" bindinput="onScoreInput" bindblur="onScoreBlur" />
+    <input class="input" type="number" placeholder="输入全省排名，自动带出分数" value="{{rank}}" bindinput="onRankInput" bindblur="onRankBlur" />
+    <button class="primary-btn" loading="{{loading}}" bindtap="onSearch">开始双向查询</button>
 
     <view wx:if="{{result && result.available}}" class="result-box">
-      <view class="result-title">{{score}} 分约对应全省 {{result.rank}} 名</view>
+      <view class="result-title">{{score || result.matched_score}} 分约对应全省 {{rank || result.rank}} 名</view>
       <view class="result-badge result-badge-{{result.status}}">{{result.label}}</view>
       <view class="result-sub">{{result.message}}</view>
     </view>
 
-    <view class="empty-tip" wx:if="{{!loading && (!result || !result.available)}}">支持黑龙江 2025-2022 普通类精确查分位次，2022-2023 自动映射老高考文理口径。</view>
+    <view class="empty-tip" wx:if="{{!loading && (!result || !result.available)}}">支持黑龙江 2025-2022 普通类分数、位次双向查询，2022-2023 自动映射老高考文理口径。</view>
   </view>
 
   <view class="card">
