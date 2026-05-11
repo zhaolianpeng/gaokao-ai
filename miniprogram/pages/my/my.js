@@ -1,5 +1,22 @@
-const { getAuthUser, saveAuthUser, clearAuthUser, getUserProfile, saveUserProfile, clearUserProfile } = require('../../utils/storage')
+const { getAuthUser, saveAuthUser, clearAuthUser, getUserProfile, saveUserProfile, clearUserProfile, hasPrivacyConsent } = require('../../utils/storage')
 const { request, uploadFile } = require('../../utils/request')
+
+function ensurePrivacyConsent(actionText) {
+  if (hasPrivacyConsent()) {
+    return true
+  }
+  wx.showModal({
+    title: '请先完成授权同意',
+    content: `在${actionText}前，请先阅读并同意《用户服务协议》和《隐私政策》。`,
+    confirmText: '去查看',
+    success(res) {
+      if (res.confirm) {
+        wx.navigateTo({ url: '/pages/about/about' })
+      }
+    }
+  })
+  return false
+}
 
 function cacheRemoteAvatar(url) {
   return new Promise((resolve) => {
@@ -111,6 +128,9 @@ Page({
   },
 
   async onChooseAvatar(e) {
+    if (!ensurePrivacyConsent('上传头像')) {
+      return
+    }
     const user = getAuthUser()
     if (!user || !user.id || user.storageMode !== 'server') {
       wx.showToast({ title: '请先完成手机号快捷登录', icon: 'none' })

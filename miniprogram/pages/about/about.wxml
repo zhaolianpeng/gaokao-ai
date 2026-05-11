@@ -5,6 +5,18 @@
   </view>
 
   <view class="card about-card">
+    <view class="section-title section-title-small">协议与隐私</view>
+    <view class="about-copy">在使用手机号快捷登录、头像上传、资料保存等功能前，我们会明确告知收集信息的目的、方式和用途，并在你授权同意后才开始收集。</view>
+    <view class="about-field-card">
+      <view class="about-label">当前授权状态</view>
+      <view class="about-static-value">{{privacyConsentAgreed ? '已同意《用户服务协议》和《隐私政策》' : '未同意，系统不会采集登录、头像和档案信息'}}</view>
+      <button class="ghost-btn about-ghost-btn" bindtap="openServiceAgreement">查看《用户服务协议》</button>
+      <button class="ghost-btn about-ghost-btn" bindtap="openPrivacyPolicy">查看《隐私政策》</button>
+      <button class="primary-btn about-ghost-btn" wx:if="{{!privacyConsentAgreed}}" bindtap="agreePolicies">我已阅读并同意</button>
+    </view>
+  </view>
+
+  <view class="card about-card">
     <view class="section-title section-title-small">产品定位</view>
     <block wx:for="{{positioning}}" wx:key="title">
       <view class="about-item">

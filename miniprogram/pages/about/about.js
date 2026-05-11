@@ -1,4 +1,4 @@
-const { getNetworkDiagnostics, clearNetworkDiagnostics, getAuthUser } = require('../../utils/storage')
+const { getNetworkDiagnostics, clearNetworkDiagnostics, getAuthUser, hasPrivacyConsent, savePrivacyConsent } = require('../../utils/storage')
 const { request } = require('../../utils/request')
 
 const BACKEND_PRESETS = [
@@ -36,7 +36,8 @@ Page({
     backendBaseUrlInput: '',
     backendCheckMessage: '',
     latestDiagnostic: null,
-    backendPresets: BACKEND_PRESETS
+    backendPresets: BACKEND_PRESETS,
+    privacyConsentAgreed: false
   },
 
   onShow() {
@@ -46,8 +47,23 @@ Page({
     this.setData({
       backendBaseUrl,
       backendBaseUrlInput: backendBaseUrl,
-      latestDiagnostic
+      latestDiagnostic,
+      privacyConsentAgreed: hasPrivacyConsent()
     })
+  },
+
+  openServiceAgreement() {
+    wx.navigateTo({ url: '/pages/service-agreement/service-agreement' })
+  },
+
+  openPrivacyPolicy() {
+    wx.navigateTo({ url: '/pages/privacy-policy/privacy-policy' })
+  },
+
+  agreePolicies() {
+    savePrivacyConsent({ agreed: true })
+    this.setData({ privacyConsentAgreed: true })
+    wx.showToast({ title: '已记录授权同意', icon: 'success' })
   },
 
   normalizeBackendBaseUrl(value) {

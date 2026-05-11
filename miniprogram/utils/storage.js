@@ -5,10 +5,33 @@ const APPLICATION_PLAN_KEY = 'applicationPlan'
 const PLAN_SCENARIO_KEY = 'planScenarios'
 const AUTH_USER_KEY = 'authUser'
 const USER_PROFILE_KEY = 'userProfile'
+const PRIVACY_CONSENT_KEY = 'privacyConsent'
 const NETWORK_DIAGNOSTIC_KEY = 'networkDiagnostics'
 const PENDING_RECOMMEND_KEY = 'pendingRecommendPayload'
 const PENDING_EXPLORE_SUBJECT_KEY = 'pendingExploreSubject'
 const PENDING_EXPLORE_FILTERS_KEY = 'pendingExploreFilters'
+const POLICY_VERSION = '2026-05-11'
+
+function getScopedProfileKey(user) {
+  const safeUser = user || wx.getStorageSync(AUTH_USER_KEY) || null
+  if (!safeUser) {
+    return ''
+  }
+  const storageMode = safeUser.storageMode || 'server'
+  if (safeUser.phone) {
+    return `${USER_PROFILE_KEY}:${storageMode}:${safeUser.phone}`
+  }
+  if (storageMode === 'server' && safeUser.id) {
+    return `${USER_PROFILE_KEY}:server:${safeUser.id}`
+  }
+  if (safeUser.openid) {
+    return `${USER_PROFILE_KEY}:${storageMode}:${safeUser.openid}`
+  }
+  if (safeUser.nickname) {
+    return `${USER_PROFILE_KEY}:${storageMode}:${safeUser.nickname}`
+  }
+  return ''
+}
 
 function getList(key) {
   return wx.getStorageSync(key) || []
@@ -376,6 +399,12 @@ function saveAuthUser(user) {
     nickname: user.nickname || '考生用户',
     phone: user.phone || '',
     avatarUrl: user.avatarUrl || '',
+    idCard: user.idCard || '',
+    schoolName: user.schoolName || '',
+    schoolYear: user.schoolYear || '',
+    className: user.className || '',
+    studentNo: user.studentNo || '',
+    fromRecommend: !!user.fromRecommend,
     avatarLocalPath: user.avatarLocalPath || '',
     loginType,
     storageMode,
@@ -391,6 +420,13 @@ function clearAuthUser() {
 }
 
 function getUserProfile() {
+  const scopedKey = getScopedProfileKey()
+  if (scopedKey) {
+    const scopedProfile = wx.getStorageSync(scopedKey) || null
+    if (scopedProfile) {
+      return scopedProfile
+    }
+  }
   return wx.getStorageSync(USER_PROFILE_KEY) || null
 }
 
@@ -402,11 +438,43 @@ function saveUserProfile(profile) {
     updatedAt: Date.now()
   }
   wx.setStorageSync(USER_PROFILE_KEY, next)
+  const scopedKey = getScopedProfileKey()
+  if (scopedKey) {
+    wx.setStorageSync(scopedKey, next)
+  }
   return next
 }
 
 function clearUserProfile() {
   wx.removeStorageSync(USER_PROFILE_KEY)
+}
+
+function getPrivacyConsent() {
+  return wx.getStorageSync(PRIVACY_CONSENT_KEY) || null
+}
+
+function hasPrivacyConsent() {
+  const record = getPrivacyConsent()
+  return !!(record && record.agreed)
+}
+
+function savePrivacyConsent(payload) {
+  const current = getPrivacyConsent() || {}
+  const next = {
+    agreed: true,
+    policyVersion: POLICY_VERSION,
+    serviceAgreementVersion: POLICY_VERSION,
+    privacyPolicyVersion: POLICY_VERSION,
+    agreedAt: Date.now(),
+    ...current,
+    ...(payload || {})
+  }
+  wx.setStorageSync(PRIVACY_CONSENT_KEY, next)
+  return next
+}
+
+function clearPrivacyConsent() {
+  wx.removeStorageSync(PRIVACY_CONSENT_KEY)
 }
 
 function saveNetworkDiagnostic(payload) {
@@ -457,6 +525,10 @@ module.exports = {
   getUserProfile,
   saveUserProfile,
   clearUserProfile,
+  getPrivacyConsent,
+  hasPrivacyConsent,
+  savePrivacyConsent,
+  clearPrivacyConsent,
   saveNetworkDiagnostic,
   getNetworkDiagnostics,
   clearNetworkDiagnostics

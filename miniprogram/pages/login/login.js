@@ -1,5 +1,9 @@
-const { getAuthUser, saveAuthUser } = require('../../utils/storage')
+const { getAuthUser, saveAuthUser, getUserProfile, saveUserProfile, hasPrivacyConsent, savePrivacyConsent, clearPrivacyConsent } = require('../../utils/storage')
 const { request } = require('../../utils/request')
+
+function openPolicyPage(url) {
+  wx.navigateTo({ url })
+}
 
 function wxLogin() {
   return new Promise((resolve, reject) => {
@@ -30,19 +34,35 @@ function isAnonymousWechatNickname(nickname) {
   return text === '微信用户' || /^微信用户\d*$/.test(text)
 }
 
+function syncProfileFromUser(user) {
+  const current = getUserProfile() || {}
+  return saveUserProfile({
+    ...current,
+    idCard: (user && user.idCard) || current.idCard || '',
+    schoolName: (user && user.schoolName) || current.schoolName || '',
+    schoolYear: (user && user.schoolYear) || current.schoolYear || '',
+    className: (user && user.className) || current.className || '',
+    studentNo: (user && user.studentNo) || current.studentNo || '',
+    fromRecommend: !!((user && user.fromRecommend) || current.fromRecommend)
+  })
+}
+
 Page({
   data: {
     nickname: '',
     submittedNickname: '',
     phone: '',
-    loading: false
+    loading: false,
+    consentChecked: false
   },
 
   onShow() {
     const user = getAuthUser()
     if (user) {
-      this.setData({ nickname: user.nickname || '', phone: user.phone || '' })
+      this.setData({ nickname: user.nickname || '', phone: user.phone || '', consentChecked: hasPrivacyConsent() })
+      return
     }
+    this.setData({ consentChecked: hasPrivacyConsent() })
   },
 
   onInput(e) {
@@ -62,7 +82,41 @@ Page({
     this.setData({ submittedNickname: String(formNickname || this.data.nickname || '').trim() })
   },
 
+  toggleConsent() {
+    const nextChecked = !this.data.consentChecked
+    this.setData({ consentChecked: nextChecked })
+    if (nextChecked) {
+      savePrivacyConsent({ agreed: true })
+      return
+    }
+    clearPrivacyConsent()
+  },
+
+  openServiceAgreement() {
+    openPolicyPage('/pages/service-agreement/service-agreement')
+  },
+
+  openPrivacyPolicy() {
+    openPolicyPage('/pages/privacy-policy/privacy-policy')
+  },
+
+  ensureConsent(actionText) {
+    if (this.data.consentChecked) {
+      savePrivacyConsent({ agreed: true })
+      return true
+    }
+    wx.showToast({ title: `请先同意协议后再${actionText}`, icon: 'none' })
+    return false
+  },
+
+  handleConsentRequired() {
+    this.ensureConsent('登录')
+  },
+
   async onGetPhoneNumber(e) {
+    if (!this.ensureConsent('登录')) {
+      return
+    }
     const code = e.detail && e.detail.code
     if (!code) {
       wx.showToast({ title: '未获取到手机号授权', icon: 'none' })
@@ -105,6 +159,7 @@ Page({
       }
 
       getApp().setUser(authUser)
+      getApp().setProfile(syncProfileFromUser(authUser))
       this.setData({
         nickname: authUser.nickname || '',
         submittedNickname: authUser.nickname || '',
@@ -132,6 +187,7 @@ Page({
             storageMode: 'server'
           })
           getApp().setUser(authUser)
+          getApp().setProfile(syncProfileFromUser(authUser))
           this.setData({
             nickname: authUser.nickname || '',
             submittedNickname: authUser.nickname || '',
@@ -154,6 +210,9 @@ Page({
   },
 
   submitDemo() {
+    if (!this.ensureConsent('进入体验模式')) {
+      return
+    }
     const nickname = (this.data.nickname || '').trim() || '体验考生'
     const phone = (this.data.phone || '').trim()
     const user = saveAuthUser({ nickname, phone, loginType: 'demo', storageMode: 'local' })

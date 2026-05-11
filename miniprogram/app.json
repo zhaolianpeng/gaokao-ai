@@ -18,7 +18,9 @@
     "pages/report/report",
     "pages/family-share/family-share",
     "pages/history/history",
-    "pages/profile-edit/profile-edit"
+    "pages/profile-edit/profile-edit",
+    "pages/service-agreement/service-agreement",
+    "pages/privacy-policy/privacy-policy"
   ],
   "window": {
     "navigationBarTitleText": "黑龙江高报助手",

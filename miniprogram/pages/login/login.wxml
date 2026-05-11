@@ -17,12 +17,25 @@
 
       <view class="login-field">
         <view class="login-label">登录方式</view>
-        <view class="login-tip">点击下方按钮，使用手机号快捷登录完成登录。</view>
+        <view class="login-tip">我们会在你同意后，收集并使用昵称、手机号、头像、身份证号、学校、学年、班级、学号、分数、位次和报考偏好，用于创建报考档案、生成推荐结果、展示 AI 报告、同步账号数据和提供售后支持。</view>
       </view>
 
-      <button class="primary-btn login-submit" form-type="submit" open-type="getPhoneNumber" bindgetphonenumber="onGetPhoneNumber" loading="{{loading}}">手机号快捷登录</button>
+      <view class="login-consent-box">
+        <view class="login-consent-check {{consentChecked ? 'login-consent-check-active' : ''}}" bindtap="toggleConsent">{{consentChecked ? '✓' : ''}}</view>
+        <view class="login-consent-copy">
+          <view class="login-consent-text">我已阅读并同意《用户服务协议》与《隐私政策》，知悉个人信息收集目的、方式和用途，并授权在必要范围内处理。</view>
+          <view class="login-consent-links">
+            <text class="login-consent-link" bindtap="openServiceAgreement">查看《用户服务协议》</text>
+            <text class="login-consent-divider">|</text>
+            <text class="login-consent-link" bindtap="openPrivacyPolicy">查看《隐私政策》</text>
+          </view>
+        </view>
+      </view>
+
+      <button wx:if="{{consentChecked}}" class="primary-btn login-submit" form-type="submit" open-type="getPhoneNumber" bindgetphonenumber="onGetPhoneNumber" loading="{{loading}}">手机号快捷登录</button>
+      <button wx:else class="primary-btn login-submit" form-type="submit" bindtap="handleConsentRequired">手机号快捷登录</button>
       <button class="ghost-btn login-demo-btn" bindtap="submitDemo">先用体验模式进入</button>
-      <view class="login-footnote">体验模式只保存在当前设备，无法使用服务端支付。</view>
+      <view class="login-footnote">体验模式只保存在当前设备，无法使用服务端支付；未同意协议前不会采集或保存你的个人信息。</view>
     </form>
   </view>
 </view>
