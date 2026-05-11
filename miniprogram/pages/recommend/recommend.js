@@ -5,6 +5,7 @@ const {
   toggleFavoriteProgramGroup,
   getFavoriteProgramGroups,
   addApplicationPlanItem,
+  clearApplicationPlan,
   getApplicationPlan,
   buildApplicationPlanFromFavorites,
   savePlanScenario,
@@ -625,6 +626,39 @@ Page({
     }
     this.setData({ activeLens: lens })
     this.applyViewModel()
+  },
+
+  onBuildPlanFromCurrentLens() {
+    var sections = this.data.sections || []
+    var student = this.data.student || {}
+    var items = []
+    var seen = {}
+
+    for (var i = 0; i < sections.length; i += 1) {
+      var sectionItems = sections[i].items || []
+      for (var j = 0; j < sectionItems.length; j += 1) {
+        var item = sectionItems[j]
+        if (!item || !item.itemKey || seen[item.itemKey]) {
+          continue
+        }
+        seen[item.itemKey] = true
+        items.push(item)
+      }
+    }
+
+    if (!items.length) {
+      wx.showToast({ title: '当前视角没有可生成的志愿表', icon: 'none' })
+      return
+    }
+
+    clearApplicationPlan()
+    for (var index = items.length - 1; index >= 0; index -= 1) {
+      addApplicationPlanItem(student, items[index], `lens:${this.data.activeLens || 'school'}`)
+    }
+
+    this.refreshCollections()
+    wx.showToast({ title: `已按当前视角生成 ${items.length} 项`, icon: 'none' })
+    wx.navigateTo({ url: '/pages/plan-list/plan-list' })
   },
 
   copyFamilySummary() {

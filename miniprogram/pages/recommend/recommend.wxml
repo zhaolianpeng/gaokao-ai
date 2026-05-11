@@ -54,6 +54,9 @@
     </view>
     <view class="lens-helper-title">当前视角：{{activeLensMeta.title}}</view>
     <view class="lens-helper-desc">{{activeLensMeta.desc}}</view>
+    <view class="page-actions">
+      <button class="primary-btn lens-build-btn" bindtap="onBuildPlanFromCurrentLens">按当前视角一键生成正式志愿表</button>
+    </view>
   </view>
 
   <view class="card" wx:if="{{!loadError}}">
