@@ -170,8 +170,8 @@
     <view class="field fixed-field">年度：2025 招生计划口径</view>
     <view class="field fixed-field">当前科类：{{form.subject}}</view>
 
-    <input class="input" type="number" placeholder="高考分数" value="{{form.score}}" bindinput="onScoreInput" />
-    <input class="input" type="number" placeholder="全省排名" value="{{form.rank}}" bindinput="onRankInput" />
+    <input class="input" type="number" placeholder="高考分数" value="{{form.score}}" bindinput="onScoreInput" bindblur="onScoreBlur" />
+    <input class="input" type="number" placeholder="全省排名" value="{{form.rank}}" bindinput="onRankInput" bindblur="onRankBlur" />
     <input class="input" placeholder="意向专业，如：计算机类" value="{{form.targetMajor}}" bindinput="onTargetMajorInput" />
     <textarea class="textarea" placeholder="补充偏好，例如：优先哈尔滨、尽量公办、接受组内调剂" value="{{form.notes}}" bindinput="onNotesInput"></textarea>
 

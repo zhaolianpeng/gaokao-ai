@@ -123,6 +123,19 @@ function buildRankDashboard(preview) {
   }
 }
 
+function exceedsTolerance(inputValue, suggestedValue) {
+  const current = Number(inputValue || 0)
+  const suggested = Number(suggestedValue || 0)
+  if (current <= 0 || suggested <= 0) {
+    return false
+  }
+  return Math.abs(current - suggested) / suggested > 0.1
+}
+
+function buildToleranceToast(fieldLabel, suggestedValue) {
+  return `${fieldLabel}调整已超过10%，当前建议值是 ${suggestedValue}`
+}
+
 const CLOUD_DATASET_OVERVIEW = {
   college_count: 1520,
   program_group_count: 6174,
@@ -148,6 +161,8 @@ Page({
     batchLineDashboard: [],
     scoreRankPreview: null,
     scoreRankDashboard: null,
+    suggestedScore: 0,
+    suggestedRank: 0,
     quickActions: [
       { key: 'explore', title: '院校库', desc: '查学校、专业组、招生计划', action: 'openExplorePage' },
       { key: 'province-lines', title: '黑龙江批次线', desc: '查看 2025-2022 批次线', action: 'openProvinceLinesPage' },
@@ -207,9 +222,23 @@ Page({
     this.scheduleScoreRankLookup()
   },
 
+  onScoreBlur(e) {
+    const nextScore = e.detail && e.detail.value ? e.detail.value : this.data.form.score
+    if (exceedsTolerance(nextScore, this.data.suggestedScore)) {
+      wx.showToast({ title: buildToleranceToast('分数', this.data.suggestedScore), icon: 'none' })
+    }
+  },
+
   onRankInput(e) {
     this.setData({ 'form.rank': e.detail.value })
     this.scheduleRankScoreLookup()
+  },
+
+  onRankBlur(e) {
+    const nextRank = e.detail && e.detail.value ? e.detail.value : this.data.form.rank
+    if (exceedsTolerance(nextRank, this.data.suggestedRank)) {
+      wx.showToast({ title: buildToleranceToast('排名', this.data.suggestedRank), icon: 'none' })
+    }
   },
 
   onTargetMajorInput(e) {
@@ -326,7 +355,7 @@ Page({
   async lookupScoreRank() {
     const { province, subject, analysisYear, score } = this.data.form
     if (!score || Number(score) <= 0) {
-      this.setData({ scoreRankPreview: null, scoreRankDashboard: null })
+      this.setData({ scoreRankPreview: null, scoreRankDashboard: null, suggestedRank: 0 })
       return
     }
     this.setData({ rankLoading: true })
@@ -345,11 +374,12 @@ Page({
       const nextRank = result && result.available && Number(result.rank || 0) > 0 ? String(result.rank) : this.data.form.rank
       this.setData({
         'form.rank': nextRank,
+        suggestedRank: Number(result && result.rank) || 0,
         scoreRankPreview,
         scoreRankDashboard: buildRankDashboard(scoreRankPreview)
       })
     } catch (err) {
-      this.setData({ scoreRankPreview: null, scoreRankDashboard: null })
+      this.setData({ scoreRankPreview: null, scoreRankDashboard: null, suggestedRank: 0 })
     } finally {
       this.setData({ rankLoading: false })
     }
@@ -358,7 +388,7 @@ Page({
   async lookupRankScore() {
     const { province, subject, analysisYear, rank } = this.data.form
     if (!rank || Number(rank) <= 0) {
-      this.setData({ scoreRankPreview: null, scoreRankDashboard: null })
+      this.setData({ scoreRankPreview: null, scoreRankDashboard: null, suggestedScore: 0 })
       return
     }
     this.setData({ rankLoading: true })
@@ -382,11 +412,12 @@ Page({
       this.setData({
         'form.score': nextForm.score,
         'form.rank': nextForm.rank,
+        suggestedScore: Number(result && result.matched_score) || 0,
         scoreRankPreview,
         scoreRankDashboard: buildRankDashboard(scoreRankPreview)
       })
     } catch (err) {
-      this.setData({ scoreRankPreview: null, scoreRankDashboard: null })
+      this.setData({ scoreRankPreview: null, scoreRankDashboard: null, suggestedScore: 0 })
     } finally {
       this.setData({ rankLoading: false })
     }
