@@ -23,6 +23,14 @@ function isAnonymousWechatNickname(nickname) {
   return text === '微信用户' || /^微信用户\d*$/.test(text)
 }
 
+function normalizePersistedNickname(nickname) {
+  const text = String(nickname || '').trim()
+  if (!text || text === '考生用户' || isAnonymousWechatNickname(text)) {
+    return ''
+  }
+  return text
+}
+
 function defaultProfile() {
   return {
     province: '黑龙江',
@@ -155,9 +163,9 @@ Page({
       return
     }
 
-    const nickname = String(this.data.nickname || '').trim()
+    const nickname = normalizePersistedNickname(this.data.nickname)
     if (!nickname) {
-      wx.showToast({ title: '请先填写昵称', icon: 'none' })
+      wx.showToast({ title: '请先填写真实昵称', icon: 'none' })
       return
     }
 
@@ -177,7 +185,7 @@ Page({
       const nextUser = saveAuthUser({
         ...user,
         ...rawUser,
-        nickname: !isAnonymousWechatNickname(rawUser.nickname) ? rawUser.nickname : nickname,
+        nickname: normalizePersistedNickname(rawUser.nickname) || nickname,
         avatarUrl: rawUser.avatarUrl || user.avatarUrl || '',
         avatarLocalPath: user.avatarLocalPath || '',
         storageMode: 'server'
@@ -211,12 +219,22 @@ Page({
       rank: Number(this.data.profile.rank || 0),
       fromRecommend: !!this.data.profile.fromRecommend
     }
+    const persistedNickname = normalizePersistedNickname(this.data.nickname || user.nickname)
+
+    if (user && user.id && user.storageMode === 'server' && !persistedNickname) {
+      this.setData({ saveSubmitting: false })
+      wx.showToast({ title: '请先填写真实昵称', icon: 'none' })
+      return
+    }
 
     const finalize = (profile) => {
       const savedProfile = saveUserProfile(profile)
       getApp().setProfile(savedProfile)
       this.setData({ profile: savedProfile })
       wx.showToast({ title: '已保存资料', icon: 'success' })
+      setTimeout(() => {
+        wx.switchTab({ url: '/pages/my/my' })
+      }, 300)
     }
 
     if (!user || !user.id || user.storageMode !== 'server') {
@@ -234,7 +252,7 @@ Page({
       data: {
         userId: user.id,
         phone: user.phone || '',
-        nickname: String(this.data.nickname || user.nickname || '').trim() || '考生用户',
+        nickname: persistedNickname,
         avatarUrl: user.avatarUrl || '',
         idCard: nextProfile.idCard || '',
         schoolName: nextProfile.schoolName || '',
@@ -248,7 +266,7 @@ Page({
       const nextUser = saveAuthUser({
         ...user,
         ...rawUser,
-        nickname: !isAnonymousWechatNickname(rawUser.nickname) ? rawUser.nickname : (this.data.nickname || user.nickname || '考生用户'),
+        nickname: normalizePersistedNickname(rawUser.nickname) || persistedNickname,
         avatarUrl: rawUser.avatarUrl || user.avatarUrl || '',
         avatarLocalPath: user.avatarLocalPath || '',
         storageMode: 'server'

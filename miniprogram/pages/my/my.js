@@ -95,9 +95,9 @@ Page({
 
   onShow() {
     const app = getApp()
-    const user = normalizeDisplayUser(getAuthUser())
-    const profile = mergeProfile(getUserProfile(), user)
-    app.setUser(user)
+    const rawUser = getAuthUser()
+    const user = normalizeDisplayUser(rawUser)
+    const profile = mergeProfile(getUserProfile(), rawUser)
     app.setProfile(profile)
     this.setData({
       user,
@@ -172,10 +172,11 @@ Page({
         storageMode: 'server'
       })
       getApp().setUser(nextUser)
+      const displayUser = normalizeDisplayUser(nextUser)
       this.setData({
-        user: nextUser,
-        userInitial: this.getUserInitial(nextUser),
-        avatarDisplayUrl: this.getDisplayAvatarUrl(nextUser)
+        user: displayUser,
+        userInitial: this.getUserInitial(displayUser),
+        avatarDisplayUrl: this.getDisplayAvatarUrl(displayUser)
       })
       wx.showToast({ title: '头像已更新', icon: 'success' })
     } catch (err) {
@@ -198,10 +199,11 @@ Page({
       storageMode: 'local'
     })
     getApp().setUser(user)
+    const displayUser = normalizeDisplayUser(user)
     this.setData({
-      user,
-      userInitial: this.getUserInitial(user),
-      avatarDisplayUrl: this.getDisplayAvatarUrl(user)
+      user: displayUser,
+      userInitial: this.getUserInitial(displayUser),
+      avatarDisplayUrl: this.getDisplayAvatarUrl(displayUser)
     })
     wx.showToast({ title: '已快速登录', icon: 'success' })
   },

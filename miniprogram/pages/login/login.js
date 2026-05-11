@@ -34,6 +34,14 @@ function isAnonymousWechatNickname(nickname) {
   return text === '微信用户' || /^微信用户\d*$/.test(text)
 }
 
+function normalizePersistedNickname(nickname) {
+  const text = String(nickname || '').trim()
+  if (!text || text === '考生用户' || isAnonymousWechatNickname(text)) {
+    return ''
+  }
+  return text
+}
+
 function syncProfileFromUser(user) {
   const current = getUserProfile() || {}
   return saveUserProfile({
@@ -144,11 +152,12 @@ Page({
         throw new Error('登录返回数据不完整，请重试')
       }
 
-      const inputNickname = String(this.data.submittedNickname || this.data.nickname || '').trim()
+      const inputNickname = normalizePersistedNickname(this.data.submittedNickname || this.data.nickname)
+      const serverNickname = normalizePersistedNickname(loginUser.nickname)
 
       const mergedUser = {
         ...loginUser,
-        nickname: !isAnonymousWechatNickname(inputNickname) ? inputNickname : (loginUser.nickname || '考生用户'),
+        nickname: inputNickname || serverNickname,
         avatarUrl: loginUser.avatarUrl || '',
         storageMode: 'server'
       }
@@ -182,7 +191,7 @@ Page({
           authUser = saveAuthUser({
             ...authUser,
             ...normalizedProfileUser,
-            nickname: !isAnonymousWechatNickname(normalizedProfileUser.nickname) ? normalizedProfileUser.nickname : (authUser.nickname || mergedUser.nickname || '考生用户'),
+            nickname: normalizePersistedNickname(normalizedProfileUser.nickname) || authUser.nickname || mergedUser.nickname || '',
             avatarUrl: normalizedProfileUser.avatarUrl || mergedUser.avatarUrl || authUser.avatarUrl || '',
             storageMode: 'server'
           })
