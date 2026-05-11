@@ -14,7 +14,11 @@ function buildFormFromProfile(form, profile) {
     score: profile.score ? String(profile.score) : form.score,
     rank: profile.rank ? String(profile.rank) : form.rank,
     targetMajor: profile.targetMajor || form.targetMajor,
-    notes: profile.notes || form.notes
+    notes: profile.notes || form.notes,
+    schoolName: profile.schoolName || form.schoolName,
+    schoolYear: profile.schoolYear || form.schoolYear,
+    className: profile.className || form.className,
+    fromRecommend: typeof profile.fromRecommend === 'boolean' ? profile.fromRecommend : form.fromRecommend
   }
 }
 
@@ -136,6 +140,64 @@ function buildToleranceToast(fieldLabel, suggestedValue) {
   return `${fieldLabel}调整已超过10%，当前建议值是 ${suggestedValue}`
 }
 
+function decodeQueryValue(value, fallback) {
+  if (!value && value !== 0) {
+    return fallback
+  }
+  return decodeURIComponent(value)
+}
+
+function decodeBooleanQueryValue(value, fallback) {
+  if (value === undefined || value === null || value === '') {
+    return fallback
+  }
+  var text = String(value).trim().toLowerCase()
+  if (text === '1' || text === 'true' || text === 'yes') {
+    return true
+  }
+  if (text === '0' || text === 'false' || text === 'no') {
+    return false
+  }
+  return fallback
+}
+
+function enableShareMenus() {
+  if (wx.showShareMenu) {
+    wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] })
+  }
+}
+
+function buildHomeShareQuery(form) {
+  var safeForm = form || {}
+  var pairs = []
+  var fields = ['subject', 'analysisYear', 'score', 'rank', 'targetMajor', 'notes', 'schoolName', 'schoolYear', 'className']
+
+  for (var i = 0; i < fields.length; i += 1) {
+    var key = fields[i]
+    var value = safeForm[key]
+    if (value || value === 0) {
+      pairs.push(`${key}=${encodeURIComponent(String(value))}`)
+    }
+  }
+
+  if (safeForm.fromRecommend) {
+    pairs.push('fromRecommend=true')
+  }
+
+  return pairs.join('&')
+}
+
+function buildHomeShareTitle(form) {
+  var safeForm = form || {}
+  if (safeForm.score && safeForm.rank) {
+    return `黑龙江${safeForm.subject || ''}${safeForm.score}分 / ${safeForm.rank}名志愿方案，帮我一起看看`
+  }
+  if (safeForm.targetMajor) {
+    return `我在看黑龙江${safeForm.targetMajor}志愿填报，帮我一起参谋`
+  }
+  return '黑龙江高考志愿填报助手：查位次、看专业组、出方案'
+}
+
 const CLOUD_DATASET_OVERVIEW = {
   college_count: 1520,
   program_group_count: 6174,
@@ -221,11 +283,43 @@ Page({
       score: '580',
       rank: '7500',
       targetMajor: '计算机类',
-      notes: ''
+      notes: '',
+      schoolName: '',
+      schoolYear: '',
+      className: '',
+      fromRecommend: false
     }
   },
 
+  onLoad(query) {
+    var safeQuery = query || {}
+    var hasSharePayload = !!(safeQuery.subject || safeQuery.score || safeQuery.rank || safeQuery.targetMajor || safeQuery.notes || safeQuery.analysisYear || safeQuery.schoolName || safeQuery.schoolYear || safeQuery.className || safeQuery.fromRecommend)
+    if (!hasSharePayload) {
+      return
+    }
+
+    var nextForm = {
+      ...this.data.form,
+      subject: decodeQueryValue(safeQuery.subject, this.data.form.subject),
+      analysisYear: decodeQueryValue(safeQuery.analysisYear, this.data.form.analysisYear),
+      score: decodeQueryValue(safeQuery.score, this.data.form.score),
+      rank: decodeQueryValue(safeQuery.rank, this.data.form.rank),
+      targetMajor: decodeQueryValue(safeQuery.targetMajor, this.data.form.targetMajor),
+      notes: decodeQueryValue(safeQuery.notes, this.data.form.notes),
+      schoolName: decodeQueryValue(safeQuery.schoolName, this.data.form.schoolName),
+      schoolYear: decodeQueryValue(safeQuery.schoolYear, this.data.form.schoolYear),
+      className: decodeQueryValue(safeQuery.className, this.data.form.className),
+      fromRecommend: decodeBooleanQueryValue(safeQuery.fromRecommend, this.data.form.fromRecommend)
+    }
+
+    this.setData({
+      form: nextForm,
+      analysisContext: buildYearContext(nextForm.analysisYear, nextForm.subject)
+    })
+  },
+
   onShow() {
+    enableShareMenus()
     const history = getRecommendHistory().slice(0, 3)
     const authUser = getAuthUser()
     const profile = getUserProfile()
@@ -329,7 +423,7 @@ Page({
   openAiAgentPage() {
     const form = this.data.form
     wx.navigateTo({
-      url: `/pages/ai-agent/ai-agent?subject=${encodeURIComponent(form.subject)}&score=${encodeURIComponent(form.score || '')}&rank=${encodeURIComponent(form.rank || '')}&targetMajor=${encodeURIComponent(form.targetMajor || '')}&notes=${encodeURIComponent(form.notes || '')}&analysisYear=${encodeURIComponent(form.analysisYear || '2025')}`
+      url: `/pages/ai-agent/ai-agent?subject=${encodeURIComponent(form.subject)}&score=${encodeURIComponent(form.score || '')}&rank=${encodeURIComponent(form.rank || '')}&targetMajor=${encodeURIComponent(form.targetMajor || '')}&notes=${encodeURIComponent(form.notes || '')}&analysisYear=${encodeURIComponent(form.analysisYear || '2025')}&schoolName=${encodeURIComponent(form.schoolName || '')}&schoolYear=${encodeURIComponent(form.schoolYear || '')}&className=${encodeURIComponent(form.className || '')}&fromRecommend=${encodeURIComponent(form.fromRecommend ? 'true' : 'false')}`
     })
   },
 
@@ -498,7 +592,11 @@ Page({
         score: String(student.score || ''),
         rank: String(student.rank || ''),
         targetMajor: student.targetMajor || '',
-        notes: student.notes || ''
+        notes: student.notes || '',
+        schoolName: student.schoolName || '',
+        schoolYear: student.schoolYear || '',
+        className: student.className || '',
+        fromRecommend: !!student.fromRecommend
       },
       analysisContext: buildYearContext(String(student.year || 2025), student.subject || '历史')
     })
@@ -540,7 +638,7 @@ Page({
 
     this.setData({ loading: true })
     try {
-      const { province, subject, score, rank, year, targetMajor, notes } = this.data.form
+      const { province, subject, score, rank, year, targetMajor, notes, schoolName, schoolYear, className, fromRecommend } = this.data.form
       const payload = {
         province,
         subject,
@@ -548,7 +646,11 @@ Page({
         rank: Number(rank),
         year: Number(year),
         targetMajor,
-        notes
+        notes,
+        schoolName,
+        schoolYear,
+        className,
+        fromRecommend: !!fromRecommend
       }
       const result = await request({
         url: '/api/recommend',
@@ -565,7 +667,11 @@ Page({
           score: Number(score),
           rank: Number(rank),
           targetMajor,
-          notes
+          notes,
+          schoolName,
+          schoolYear,
+          className,
+          fromRecommend: !!fromRecommend
         })
         getApp().setProfile(profile)
       }
@@ -585,6 +691,23 @@ Page({
       }
     } finally {
       this.setData({ loading: false })
+    }
+  },
+
+  onShareAppMessage() {
+    var query = buildHomeShareQuery(this.data.form)
+    return {
+      title: buildHomeShareTitle(this.data.form),
+      path: '/pages/index/index' + (query ? `?${query}` : ''),
+      imageUrl: ''
+    }
+  },
+
+  onShareTimeline() {
+    return {
+      title: buildHomeShareTitle(this.data.form),
+      query: buildHomeShareQuery(this.data.form),
+      imageUrl: ''
     }
   }
 })

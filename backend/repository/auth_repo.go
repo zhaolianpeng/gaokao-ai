@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	"gaokao-ai/backend/model"
@@ -19,7 +20,7 @@ func NewAuthRepository(db *sql.DB) *AuthRepository {
 
 func (r *AuthRepository) GetUserByID(ctx context.Context, userID int) (*model.AuthUserRecord, error) {
 	row := r.db.QueryRowContext(ctx, `
-		SELECT id, openid, phone, nickname, COALESCE(avatar_url, ''), login_type, created_at, updated_at, last_login_at
+		SELECT id, openid, phone, nickname, COALESCE(avatar_url, ''), COALESCE(id_card, ''), COALESCE(school_name, ''), COALESCE(school_year, ''), COALESCE(class_name, ''), COALESCE(student_no, ''), COALESCE(from_recommend, 0), login_type, created_at, updated_at, last_login_at
 		FROM mini_auth_user
 		WHERE id = ?
 	`, userID)
@@ -28,7 +29,7 @@ func (r *AuthRepository) GetUserByID(ctx context.Context, userID int) (*model.Au
 
 func (r *AuthRepository) GetUserByOpenID(ctx context.Context, openid string) (*model.AuthUserRecord, error) {
 	row := r.db.QueryRowContext(ctx, `
-		SELECT id, openid, phone, nickname, COALESCE(avatar_url, ''), login_type, created_at, updated_at, last_login_at
+		SELECT id, openid, phone, nickname, COALESCE(avatar_url, ''), COALESCE(id_card, ''), COALESCE(school_name, ''), COALESCE(school_year, ''), COALESCE(class_name, ''), COALESCE(student_no, ''), COALESCE(from_recommend, 0), login_type, created_at, updated_at, last_login_at
 		FROM mini_auth_user
 		WHERE openid = ?
 	`, openid)
@@ -71,16 +72,50 @@ func (r *AuthRepository) UpsertWechatUser(ctx context.Context, openid, phone str
 	return updatedUser, false, nil
 }
 
-func (r *AuthRepository) UpdateProfile(ctx context.Context, userID int, phone, nickname, avatarURL string) (*model.AuthUserRecord, error) {
+func (r *AuthRepository) UpdateProfile(ctx context.Context, userID int, req model.WechatProfileUpdateRequest) (*model.AuthUserRecord, error) {
+	assignments := []string{"nickname = ?"}
+	args := []any{strings.TrimSpace(req.Nickname)}
+
+	if req.Phone != nil {
+		assignments = append(assignments, "phone = ?")
+		args = append(args, strings.TrimSpace(*req.Phone))
+	}
+	if req.AvatarURL != nil {
+		assignments = append(assignments, "avatar_url = ?")
+		args = append(args, strings.TrimSpace(*req.AvatarURL))
+	}
+	if req.IDCard != nil {
+		assignments = append(assignments, "id_card = ?")
+		args = append(args, strings.ToUpper(strings.TrimSpace(*req.IDCard)))
+	}
+	if req.SchoolName != nil {
+		assignments = append(assignments, "school_name = ?")
+		args = append(args, strings.TrimSpace(*req.SchoolName))
+	}
+	if req.SchoolYear != nil {
+		assignments = append(assignments, "school_year = ?")
+		args = append(args, strings.TrimSpace(*req.SchoolYear))
+	}
+	if req.ClassName != nil {
+		assignments = append(assignments, "class_name = ?")
+		args = append(args, strings.TrimSpace(*req.ClassName))
+	}
+	if req.StudentNo != nil {
+		assignments = append(assignments, "student_no = ?")
+		args = append(args, strings.TrimSpace(*req.StudentNo))
+	}
+	if req.FromRecommend != nil {
+		assignments = append(assignments, "from_recommend = ?")
+		args = append(args, *req.FromRecommend)
+	}
+
+	assignments = append(assignments, "updated_at = CURRENT_TIMESTAMP", "last_login_at = CURRENT_TIMESTAMP")
+	args = append(args, userID)
 	_, err := r.db.ExecContext(ctx, `
 		UPDATE mini_auth_user
-		SET phone = CASE WHEN ? <> '' THEN ? ELSE phone END,
-			nickname = ?,
-			avatar_url = CASE WHEN ? <> '' THEN ? ELSE avatar_url END,
-			updated_at = CURRENT_TIMESTAMP,
-			last_login_at = CURRENT_TIMESTAMP
+		SET `+strings.Join(assignments, ", ")+`
 		WHERE id = ?
-	`, phone, phone, nickname, avatarURL, avatarURL, userID)
+	`, args...)
 	if err != nil {
 		return nil, fmt.Errorf("update mini_auth_user profile: %w", err)
 	}
@@ -95,6 +130,12 @@ func scanAuthUser(scanner interface{ Scan(dest ...any) error }) (*model.AuthUser
 		&record.Phone,
 		&record.Nickname,
 		&record.AvatarURL,
+		&record.IDCard,
+		&record.SchoolName,
+		&record.SchoolYear,
+		&record.ClassName,
+		&record.StudentNo,
+		&record.FromRecommend,
 		&record.LoginType,
 		&record.CreatedAt,
 		&record.UpdatedAt,

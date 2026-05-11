@@ -3,6 +3,9 @@
     <view class="hero-badge">DeepSeek 智能体</view>
     <view class="hero-title">AI 需求分析</view>
     <view class="hero-sub">输入你对城市、学校层次、专业方向、调剂接受度等要求，AI 会给出可执行的报考策略。</view>
+    <view class="hero-action-row">
+      <button class="hero-share-btn" open-type="share">转发给家长或同学</button>
+    </view>
   </view>
 
   <view class="card workflow-card">
@@ -36,6 +39,8 @@
       <view class="field picker-field">科类：{{form.subject}}</view>
     </picker>
     <view class="field fixed-field">分析年份：{{form.analysisYear}}</view>
+    <view class="field fixed-field" wx:if="{{form.schoolName || form.schoolYear || form.className}}">档案上下文：{{form.schoolName || '未选学校'}} / {{form.schoolYear || '未选学年'}} / {{form.className || '未选班级'}}</view>
+    <view class="field fixed-field" wx:if="{{form.fromRecommend}}">推荐来源：已标记为通过推荐链路进入</view>
     <input class="input" type="number" placeholder="高考分数，可选" value="{{form.score}}" data-field="score" bindinput="onInput" />
     <input class="input" type="number" placeholder="全省排名，可选" value="{{form.rank}}" data-field="rank" bindinput="onInput" />
     <input class="input" placeholder="意向专业，可选" value="{{form.targetMajor}}" data-field="targetMajor" bindinput="onInput" />

@@ -67,6 +67,9 @@
 
 .hero-link-row {
   margin-top: 18rpx;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
 }
 
 .hero-link-btn {
@@ -79,6 +82,16 @@
   background: rgba(255, 255, 255, 0.14);
   color: #ffffff;
   font-size: 24rpx;
+}
+
+.hero-share-btn {
+  margin: 0;
+  line-height: 1;
+  border: 0;
+}
+
+.hero-share-btn::after {
+  border: 0;
 }
 
 .knowledge-card {

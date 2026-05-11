@@ -20,6 +20,44 @@ const ANALYZE_PROGRESS_TEXTS = [
 ]
 const ANALYZE_HELPER_IDLE = '基础推荐先秒级给出，深度 AI 报告改为异步生成。你可以先继续浏览当前推荐，结果完成后会自动打开。'
 
+function enableShareMenus() {
+  if (wx.showShareMenu) {
+    wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] })
+  }
+}
+
+function buildRecommendShareQuery(student) {
+  var safeStudent = student || {}
+  var pairs = []
+  var fields = ['subject', 'score', 'rank', 'targetMajor', 'notes', 'schoolName', 'schoolYear', 'className']
+
+  for (var i = 0; i < fields.length; i += 1) {
+    var key = fields[i]
+    var value = safeStudent[key]
+    if (value || value === 0) {
+      pairs.push(`${key}=${encodeURIComponent(String(value))}`)
+    }
+  }
+
+  if (safeStudent.fromRecommend) {
+    pairs.push('fromRecommend=true')
+  }
+
+  pairs.push('analysisYear=2025')
+  return pairs.join('&')
+}
+
+function buildRecommendShareTitle(student) {
+  var safeStudent = student || {}
+  if (safeStudent.score && safeStudent.rank) {
+    return `黑龙江${safeStudent.subject || ''}${safeStudent.score}分 / ${safeStudent.rank}名志愿方案已生成`
+  }
+  if (safeStudent.targetMajor) {
+    return `黑龙江${safeStudent.targetMajor}志愿推荐已生成，帮我一起看看`
+  }
+  return '黑龙江志愿推荐结果已生成，帮我一起看看'
+}
+
 const LENS_OPTIONS = [
   { key: 'school', title: '保学校', desc: '先保学校层次和录取结果，适合先定梯度，再微调专业。' },
   { key: 'major', title: '保专业', desc: '优先保证目标专业和相近方向，再看是否接受组内调剂。' },
@@ -488,6 +526,7 @@ Page({
   },
 
   onLoad(query) {
+    enableShareMenus()
     var safeQuery = query || {}
     this.bindEventChannelPayload()
     try {
@@ -509,6 +548,7 @@ Page({
   },
 
   onShow() {
+    enableShareMenus()
     if (!hasKeys(this.data.student)) {
       var pendingPayload = getPendingRecommendPayload() || null
       if (pendingPayload) {
@@ -933,8 +973,17 @@ Page({
   onShareAppMessage() {
     var student = this.data.student || {}
     return {
-      title: `黑龙江${student.subject || ''} ${student.score || ''}分志愿方案已生成`,
-      path: '/pages/index/index',
+      title: buildRecommendShareTitle(student),
+      path: '/pages/index/index?' + buildRecommendShareQuery(student),
+      imageUrl: ''
+    }
+  },
+
+  onShareTimeline() {
+    var student = this.data.student || {}
+    return {
+      title: buildRecommendShareTitle(student),
+      query: buildRecommendShareQuery(student),
       imageUrl: ''
     }
   }

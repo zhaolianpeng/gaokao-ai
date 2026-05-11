@@ -22,6 +22,45 @@
       </view>
 
       <view class="profile-edit-field">
+        <view class="profile-edit-label">身份证号</view>
+        <input class="input profile-edit-input" placeholder="请输入身份证号" value="{{profile.idCard}}" data-field="idCard" bindinput="onInput" always-embed="true" />
+      </view>
+
+      <view class="profile-edit-field">
+        <view class="profile-edit-label">学校</view>
+        <picker wx:if="{{schoolOptions.length}}" mode="selector" range="{{schoolOptions}}" range-key="label" value="{{schoolOptions.length ? 0 : 0}}" bindchange="onSchoolChange">
+          <view class="profile-edit-picker">{{profile.schoolName || '请选择学校'}}</view>
+        </picker>
+        <view wx:else class="profile-edit-static">请先在 MIS 配置学校选项</view>
+      </view>
+
+      <view class="profile-edit-field">
+        <view class="profile-edit-label">学年</view>
+        <picker wx:if="{{schoolYearOptions.length}}" mode="selector" range="{{schoolYearOptions}}" range-key="label" bindchange="onSchoolYearChange">
+          <view class="profile-edit-picker">{{profile.schoolYear || '请选择学年'}}</view>
+        </picker>
+        <view wx:else class="profile-edit-static">请先在 MIS 配置学年选项</view>
+      </view>
+
+      <view class="profile-edit-field">
+        <view class="profile-edit-label">班级</view>
+        <picker wx:if="{{classOptions.length}}" mode="selector" range="{{classOptions}}" range-key="label" bindchange="onClassChange">
+          <view class="profile-edit-picker">{{profile.className || '请选择班级'}}</view>
+        </picker>
+        <view wx:else class="profile-edit-static">请先在 MIS 配置班级选项</view>
+      </view>
+
+      <view class="profile-edit-field">
+        <view class="profile-edit-label">学号</view>
+        <input class="input profile-edit-input" placeholder="请输入学号" value="{{profile.studentNo}}" data-field="studentNo" bindinput="onInput" always-embed="true" />
+      </view>
+
+      <view class="profile-edit-field">
+        <view class="profile-edit-label">是否通过推荐过来</view>
+        <switch checked="{{profile.fromRecommend}}" bindchange="onFromRecommendChange" color="#1f6feb"></switch>
+      </view>
+
+      <view class="profile-edit-field">
         <view class="profile-edit-label">高考分数</view>
         <input class="input profile-edit-input" type="number" placeholder="请输入分数" value="{{profile.score}}" data-field="score" bindinput="onInput" always-embed="true" />
       </view>
@@ -40,6 +79,8 @@
         <view class="profile-edit-label">报考偏好</view>
         <textarea class="textarea profile-edit-textarea" placeholder="例如：优先哈尔滨、接受调剂、尽量公办" value="{{profile.notes}}" data-field="notes" bindinput="onInput" disable-default-padding="true"></textarea>
       </view>
+
+      <view class="profile-edit-desc" wx:if="{{optionsLoading}}">正在加载学校、学年和班级配置...</view>
 
       <view class="ghost-btn profile-edit-action" hover-class="profile-edit-action-hover" bindtap="syncNickname">{{syncSubmitting ? '同步中...' : '同步昵称到当前账号'}}</view>
       <view class="primary-btn profile-edit-action" hover-class="profile-edit-action-hover" bindtap="saveProfile">{{saveSubmitting ? '保存中...' : '保存报考档案'}}</view>

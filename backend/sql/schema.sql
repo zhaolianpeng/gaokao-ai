@@ -133,6 +133,30 @@ DROP INDEX IF EXISTS uq_college_admission_line_main;
 CREATE UNIQUE INDEX IF NOT EXISTS uq_college_admission_line_main
 ON college_admission_line (college_id, province, year, subject, batch, admission_type, major);
 
+ALTER TABLE mini_auth_user ADD COLUMN IF NOT EXISTS id_card VARCHAR(64) DEFAULT '';
+ALTER TABLE mini_auth_user ADD COLUMN IF NOT EXISTS school_name VARCHAR(128) DEFAULT '';
+ALTER TABLE mini_auth_user ADD COLUMN IF NOT EXISTS school_year VARCHAR(64) DEFAULT '';
+ALTER TABLE mini_auth_user ADD COLUMN IF NOT EXISTS class_name VARCHAR(128) DEFAULT '';
+ALTER TABLE mini_auth_user ADD COLUMN IF NOT EXISTS student_no VARCHAR(64) DEFAULT '';
+ALTER TABLE mini_auth_user ADD COLUMN IF NOT EXISTS from_recommend BOOLEAN DEFAULT FALSE;
+
+CREATE TABLE IF NOT EXISTS profile_option_config (
+  id SERIAL PRIMARY KEY,
+  option_type VARCHAR(32) NOT NULL,
+  option_label VARCHAR(128) NOT NULL,
+  option_value VARCHAR(128) NOT NULL DEFAULT '',
+  sort_order INT NOT NULL DEFAULT 0,
+  enabled BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_profile_option_config_main
+ON profile_option_config (option_type, option_value);
+
+CREATE INDEX IF NOT EXISTS idx_profile_option_config_type
+ON profile_option_config (option_type, enabled, sort_order);
+
 CREATE TABLE IF NOT EXISTS college_score_line (
   id SERIAL PRIMARY KEY,
   college_id INT NOT NULL REFERENCES college(id),

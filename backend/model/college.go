@@ -187,13 +187,17 @@ type RecommendItem struct {
 }
 
 type RecommendRequest struct {
-	Province    string `json:"province" binding:"required"`
-	Score       int    `json:"score" binding:"required"`
-	Rank        int    `json:"rank" binding:"required"`
-	Subject     string `json:"subject" binding:"required"`
-	Year        int    `json:"year"`
-	TargetMajor string `json:"targetMajor"`
-	Notes       string `json:"notes"`
+	Province      string `json:"province" binding:"required"`
+	Score         int    `json:"score" binding:"required"`
+	Rank          int    `json:"rank" binding:"required"`
+	Subject       string `json:"subject" binding:"required"`
+	Year          int    `json:"year"`
+	TargetMajor   string `json:"targetMajor"`
+	Notes         string `json:"notes"`
+	SchoolName    string `json:"schoolName"`
+	SchoolYear    string `json:"schoolYear"`
+	ClassName     string `json:"className"`
+	FromRecommend bool   `json:"fromRecommend"`
 }
 
 type RecommendResponse struct {

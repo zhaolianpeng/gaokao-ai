@@ -3,29 +3,41 @@ package model
 import "time"
 
 type AuthUser struct {
-	ID          string `json:"id"`
-	OpenID      string `json:"openid"`
-	Phone       string `json:"phone"`
-	Nickname    string `json:"nickname"`
-	AvatarURL   string `json:"avatarUrl"`
-	LoginType   string `json:"loginType"`
-	StorageMode string `json:"storageMode"`
-	Created     bool   `json:"created"`
-	CreatedAt   int64  `json:"createdAt"`
-	UpdatedAt   int64  `json:"updatedAt"`
-	LastLoginAt int64  `json:"lastLoginAt"`
+	ID            string `json:"id"`
+	OpenID        string `json:"openid"`
+	Phone         string `json:"phone"`
+	Nickname      string `json:"nickname"`
+	AvatarURL     string `json:"avatarUrl"`
+	IDCard        string `json:"idCard"`
+	SchoolName    string `json:"schoolName"`
+	SchoolYear    string `json:"schoolYear"`
+	ClassName     string `json:"className"`
+	StudentNo     string `json:"studentNo"`
+	FromRecommend bool   `json:"fromRecommend"`
+	LoginType     string `json:"loginType"`
+	StorageMode   string `json:"storageMode"`
+	Created       bool   `json:"created"`
+	CreatedAt     int64  `json:"createdAt"`
+	UpdatedAt     int64  `json:"updatedAt"`
+	LastLoginAt   int64  `json:"lastLoginAt"`
 }
 
 type AuthUserRecord struct {
-	ID          int
-	OpenID      string
-	Phone       string
-	Nickname    string
-	AvatarURL   string
-	LoginType   string
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-	LastLoginAt time.Time
+	ID            int
+	OpenID        string
+	Phone         string
+	Nickname      string
+	AvatarURL     string
+	IDCard        string
+	SchoolName    string
+	SchoolYear    string
+	ClassName     string
+	StudentNo     string
+	FromRecommend bool
+	LoginType     string
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	LastLoginAt   time.Time
 }
 
 type WechatLoginRequest struct {
@@ -34,10 +46,16 @@ type WechatLoginRequest struct {
 }
 
 type WechatProfileUpdateRequest struct {
-	UserID    string `json:"userId" binding:"required"`
-	Phone     string `json:"phone"`
-	Nickname  string `json:"nickname" binding:"required"`
-	AvatarURL string `json:"avatarUrl"`
+	UserID        string  `json:"userId" binding:"required"`
+	Phone         *string `json:"phone"`
+	Nickname      string  `json:"nickname" binding:"required"`
+	AvatarURL     *string `json:"avatarUrl"`
+	IDCard        *string `json:"idCard"`
+	SchoolName    *string `json:"schoolName"`
+	SchoolYear    *string `json:"schoolYear"`
+	ClassName     *string `json:"className"`
+	StudentNo     *string `json:"studentNo"`
+	FromRecommend *bool   `json:"fromRecommend"`
 }
 
 type WechatPayRequest struct {
@@ -77,14 +95,18 @@ type WechatPayResponse struct {
 }
 
 type TaskStudent struct {
-	Province     string `json:"province"`
-	Subject      string `json:"subject"`
-	AnalysisYear string `json:"analysisYear"`
-	Score        int    `json:"score"`
-	Rank         int    `json:"rank"`
-	TargetMajor  string `json:"targetMajor"`
-	Notes        string `json:"notes"`
-	Year         int    `json:"year"`
+	Province      string `json:"province"`
+	Subject       string `json:"subject"`
+	AnalysisYear  string `json:"analysisYear"`
+	Score         int    `json:"score"`
+	Rank          int    `json:"rank"`
+	TargetMajor   string `json:"targetMajor"`
+	Notes         string `json:"notes"`
+	SchoolName    string `json:"schoolName"`
+	SchoolYear    string `json:"schoolYear"`
+	ClassName     string `json:"className"`
+	FromRecommend bool   `json:"fromRecommend"`
+	Year          int    `json:"year"`
 }
 
 type AgentRecommendRequest struct {

@@ -60,7 +60,36 @@ func (s *AuthService) UpdateProfile(ctx context.Context, req model.WechatProfile
 	if err != nil || userID <= 0 {
 		return nil, fmt.Errorf("invalid user id")
 	}
-	userRecord, err := s.repo.UpdateProfile(ctx, userID, strings.TrimSpace(req.Phone), strings.TrimSpace(req.Nickname), strings.TrimSpace(req.AvatarURL))
+	if req.Phone != nil {
+		trimmed := strings.TrimSpace(*req.Phone)
+		req.Phone = &trimmed
+	}
+	req.Nickname = strings.TrimSpace(req.Nickname)
+	if req.AvatarURL != nil {
+		trimmed := strings.TrimSpace(*req.AvatarURL)
+		req.AvatarURL = &trimmed
+	}
+	if req.IDCard != nil {
+		trimmed := strings.ToUpper(strings.TrimSpace(*req.IDCard))
+		req.IDCard = &trimmed
+	}
+	if req.SchoolName != nil {
+		trimmed := strings.TrimSpace(*req.SchoolName)
+		req.SchoolName = &trimmed
+	}
+	if req.SchoolYear != nil {
+		trimmed := strings.TrimSpace(*req.SchoolYear)
+		req.SchoolYear = &trimmed
+	}
+	if req.ClassName != nil {
+		trimmed := strings.TrimSpace(*req.ClassName)
+		req.ClassName = &trimmed
+	}
+	if req.StudentNo != nil {
+		trimmed := strings.TrimSpace(*req.StudentNo)
+		req.StudentNo = &trimmed
+	}
+	userRecord, err := s.repo.UpdateProfile(ctx, userID, req)
 	if err != nil {
 		return nil, err
 	}
@@ -195,16 +224,22 @@ func toAuthUser(record *model.AuthUserRecord, created bool) *model.AuthUser {
 		return nil
 	}
 	return &model.AuthUser{
-		ID:          strconv.Itoa(record.ID),
-		OpenID:      record.OpenID,
-		Phone:       record.Phone,
-		Nickname:    record.Nickname,
-		AvatarURL:   record.AvatarURL,
-		LoginType:   record.LoginType,
-		StorageMode: "server",
-		Created:     created,
-		CreatedAt:   record.CreatedAt.UnixMilli(),
-		UpdatedAt:   record.UpdatedAt.UnixMilli(),
-		LastLoginAt: record.LastLoginAt.UnixMilli(),
+		ID:            strconv.Itoa(record.ID),
+		OpenID:        record.OpenID,
+		Phone:         record.Phone,
+		Nickname:      record.Nickname,
+		AvatarURL:     record.AvatarURL,
+		IDCard:        record.IDCard,
+		SchoolName:    record.SchoolName,
+		SchoolYear:    record.SchoolYear,
+		ClassName:     record.ClassName,
+		StudentNo:     record.StudentNo,
+		FromRecommend: record.FromRecommend,
+		LoginType:     record.LoginType,
+		StorageMode:   "server",
+		Created:       created,
+		CreatedAt:     record.CreatedAt.UnixMilli(),
+		UpdatedAt:     record.UpdatedAt.UnixMilli(),
+		LastLoginAt:   record.LastLoginAt.UnixMilli(),
 	}
 }

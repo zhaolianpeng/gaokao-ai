@@ -113,12 +113,31 @@ CREATE TABLE IF NOT EXISTS mini_auth_user (
   phone VARCHAR(32) NOT NULL DEFAULT '',
   nickname VARCHAR(255) NOT NULL DEFAULT '',
   avatar_url TEXT,
+  id_card VARCHAR(64) NOT NULL DEFAULT '',
+  school_name VARCHAR(128) NOT NULL DEFAULT '',
+  school_year VARCHAR(64) NOT NULL DEFAULT '',
+  class_name VARCHAR(128) NOT NULL DEFAULT '',
+  student_no VARCHAR(64) NOT NULL DEFAULT '',
+  from_recommend TINYINT(1) NOT NULL DEFAULT 0,
   login_type VARCHAR(50) NOT NULL DEFAULT 'wechat-phone',
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   last_login_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY uq_mini_auth_user_openid (openid),
   KEY idx_mini_auth_user_phone (phone)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS profile_option_config (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  option_type VARCHAR(32) NOT NULL,
+  option_label VARCHAR(128) NOT NULL,
+  option_value VARCHAR(128) NOT NULL DEFAULT '',
+  sort_order INT NOT NULL DEFAULT 0,
+  enabled TINYINT(1) NOT NULL DEFAULT 1,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_profile_option_config_main (option_type, option_value),
+  KEY idx_profile_option_config_type (option_type, enabled, sort_order)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS college_program_group (

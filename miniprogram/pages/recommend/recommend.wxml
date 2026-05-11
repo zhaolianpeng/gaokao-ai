@@ -7,6 +7,8 @@
   <view class="card" wx:if="{{!loadError}}">
     <view class="section-title">黑龙江专业组方案</view>
     <view class="meta">黑龙江 {{student.subject}} | 2025年 | 分数 {{student.score}} | 排名 {{student.rank}}</view>
+    <view class="meta" wx:if="{{student.schoolName || student.schoolYear || student.className}}">档案上下文：{{student.schoolName || '未选学校'}} / {{student.schoolYear || '未选学年'}} / {{student.className || '未选班级'}}</view>
+    <view class="meta" wx:if="{{student.fromRecommend}}">推荐来源：已标记为通过推荐链路进入</view>
     <view class="meta" wx:if="{{student.targetMajor}}">意向专业：{{student.targetMajor}}</view>
     <view class="meta" wx:if="{{student.notes}}">补充偏好：{{student.notes}}</view>
     <view class="meta">收藏 {{favoriteCount}} | 志愿表 {{applicationCount}} | 对比方案 {{scenarioCount}}</view>

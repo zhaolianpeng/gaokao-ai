@@ -31,6 +31,37 @@ function normalizeDisplayUser(user) {
   }
 }
 
+function defaultProfile() {
+  return {
+    province: '黑龙江',
+    subject: '历史',
+    score: '',
+    rank: '',
+    targetMajor: '',
+    notes: '',
+    idCard: '',
+    schoolName: '',
+    schoolYear: '',
+    className: '',
+    studentNo: '',
+    fromRecommend: false
+  }
+}
+
+function mergeProfile(profile, user) {
+  const hasUserRecommend = !!(user && Object.prototype.hasOwnProperty.call(user, 'fromRecommend'))
+  return {
+    ...defaultProfile(),
+    ...(profile || {}),
+    idCard: (user && user.idCard) || (profile && profile.idCard) || '',
+    schoolName: (user && user.schoolName) || (profile && profile.schoolName) || '',
+    schoolYear: (user && user.schoolYear) || (profile && profile.schoolYear) || '',
+    className: (user && user.className) || (profile && profile.className) || '',
+    studentNo: (user && user.studentNo) || (profile && profile.studentNo) || '',
+    fromRecommend: hasUserRecommend ? !!user.fromRecommend : !!(profile && profile.fromRecommend)
+  }
+}
+
 Page({
   data: {
     user: null,
@@ -39,21 +70,14 @@ Page({
     syncDraftNickname: '',
     syncSubmitting: false,
     avatarSubmitting: false,
-    profile: {
-      province: '黑龙江',
-      subject: '历史',
-      score: '',
-      rank: '',
-      targetMajor: '',
-      notes: ''
-    },
+    profile: defaultProfile(),
     subjectOptions: ['历史', '物理']
   },
 
   onShow() {
     const app = getApp()
     const user = normalizeDisplayUser(getAuthUser())
-    const profile = getUserProfile() || this.data.profile
+    const profile = mergeProfile(getUserProfile(), user)
     app.setUser(user)
     app.setProfile(profile)
     this.setData({
@@ -161,12 +185,7 @@ Page({
       userInitial: '考',
       avatarDisplayUrl: '',
       profile: {
-        province: '黑龙江',
-        subject: '历史',
-        score: '',
-        rank: '',
-        targetMajor: '',
-        notes: ''
+        ...defaultProfile()
       }
     })
     wx.showToast({ title: '已退出登录', icon: 'success' })

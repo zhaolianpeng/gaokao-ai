@@ -1,4 +1,5 @@
 const { request } = require('../../utils/request')
+const { getUserProfile } = require('../../utils/storage')
 
 const DEMAND_TEMPLATES = [
   { id: 'local', label: '留省内', prompt: '我想优先留在黑龙江省内读书，尽量不要去外省。', keyword: '黑龙江' },
@@ -95,6 +96,76 @@ function getTaskStatusText(status) {
   return ''
 }
 
+function enableShareMenus() {
+  if (wx.showShareMenu) {
+    wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] })
+  }
+}
+
+function buildFormFromProfile(form, profile) {
+  if (!profile) {
+    return form
+  }
+  return {
+    ...form,
+    subject: profile.subject || form.subject,
+    analysisYear: profile.analysisYear || form.analysisYear,
+    score: profile.score ? String(profile.score) : form.score,
+    rank: profile.rank ? String(profile.rank) : form.rank,
+    targetMajor: profile.targetMajor || form.targetMajor,
+    notes: profile.notes || form.notes,
+    schoolName: profile.schoolName || form.schoolName,
+    schoolYear: profile.schoolYear || form.schoolYear,
+    className: profile.className || form.className,
+    fromRecommend: typeof profile.fromRecommend === 'boolean' ? profile.fromRecommend : form.fromRecommend
+  }
+}
+
+function decodeBooleanQueryValue(value, fallback) {
+  if (value === undefined || value === null || value === '') {
+    return fallback
+  }
+  var text = String(value).trim().toLowerCase()
+  if (text === '1' || text === 'true' || text === 'yes') {
+    return true
+  }
+  if (text === '0' || text === 'false' || text === 'no') {
+    return false
+  }
+  return fallback
+}
+
+function buildAgentShareTitle(form) {
+  var safeForm = form || {}
+  if (safeForm.targetMajor && safeForm.score) {
+    return `我在做黑龙江${safeForm.targetMajor}AI 志愿分析，当前 ${safeForm.score} 分`
+  }
+  if (safeForm.demand) {
+    return '我在用 AI 生成黑龙江志愿填报策略，帮我一起看看'
+  }
+  return '黑龙江高报 AI 智能体：输入需求，生成可执行报考策略'
+}
+
+function buildAgentShareQuery(form) {
+  var safeForm = form || {}
+  var pairs = []
+  var fields = ['subject', 'analysisYear', 'score', 'rank', 'targetMajor', 'notes', 'schoolName', 'schoolYear', 'className']
+
+  for (var i = 0; i < fields.length; i += 1) {
+    var key = fields[i]
+    var value = safeForm[key]
+    if (value || value === 0) {
+      pairs.push(`${key}=${encodeURIComponent(String(value))}`)
+    }
+  }
+
+  if (safeForm.fromRecommend) {
+    pairs.push('fromRecommend=true')
+  }
+
+  return pairs.join('&')
+}
+
 Page({
   data: {
     loading: false,
@@ -118,27 +189,39 @@ Page({
       rank: '',
       targetMajor: '',
       notes: '',
+      schoolName: '',
+      schoolYear: '',
+      className: '',
+      fromRecommend: false,
       demand: '我想优先去哈尔滨，尽量公办，专业偏计算机或电子信息，能接受组内调剂，请给我一个清晰的报考策略。'
     }
   },
 
   onLoad(query) {
+    enableShareMenus()
+    const profile = getUserProfile()
+    const baseForm = buildFormFromProfile(this.data.form, profile)
     const subject = decodeURIComponent(query.subject || '历史')
     const analysisYear = decodeURIComponent(query.analysisYear || '2025')
     this.setData({
       form: {
-        ...this.data.form,
+        ...baseForm,
         subject,
         analysisYear,
-        score: decodeURIComponent(query.score || ''),
-        rank: decodeURIComponent(query.rank || ''),
-        targetMajor: decodeURIComponent(query.targetMajor || ''),
-        notes: decodeURIComponent(query.notes || '')
+        score: decodeURIComponent(query.score || baseForm.score || ''),
+        rank: decodeURIComponent(query.rank || baseForm.rank || ''),
+        targetMajor: decodeURIComponent(query.targetMajor || baseForm.targetMajor || ''),
+        notes: decodeURIComponent(query.notes || baseForm.notes || ''),
+        schoolName: decodeURIComponent(query.schoolName || baseForm.schoolName || ''),
+        schoolYear: decodeURIComponent(query.schoolYear || baseForm.schoolYear || ''),
+        className: decodeURIComponent(query.className || baseForm.className || ''),
+        fromRecommend: decodeBooleanQueryValue(query.fromRecommend, baseForm.fromRecommend)
       }
     })
   },
 
   onShow() {
+    enableShareMenus()
     if (this.data.taskId && !this.data.taskReady && this.data.taskStatus !== 'failed') {
       this.startPolling(this.data.taskId)
     }
@@ -201,7 +284,11 @@ Page({
         score: Number(this.data.form.score || 0),
         rank: Number(this.data.form.rank || 0),
         targetMajor: this.data.form.targetMajor,
-        notes: this.data.form.notes
+        notes: this.data.form.notes,
+        schoolName: this.data.form.schoolName,
+        schoolYear: this.data.form.schoolYear,
+        className: this.data.form.className,
+        fromRecommend: !!this.data.form.fromRecommend
       },
       demand: this.data.form.demand,
       templates: this.getSelectedTemplates().map((item) => item.label)
@@ -321,6 +408,23 @@ Page({
       }
     } finally {
       this.setData({ loading: false })
+    }
+  },
+
+  onShareAppMessage() {
+    var query = buildAgentShareQuery(this.data.form)
+    return {
+      title: buildAgentShareTitle(this.data.form),
+      path: '/pages/ai-agent/ai-agent' + (query ? `?${query}` : ''),
+      imageUrl: ''
+    }
+  },
+
+  onShareTimeline() {
+    return {
+      title: buildAgentShareTitle(this.data.form),
+      query: buildAgentShareQuery(this.data.form),
+      imageUrl: ''
     }
   }
 })

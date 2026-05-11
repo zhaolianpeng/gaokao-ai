@@ -518,21 +518,47 @@
       },
       students: {
         label: '考生管理',
-        desc: '管理小程序登录考生账号、昵称和手机号。',
+		desc: '管理小程序登录考生账号、基础档案和推荐来源。',
         endpoint: '/api/admin/students',
         type: 'crud',
         searchable: true,
         creatable: false,
         deletable: false,
         columns: [
-          ['id', 'ID'], ['nickname', '昵称'], ['phone', '手机号'], ['loginType', '登录方式'], ['lastLoginAt', '最近登录'], ['createdAt', '创建时间']
+		  ['id', 'ID'], ['nickname', '昵称'], ['phone', '手机号'], ['schoolName', '学校'], ['schoolYear', '学年'], ['className', '班级'], ['studentNo', '学号'], ['fromRecommend', '推荐来源'], ['lastLoginAt', '最近登录']
         ],
         fields: [
           { name: 'id', type: 'hidden' },
           { name: 'nickname', label: '昵称', type: 'text' },
           { name: 'phone', label: '手机号', type: 'text' },
+          { name: 'idCard', label: '身份证号', type: 'text' },
+          { name: 'schoolName', label: '学校', type: 'text' },
+          { name: 'schoolYear', label: '学年', type: 'text' },
+          { name: 'className', label: '班级', type: 'text' },
+          { name: 'studentNo', label: '学号', type: 'text' },
+          { name: 'fromRecommend', label: '是否来自推荐', type: 'checkbox', checkboxLabel: '标记为推荐来源' },
           { name: 'loginType', label: '登录方式', type: 'text' },
           { name: 'avatarUrl', label: '头像链接', type: 'text', full: true }
+        ]
+      },
+      profileOptions: {
+        label: '档案配置',
+        desc: '维护考生档案中的学校、学年、班级下拉项。',
+        endpoint: '/api/admin/profile-options',
+        type: 'crud',
+        searchable: true,
+        creatable: true,
+        deletable: true,
+        columns: [
+          ['id', 'ID'], ['optionType', '类型'], ['optionLabel', '显示名称'], ['optionValue', '值'], ['sortOrder', '排序'], ['enabled', '启用'], ['updatedAt', '更新时间']
+        ],
+        fields: [
+          { name: 'id', type: 'hidden' },
+          { name: 'optionType', label: '类型', type: 'select', options: ['school', 'schoolYear', 'className'] },
+          { name: 'optionLabel', label: '显示名称', type: 'text', required: true },
+          { name: 'optionValue', label: '值', type: 'text', full: true },
+          { name: 'sortOrder', label: '排序', type: 'number', required: true },
+          { name: 'enabled', label: '启用', type: 'checkbox', checkboxLabel: '启用选项', full: true }
         ]
       },
       orders: {
@@ -606,13 +632,14 @@
       }
     }
 
-    const navOrder = ['dashboard', 'colleges', 'provinceLines', 'scoreRanks', 'students', 'orders', 'staff', 'volunteers', 'aiTasks', 'paymentItems']
+    const navOrder = ['dashboard', 'colleges', 'provinceLines', 'scoreRanks', 'students', 'profileOptions', 'orders', 'staff', 'volunteers', 'aiTasks', 'paymentItems']
     const SECTION_PATHS = {
       dashboard: '/mis/dashboard',
       colleges: '/mis/colleges',
       provinceLines: '/mis/province-lines',
       scoreRanks: '/mis/score-ranks',
       students: '/mis/students',
+      profileOptions: '/mis/profile-options',
       orders: '/mis/orders',
       staff: '/mis/staff',
       volunteers: '/mis/volunteers',
@@ -625,6 +652,7 @@
       'province-lines': 'provinceLines',
       'score-ranks': 'scoreRanks',
       'students': 'students',
+      'profile-options': 'profileOptions',
       'orders': 'orders',
       'staff': 'staff',
       'volunteers': 'volunteers',
@@ -1712,7 +1740,7 @@
           return `
             <div class="field ${field.full ? 'full' : ''}">
               <label>${field.label}</label>
-              <label class="checkbox-row"><input type="checkbox" name="${field.name}" ${item[field.name] ? 'checked' : ''} /> 启用</label>
+              <label class="checkbox-row"><input type="checkbox" name="${field.name}" ${item[field.name] ? 'checked' : ''} /> ${field.checkboxLabel || '启用'}</label>
             </div>
           `
         }

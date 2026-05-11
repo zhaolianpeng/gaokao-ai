@@ -105,6 +105,18 @@ func (r *AdminRepository) EnsureBootstrap(ctx context.Context, defaultPasswordHa
 			KEY idx_vip_payment_order_status (status),
 			KEY idx_vip_payment_order_product_id (product_id)
 		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+		`CREATE TABLE IF NOT EXISTS profile_option_config (
+			id INT AUTO_INCREMENT PRIMARY KEY,
+			option_type VARCHAR(32) NOT NULL,
+			option_label VARCHAR(128) NOT NULL,
+			option_value VARCHAR(128) NOT NULL DEFAULT '',
+			sort_order INT NOT NULL DEFAULT 0,
+			enabled TINYINT(1) NOT NULL DEFAULT 1,
+			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			UNIQUE KEY uq_profile_option_config_main (option_type, option_value),
+			KEY idx_profile_option_config_type (option_type, enabled, sort_order)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
 	}
 	for _, statement := range statements {
 		if _, err := r.db.ExecContext(ctx, statement); err != nil {
@@ -119,6 +131,12 @@ func (r *AdminRepository) EnsureBootstrap(ctx context.Context, defaultPasswordHa
 		{column: "valid_times", statement: `ALTER TABLE vip_product_config ADD COLUMN valid_times INT NOT NULL DEFAULT 0 AFTER validity_type`},
 		{column: "valid_from", statement: `ALTER TABLE vip_product_config ADD COLUMN valid_from TIMESTAMP NULL DEFAULT NULL AFTER valid_times`},
 		{column: "valid_until", statement: `ALTER TABLE vip_product_config ADD COLUMN valid_until TIMESTAMP NULL DEFAULT NULL AFTER valid_from`},
+		{column: "id_card", statement: `ALTER TABLE mini_auth_user ADD COLUMN id_card VARCHAR(64) NOT NULL DEFAULT '' AFTER avatar_url`},
+		{column: "school_name", statement: `ALTER TABLE mini_auth_user ADD COLUMN school_name VARCHAR(128) NOT NULL DEFAULT '' AFTER id_card`},
+		{column: "school_year", statement: `ALTER TABLE mini_auth_user ADD COLUMN school_year VARCHAR(64) NOT NULL DEFAULT '' AFTER school_name`},
+		{column: "class_name", statement: `ALTER TABLE mini_auth_user ADD COLUMN class_name VARCHAR(128) NOT NULL DEFAULT '' AFTER school_year`},
+		{column: "student_no", statement: `ALTER TABLE mini_auth_user ADD COLUMN student_no VARCHAR(64) NOT NULL DEFAULT '' AFTER class_name`},
+		{column: "from_recommend", statement: `ALTER TABLE mini_auth_user ADD COLUMN from_recommend TINYINT(1) NOT NULL DEFAULT 0 AFTER student_no`},
 	}
 	for _, item := range alterStatements {
 		exists, err := r.columnExists(ctx, "vip_product_config", item.column)
@@ -553,15 +571,15 @@ func (r *AdminRepository) ListStudents(ctx context.Context, keyword string, page
 	page, limit = normalizePage(page, limit)
 	like := buildLike(keyword)
 	var total int
-	if err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM mini_auth_user WHERE openid LIKE ? OR phone LIKE ? OR nickname LIKE ?`, like, like, like).Scan(&total); err != nil {
+	if err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM mini_auth_user WHERE openid LIKE ? OR phone LIKE ? OR nickname LIKE ? OR school_name LIKE ? OR class_name LIKE ? OR student_no LIKE ?`, like, like, like, like, like, like).Scan(&total); err != nil {
 		return nil, 0, err
 	}
 	rows, err := r.db.QueryContext(ctx, `
-		SELECT id, openid, phone, nickname, COALESCE(avatar_url, ''), login_type, created_at, updated_at, last_login_at
+		SELECT id, openid, phone, nickname, COALESCE(avatar_url, ''), COALESCE(id_card, ''), COALESCE(school_name, ''), COALESCE(school_year, ''), COALESCE(class_name, ''), COALESCE(student_no, ''), COALESCE(from_recommend, 0), login_type, created_at, updated_at, last_login_at
 		FROM mini_auth_user
-		WHERE openid LIKE ? OR phone LIKE ? OR nickname LIKE ?
+		WHERE openid LIKE ? OR phone LIKE ? OR nickname LIKE ? OR school_name LIKE ? OR class_name LIKE ? OR student_no LIKE ?
 		ORDER BY id DESC LIMIT ? OFFSET ?
-	`, like, like, like, limit, (page-1)*limit)
+	`, like, like, like, like, like, like, limit, (page-1)*limit)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -569,7 +587,7 @@ func (r *AdminRepository) ListStudents(ctx context.Context, keyword string, page
 	items := make([]model.AdminStudent, 0)
 	for rows.Next() {
 		var item model.AdminStudent
-		if err := rows.Scan(&item.ID, &item.OpenID, &item.Phone, &item.Nickname, &item.AvatarURL, &item.LoginType, &item.CreatedAt, &item.UpdatedAt, &item.LastLoginAt); err != nil {
+		if err := rows.Scan(&item.ID, &item.OpenID, &item.Phone, &item.Nickname, &item.AvatarURL, &item.IDCard, &item.SchoolName, &item.SchoolYear, &item.ClassName, &item.StudentNo, &item.FromRecommend, &item.LoginType, &item.CreatedAt, &item.UpdatedAt, &item.LastLoginAt); err != nil {
 			return nil, 0, err
 		}
 		items = append(items, item)
@@ -580,10 +598,118 @@ func (r *AdminRepository) ListStudents(ctx context.Context, keyword string, page
 func (r *AdminRepository) SaveStudent(ctx context.Context, item model.AdminStudent) error {
 	_, err := r.db.ExecContext(ctx, `
 		UPDATE mini_auth_user
-		SET phone = ?, nickname = ?, avatar_url = ?, login_type = ?, updated_at = CURRENT_TIMESTAMP
+		SET phone = ?, nickname = ?, avatar_url = ?, id_card = ?, school_name = ?, school_year = ?, class_name = ?, student_no = ?, from_recommend = ?, login_type = ?, updated_at = CURRENT_TIMESTAMP
 		WHERE id = ?
-	`, item.Phone, item.Nickname, item.AvatarURL, item.LoginType, item.ID)
+	`, item.Phone, item.Nickname, item.AvatarURL, item.IDCard, item.SchoolName, item.SchoolYear, item.ClassName, item.StudentNo, item.FromRecommend, item.LoginType, item.ID)
 	return err
+}
+
+func (r *AdminRepository) ListProfileOptions(ctx context.Context, keyword, optionType string, page, limit int) ([]model.AdminProfileOption, int, error) {
+	page, limit = normalizePage(page, limit)
+	clauses := []string{"1 = 1"}
+	args := make([]any, 0)
+	appendAdminTextLikeFilter(&clauses, &args, "option_type", optionType)
+	if strings.TrimSpace(keyword) != "" {
+		like := buildLike(keyword)
+		clauses = append(clauses, `(option_label LIKE ? OR option_value LIKE ?)`)
+		args = append(args, like, like)
+	}
+	where := strings.Join(clauses, " AND ")
+	var total int
+	if err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM profile_option_config WHERE `+where, args...).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+	queryArgs := append(append([]any{}, args...), limit, (page-1)*limit)
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT id, option_type, option_label, option_value, sort_order, enabled, updated_at
+		FROM profile_option_config
+		WHERE `+where+`
+		ORDER BY option_type ASC, sort_order ASC, id ASC
+		LIMIT ? OFFSET ?
+	`, queryArgs...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+	items := make([]model.AdminProfileOption, 0)
+	for rows.Next() {
+		var item model.AdminProfileOption
+		if err := rows.Scan(&item.ID, &item.OptionType, &item.OptionLabel, &item.OptionValue, &item.SortOrder, &item.Enabled, &item.UpdatedAt); err != nil {
+			return nil, 0, err
+		}
+		items = append(items, item)
+	}
+	return items, total, rows.Err()
+}
+
+func (r *AdminRepository) SaveProfileOption(ctx context.Context, item model.AdminProfileOption) (int, error) {
+	optionType := strings.TrimSpace(item.OptionType)
+	optionLabel := strings.TrimSpace(item.OptionLabel)
+	optionValue := strings.TrimSpace(item.OptionValue)
+	if optionType == "" || optionLabel == "" {
+		return 0, fmt.Errorf("option type and label required")
+	}
+	if optionValue == "" {
+		optionValue = optionLabel
+	}
+	if item.ID > 0 {
+		_, err := r.db.ExecContext(ctx, `
+			UPDATE profile_option_config
+			SET option_type = ?, option_label = ?, option_value = ?, sort_order = ?, enabled = ?, updated_at = CURRENT_TIMESTAMP
+			WHERE id = ?
+		`, optionType, optionLabel, optionValue, item.SortOrder, item.Enabled, item.ID)
+		return item.ID, err
+	}
+	result, err := r.db.ExecContext(ctx, `
+		INSERT INTO profile_option_config (option_type, option_label, option_value, sort_order, enabled)
+		VALUES (?, ?, ?, ?, ?)
+	`, optionType, optionLabel, optionValue, item.SortOrder, item.Enabled)
+	if err != nil {
+		return 0, err
+	}
+	id, _ := result.LastInsertId()
+	return int(id), nil
+}
+
+func (r *AdminRepository) DeleteProfileOption(ctx context.Context, id int) error {
+	_, err := r.db.ExecContext(ctx, `DELETE FROM profile_option_config WHERE id = ?`, id)
+	return err
+}
+
+func (r *AdminRepository) ListEnabledProfileOptions(ctx context.Context) (*model.ProfileOptionCatalogResponse, error) {
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT option_type, option_label, option_value
+		FROM profile_option_config
+		WHERE enabled = 1
+		ORDER BY option_type ASC, sort_order ASC, id ASC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	result := &model.ProfileOptionCatalogResponse{
+		Schools:     make([]model.ProfileOptionItem, 0),
+		SchoolYears: make([]model.ProfileOptionItem, 0),
+		ClassNames:  make([]model.ProfileOptionItem, 0),
+	}
+	for rows.Next() {
+		var optionType string
+		var label string
+		var value string
+		if err := rows.Scan(&optionType, &label, &value); err != nil {
+			return nil, err
+		}
+		item := model.ProfileOptionItem{Label: label, Value: value}
+		switch optionType {
+		case "school":
+			result.Schools = append(result.Schools, item)
+		case "schoolYear":
+			result.SchoolYears = append(result.SchoolYears, item)
+		case "className":
+			result.ClassNames = append(result.ClassNames, item)
+		}
+	}
+	return result, rows.Err()
 }
 
 func (r *AdminRepository) ListTasks(ctx context.Context, keyword, taskType, status string, page, limit int) ([]model.AdminTask, int, error) {

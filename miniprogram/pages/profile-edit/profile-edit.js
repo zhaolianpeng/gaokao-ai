@@ -6,33 +6,72 @@ function isAnonymousWechatNickname(nickname) {
   return text === '微信用户' || /^微信用户\d*$/.test(text)
 }
 
+function defaultProfile() {
+  return {
+    province: '黑龙江',
+    subject: '历史',
+    score: '',
+    rank: '',
+    targetMajor: '',
+    notes: '',
+    idCard: '',
+    schoolName: '',
+    schoolYear: '',
+    className: '',
+    studentNo: '',
+    fromRecommend: false
+  }
+}
+
+function mergeProfile(profile, user) {
+  const hasUserRecommend = !!(user && Object.prototype.hasOwnProperty.call(user, 'fromRecommend'))
+  return {
+    ...defaultProfile(),
+    ...(profile || {}),
+    idCard: (user && user.idCard) || (profile && profile.idCard) || '',
+    schoolName: (user && user.schoolName) || (profile && profile.schoolName) || '',
+    schoolYear: (user && user.schoolYear) || (profile && profile.schoolYear) || '',
+    className: (user && user.className) || (profile && profile.className) || '',
+    studentNo: (user && user.studentNo) || (profile && profile.studentNo) || '',
+    fromRecommend: hasUserRecommend ? !!user.fromRecommend : !!(profile && profile.fromRecommend)
+  }
+}
+
+function findOptionIndex(options, value) {
+  const list = Array.isArray(options) ? options : []
+  for (let index = 0; index < list.length; index += 1) {
+    if ((list[index] && list[index].value) === value) {
+      return index
+    }
+  }
+  return -1
+}
+
 Page({
   data: {
     user: null,
     nickname: '',
     syncSubmitting: false,
     saveSubmitting: false,
-    profile: {
-      province: '黑龙江',
-      subject: '历史',
-      score: '',
-      rank: '',
-      targetMajor: '',
-      notes: ''
-    },
-    subjectOptions: ['历史', '物理']
+    optionsLoading: false,
+    profile: defaultProfile(),
+    subjectOptions: ['历史', '物理'],
+    schoolOptions: [],
+    schoolYearOptions: [],
+    classOptions: []
+  },
+
+  onLoad() {
+    this.loadProfileOptions()
   },
 
   onShow() {
     const user = getAuthUser()
-    const profile = getUserProfile() || this.data.profile
+    const profile = mergeProfile(getUserProfile(), user)
     this.setData({
       user,
       nickname: (user && user.nickname) || '',
-      profile: {
-        ...this.data.profile,
-        ...profile
-      }
+      profile
     })
   },
 
@@ -45,9 +84,48 @@ Page({
     this.setData({ 'profile.subject': subject })
   },
 
+  onSchoolChange(e) {
+    const option = this.data.schoolOptions[e.detail.value]
+    this.setData({ 'profile.schoolName': (option && option.value) || '' })
+  },
+
+  onSchoolYearChange(e) {
+    const option = this.data.schoolYearOptions[e.detail.value]
+    this.setData({ 'profile.schoolYear': (option && option.value) || '' })
+  },
+
+  onClassChange(e) {
+    const option = this.data.classOptions[e.detail.value]
+    this.setData({ 'profile.className': (option && option.value) || '' })
+  },
+
+  onFromRecommendChange(e) {
+    this.setData({ 'profile.fromRecommend': !!(e && e.detail ? e.detail.value : false) })
+  },
+
   onInput(e) {
     const field = e.currentTarget.dataset.field
     this.setData({ [`profile.${field}`]: e.detail.value })
+  },
+
+  async loadProfileOptions() {
+    try {
+      this.setData({ optionsLoading: true })
+      const data = await request({
+        url: '/api/profile-options',
+        method: 'POST',
+        data: {}
+      })
+      this.setData({
+        schoolOptions: data.schools || [],
+        schoolYearOptions: data.schoolYears || [],
+        classOptions: data.classNames || []
+      })
+    } catch (err) {
+      this.setData({ schoolOptions: [], schoolYearOptions: [], classOptions: [] })
+    } finally {
+      this.setData({ optionsLoading: false })
+    }
   },
 
   async syncNickname() {
@@ -102,18 +180,64 @@ Page({
     if (this.data.saveSubmitting) {
       return
     }
+    const user = getAuthUser()
     this.setData({ saveSubmitting: true })
-    try {
-      const profile = saveUserProfile({
-        ...this.data.profile,
-        score: Number(this.data.profile.score || 0),
-        rank: Number(this.data.profile.rank || 0)
-      })
-      getApp().setProfile(profile)
-      this.setData({ profile })
-      wx.showToast({ title: '已保存资料', icon: 'success' })
-    } finally {
-      this.setData({ saveSubmitting: false })
+    const nextProfile = {
+      ...this.data.profile,
+      score: Number(this.data.profile.score || 0),
+      rank: Number(this.data.profile.rank || 0),
+      fromRecommend: !!this.data.profile.fromRecommend
     }
+
+    const finalize = (profile) => {
+      const savedProfile = saveUserProfile(profile)
+      getApp().setProfile(savedProfile)
+      this.setData({ profile: savedProfile })
+      wx.showToast({ title: '已保存资料', icon: 'success' })
+    }
+
+    if (!user || !user.id || user.storageMode !== 'server') {
+      try {
+        finalize(nextProfile)
+      } finally {
+        this.setData({ saveSubmitting: false })
+      }
+      return
+    }
+
+    request({
+      url: '/api/auth/wx-profile',
+      method: 'POST',
+      data: {
+        userId: user.id,
+        phone: user.phone || '',
+        nickname: String(this.data.nickname || user.nickname || '').trim() || '考生用户',
+        avatarUrl: user.avatarUrl || '',
+        idCard: nextProfile.idCard || '',
+        schoolName: nextProfile.schoolName || '',
+        schoolYear: nextProfile.schoolYear || '',
+        className: nextProfile.className || '',
+        studentNo: nextProfile.studentNo || '',
+        fromRecommend: !!nextProfile.fromRecommend
+      }
+    }).then((payload) => {
+      const rawUser = (payload && payload.user) || payload || {}
+      const nextUser = saveAuthUser({
+        ...user,
+        ...rawUser,
+        nickname: !isAnonymousWechatNickname(rawUser.nickname) ? rawUser.nickname : (this.data.nickname || user.nickname || '考生用户'),
+        avatarUrl: rawUser.avatarUrl || user.avatarUrl || '',
+        avatarLocalPath: user.avatarLocalPath || '',
+        storageMode: 'server'
+      })
+      getApp().setUser(nextUser)
+      this.setData({ user: nextUser, nickname: nextUser.nickname || this.data.nickname })
+      finalize(mergeProfile(nextProfile, nextUser))
+    }).catch((err) => {
+      const message = (err && err.error) || (err && err.message) || '保存失败'
+      wx.showToast({ title: message, icon: 'none' })
+    }).finally(() => {
+      this.setData({ saveSubmitting: false })
+    })
   }
 })

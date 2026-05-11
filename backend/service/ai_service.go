@@ -182,6 +182,10 @@ func buildPrompt(req model.AIAnalyzeRequest) string {
 科类：%s
 意向专业：%s
 补充偏好：%s
+学校：%s
+学年：%s
+班级：%s
+是否来自推荐：%s
 
 推荐专业组：
 
@@ -206,6 +210,10 @@ func buildPrompt(req model.AIAnalyzeRequest) string {
 		req.Student.Subject,
 		req.Student.TargetMajor,
 		req.Student.Notes,
+		req.Student.SchoolName,
+		req.Student.SchoolYear,
+		req.Student.ClassName,
+		map[bool]string{true: "是", false: "否"}[req.Student.FromRecommend],
 		formatList(req.Recommend.Chong),
 		formatList(req.Recommend.Wen),
 		formatList(req.Recommend.Bao),

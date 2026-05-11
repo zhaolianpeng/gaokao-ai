@@ -165,6 +165,21 @@ func NewRouter(recommendService *service.RecommendService, aiService *service.AI
 		c.JSON(http.StatusOK, gin.H{"user": user})
 	})
 
+	loadProfileOptions := func(c *gin.Context) {
+		if adminService == nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "admin service unavailable"})
+			return
+		}
+		items, err := adminService.Repo().ListEnabledProfileOptions(c.Request.Context())
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, items)
+	}
+	r.GET("/api/profile-options", loadProfileOptions)
+	r.POST("/api/profile-options", loadProfileOptions)
+
 	r.POST("/api/auth/wx-avatar", func(c *gin.Context) {
 		if authService == nil {
 			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "auth service unavailable"})
@@ -197,9 +212,9 @@ func NewRouter(recommendService *service.RecommendService, aiService *service.AI
 		}
 		updatedUser, err := authService.UpdateProfile(c.Request.Context(), model.WechatProfileUpdateRequest{
 			UserID:    user.ID,
-			Phone:     user.Phone,
+			Phone:     &user.Phone,
 			Nickname:  user.Nickname,
-			AvatarURL: avatarURL,
+			AvatarURL: &avatarURL,
 		})
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})

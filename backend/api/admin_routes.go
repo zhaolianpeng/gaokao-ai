@@ -16,16 +16,17 @@ import (
 const adminCookieName = "gaokao_mis_session"
 
 var misPageRoutes = map[string]struct{}{
-	"dashboard":      {},
-	"colleges":       {},
-	"province-lines": {},
-	"score-ranks":    {},
-	"students":       {},
-	"orders":         {},
-	"staff":          {},
-	"volunteers":     {},
-	"ai-tasks":       {},
-	"payment-items":  {},
+	"dashboard":       {},
+	"colleges":        {},
+	"province-lines":  {},
+	"score-ranks":     {},
+	"students":        {},
+	"profile-options": {},
+	"orders":          {},
+	"staff":           {},
+	"volunteers":      {},
+	"ai-tasks":        {},
+	"payment-items":   {},
 }
 
 func serveMISPage(c *gin.Context) {
@@ -298,6 +299,52 @@ func registerAdminRoutes(r *gin.Engine, adminService *service.AdminService, payS
 				return
 			}
 			if err := adminService.Repo().SaveStudent(c.Request.Context(), req); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"ok": true})
+		})
+
+		adminGroup.GET("/profile-options", func(c *gin.Context) {
+			page := parseInt(c.Query("page"), 1)
+			limit := parseInt(c.Query("limit"), 20)
+			items, total, err := adminService.Repo().ListProfileOptions(c.Request.Context(), c.Query("keyword"), c.Query("optionType"), page, limit)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusOK, model.AdminListResponse[model.AdminProfileOption]{Items: items, Total: total, Page: page, Limit: limit})
+		})
+		adminGroup.POST("/profile-options/list", func(c *gin.Context) {
+			page := parseInt(c.Query("page"), 1)
+			limit := parseInt(c.Query("limit"), 20)
+			items, total, err := adminService.Repo().ListProfileOptions(c.Request.Context(), c.Query("keyword"), c.Query("optionType"), page, limit)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusOK, model.AdminListResponse[model.AdminProfileOption]{Items: items, Total: total, Page: page, Limit: limit})
+		})
+		adminGroup.POST("/profile-options", func(c *gin.Context) {
+			var req model.AdminProfileOption
+			if err := c.ShouldBindJSON(&req); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				return
+			}
+			id, err := adminService.Repo().SaveProfileOption(c.Request.Context(), req)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"id": id})
+		})
+		adminGroup.DELETE("/profile-options/:id", func(c *gin.Context) {
+			id, err := strconv.Atoi(c.Param("id"))
+			if err != nil || id <= 0 {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+				return
+			}
+			if err := adminService.Repo().DeleteProfileOption(c.Request.Context(), id); err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 				return
 			}

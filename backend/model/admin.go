@@ -76,15 +76,42 @@ type AdminScoreRank struct {
 }
 
 type AdminStudent struct {
+	ID            int       `json:"id"`
+	OpenID        string    `json:"openId"`
+	Phone         string    `json:"phone"`
+	Nickname      string    `json:"nickname"`
+	AvatarURL     string    `json:"avatarUrl"`
+	IDCard        string    `json:"idCard"`
+	SchoolName    string    `json:"schoolName"`
+	SchoolYear    string    `json:"schoolYear"`
+	ClassName     string    `json:"className"`
+	StudentNo     string    `json:"studentNo"`
+	FromRecommend bool      `json:"fromRecommend"`
+	LoginType     string    `json:"loginType"`
+	CreatedAt     time.Time `json:"createdAt"`
+	UpdatedAt     time.Time `json:"updatedAt"`
+	LastLoginAt   time.Time `json:"lastLoginAt"`
+}
+
+type AdminProfileOption struct {
 	ID          int       `json:"id"`
-	OpenID      string    `json:"openId"`
-	Phone       string    `json:"phone"`
-	Nickname    string    `json:"nickname"`
-	AvatarURL   string    `json:"avatarUrl"`
-	LoginType   string    `json:"loginType"`
-	CreatedAt   time.Time `json:"createdAt"`
+	OptionType  string    `json:"optionType"`
+	OptionLabel string    `json:"optionLabel"`
+	OptionValue string    `json:"optionValue"`
+	SortOrder   int       `json:"sortOrder"`
+	Enabled     bool      `json:"enabled"`
 	UpdatedAt   time.Time `json:"updatedAt"`
-	LastLoginAt time.Time `json:"lastLoginAt"`
+}
+
+type ProfileOptionItem struct {
+	Label string `json:"label"`
+	Value string `json:"value"`
+}
+
+type ProfileOptionCatalogResponse struct {
+	Schools     []ProfileOptionItem `json:"schools"`
+	SchoolYears []ProfileOptionItem `json:"schoolYears"`
+	ClassNames  []ProfileOptionItem `json:"classNames"`
 }
 
 type AdminTask struct {

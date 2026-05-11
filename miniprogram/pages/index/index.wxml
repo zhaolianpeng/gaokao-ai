@@ -20,6 +20,7 @@
     <view class="hero-note">覆盖黑龙江 2025-2022 批次线、一分一段与跨年录取数据。</view>
     <view class="hero-link-row">
       <view class="hero-link-btn" bindtap="openAboutPage">关于我们</view>
+      <button class="hero-link-btn hero-share-btn" open-type="share">转发小程序</button>
     </view>
   </view>
 
@@ -208,6 +209,8 @@
     <view class="field fixed-field">地区：黑龙江</view>
     <view class="field fixed-field">年度：2025 招生计划口径</view>
     <view class="field fixed-field">当前科类：{{form.subject}}</view>
+    <view class="field fixed-field" wx:if="{{form.schoolName || form.schoolYear || form.className}}">档案上下文：{{form.schoolName || '未选学校'}} / {{form.schoolYear || '未选学年'}} / {{form.className || '未选班级'}}</view>
+    <view class="field fixed-field" wx:if="{{form.fromRecommend}}">推荐来源：已标记为通过推荐链路进入</view>
 
     <input class="input" type="number" placeholder="高考分数" value="{{form.score}}" bindinput="onScoreInput" bindblur="onScoreBlur" />
     <input class="input" type="number" placeholder="全省排名" value="{{form.rank}}" bindinput="onRankInput" bindblur="onRankBlur" />
