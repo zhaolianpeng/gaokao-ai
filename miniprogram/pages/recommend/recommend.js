@@ -19,6 +19,12 @@ const ANALYZE_PROGRESS_TEXTS = [
 ]
 const ANALYZE_HELPER_IDLE = '基础推荐先秒级给出，深度 AI 报告改为异步生成。你可以先继续浏览当前推荐，结果完成后会自动打开。'
 
+const LENS_OPTIONS = [
+  { key: 'school', title: '保学校', desc: '先保学校层次和录取结果，适合先定梯度，再微调专业。' },
+  { key: 'major', title: '保专业', desc: '优先保证目标专业和相近方向，再看是否接受组内调剂。' },
+  { key: 'city', title: '保城市', desc: '先守住目标城市或省内偏好，再决定学校和专业取舍。' }
+]
+
 function decodeJsonQuery(value, fallback) {
   if (!value) {
     return fallback
@@ -39,6 +45,7 @@ function cloneItem(item) {
     college_id: item.college_id || 0,
     college_name: item.college_name || '',
     province: item.province || '',
+    city: item.city || '',
     group_code: item.group_code || '',
     group_name: item.group_name || '',
     batch: item.batch || '',
@@ -229,21 +236,178 @@ function buildStrategyCards(student, result) {
   ]
 }
 
-function buildComparisonRows(result) {
+function getLensMeta(activeLens) {
+  for (var i = 0; i < LENS_OPTIONS.length; i += 1) {
+    if (LENS_OPTIONS[i].key === activeLens) {
+      return LENS_OPTIONS[i]
+    }
+  }
+  return LENS_OPTIONS[0]
+}
+
+function findPreferredCity(student) {
+  var text = `${student.notes || ''}\n${student.targetMajor || ''}`
+  var namedCities = ['哈尔滨', '齐齐哈尔', '佳木斯', '大庆', '牡丹江', '北京', '上海', '广州', '深圳', '杭州', '南京', '武汉', '西安', '成都', '重庆', '天津', '长沙']
+  for (var i = 0; i < namedCities.length; i += 1) {
+    if (text.indexOf(namedCities[i]) >= 0) {
+      return namedCities[i]
+    }
+  }
+  var match = text.match(/([一-龥]{2,5})(?:市|地区|州)/)
+  return match ? match[1] : ''
+}
+
+function mergeUniqueItems(result) {
+  var merged = []
+  var seen = {}
+  var buckets = ['wen', 'chong', 'bao']
+  for (var i = 0; i < buckets.length; i += 1) {
+    var list = result[buckets[i]] || []
+    for (var j = 0; j < list.length; j += 1) {
+      pushUniqueScenarioItem(merged, list[j], seen)
+    }
+  }
+  return merged
+}
+
+function sortByProbability(items) {
+  return items.slice().sort(function(a, b) {
+    if ((b.probability || 0) !== (a.probability || 0)) {
+      return (b.probability || 0) - (a.probability || 0)
+    }
+    if ((a.min_rank || 0) !== (b.min_rank || 0)) {
+      return (a.min_rank || 0) - (b.min_rank || 0)
+    }
+    return (b.target_hit || 0) - (a.target_hit || 0)
+  })
+}
+
+function sortByMajorPriority(items) {
+  return items.slice().sort(function(a, b) {
+    var aScore = (a.matched_major ? 2 : 0) + (a.target_hit ? 1 : 0)
+    var bScore = (b.matched_major ? 2 : 0) + (b.target_hit ? 1 : 0)
+    if (bScore !== aScore) {
+      return bScore - aScore
+    }
+    if ((b.probability || 0) !== (a.probability || 0)) {
+      return (b.probability || 0) - (a.probability || 0)
+    }
+    return (a.min_rank || 0) - (b.min_rank || 0)
+  })
+}
+
+function decorateSectionItems(items, favoriteMap) {
+  var next = []
+  for (var i = 0; i < items.length; i += 1) {
+    var item = items[i]
+    item.favoriteActive = !!favoriteMap[item.itemKey]
+    item.favoriteClass = item.favoriteActive ? 'item-action-active' : ''
+    item.favoriteText = item.favoriteActive ? '已收藏' : '收藏专业组'
+    next.push(item)
+  }
+  return next
+}
+
+function createLensSection(config, items, favoriteMap) {
+  var decorated = decorateSectionItems(items, favoriteMap)
+  return {
+    key: config.key,
+    title: config.title,
+    subtitle: config.subtitle,
+    expanded: !!config.expanded,
+    arrowText: config.expanded ? '收起' : '展开',
+    itemCount: decorated.length,
+    items: decorated
+  }
+}
+
+function buildSchoolLensSections(result, favoriteMap) {
   var configs = [
-    { key: 'chong', label: '冲刺组' },
-    { key: 'wen', label: '稳妥组' },
-    { key: 'bao', label: '保底组' }
+    { key: 'school-chong', title: '可冲学校层次', subtitle: '优先看有机会抬层次的学校和专业组。', expanded: true, items: result.chong || [] },
+    { key: 'school-wen', title: '主力学校池', subtitle: '作为主力填报区间，兼顾把握和学校层次。', expanded: true, items: result.wen || [] },
+    { key: 'school-bao', title: '保底录取池', subtitle: '兜住录取结果，避免整张表整体过冲。', expanded: false, items: result.bao || [] }
   ]
-  var rows = []
+  var sections = []
   for (var i = 0; i < configs.length; i += 1) {
-    var item = getTopItem(result[configs[i].key])
+    sections.push(createLensSection(configs[i], configs[i].items, favoriteMap))
+  }
+  return sections
+}
+
+function buildMajorLensSections(result, favoriteMap) {
+  var all = mergeUniqueItems(result)
+  var matched = []
+  var related = []
+  var backup = []
+  for (var i = 0; i < all.length; i += 1) {
+    var item = all[i]
+    if (item.matched_major || item.target_hit) {
+      matched.push(item)
+    } else if (item.tag === 'bao') {
+      backup.push(item)
+    } else {
+      related.push(item)
+    }
+  }
+  return [
+    createLensSection({ key: 'major-match', title: '优先保专业', subtitle: '优先保住意向专业或相近方向。', expanded: true }, sortByMajorPriority(matched), favoriteMap),
+    createLensSection({ key: 'major-related', title: '相近专业备选', subtitle: '专业方向相近，但需要你进一步核查组内专业结构。', expanded: true }, sortByMajorPriority(related), favoriteMap),
+    createLensSection({ key: 'major-backup', title: '保录取兜底', subtitle: '当专业命中不足时，用保底组先兜住录取。', expanded: false }, sortByMajorPriority(backup), favoriteMap)
+  ]
+}
+
+function buildCityLensSections(student, result, favoriteMap) {
+  var all = mergeUniqueItems(result)
+  var preferredCity = findPreferredCity(student)
+  var sameCity = []
+  var sameProvince = []
+  var outsideProvince = []
+  for (var i = 0; i < all.length; i += 1) {
+    var item = all[i]
+    if (preferredCity && item.city && item.city.indexOf(preferredCity) >= 0) {
+      sameCity.push(item)
+    } else if ((item.province || '') === (student.province || '黑龙江')) {
+      sameProvince.push(item)
+    } else {
+      outsideProvince.push(item)
+    }
+  }
+
+  if (!preferredCity) {
+    return [
+      createLensSection({ key: 'city-province', title: '省内优先池', subtitle: '没有明确城市偏好时，先保省内学校。', expanded: true }, sortByProbability(sameProvince), favoriteMap),
+      createLensSection({ key: 'city-expand', title: '外省拓展池', subtitle: '如果省内选择不够，再看外省成熟城市的学校。', expanded: true }, sortByProbability(outsideProvince), favoriteMap)
+    ]
+  }
+
+  return [
+    createLensSection({ key: 'city-target', title: `优先保 ${preferredCity}`, subtitle: `先筛出 ${preferredCity} 城市的学校和专业组。`, expanded: true }, sortByProbability(sameCity), favoriteMap),
+    createLensSection({ key: 'city-province', title: '同省备选', subtitle: '如果目标城市不够，再从黑龙江省内学校补强。', expanded: true }, sortByProbability(sameProvince), favoriteMap),
+    createLensSection({ key: 'city-outside', title: '跨城拓展', subtitle: '最后再看外省城市，平衡城市接受度和录取结果。', expanded: false }, sortByProbability(outsideProvince), favoriteMap)
+  ]
+}
+
+function buildLensSections(activeLens, student, result, favoriteMap) {
+  if (activeLens === 'major') {
+    return buildMajorLensSections(result, favoriteMap)
+  }
+  if (activeLens === 'city') {
+    return buildCityLensSections(student, result, favoriteMap)
+  }
+  return buildSchoolLensSections(result, favoriteMap)
+}
+
+function buildLensComparisonRows(sections) {
+  var rows = []
+  for (var i = 0; i < sections.length; i += 1) {
+    var item = getTopItem(sections[i].items)
     if (!item) {
       continue
     }
     rows.push({
-      label: configs[i].label,
+      label: sections[i].title,
       college: item.college_name,
+      city: item.city || item.province || '城市待补充',
       groupLabel: item.groupLabel,
       majorPreview: item.majorPreview,
       probabilityText: item.probabilityText,
@@ -253,43 +417,43 @@ function buildComparisonRows(result) {
   return rows
 }
 
-function buildDecisionSteps(student, result) {
-  var steps = []
+function buildLensDecisionSteps(activeLens, student, sections) {
   var majorText = student.targetMajor || '你的目标专业'
-  steps.push({
-    title: '先定主力区间',
-    desc: result.wen && result.wen.length ? `优先从稳妥组前 ${Math.min(result.wen.length, 3)} 所里挑主力志愿，先把录取把握拉稳。` : '当前稳妥组偏少，建议先扩充可接受院校范围。'
-  })
-  steps.push({
-    title: '再看专业命中',
-    desc: `围绕 ${majorText} 逐一核查组内专业结构，重点看是否真的能读到想学的方向。`
-  })
-  steps.push({
-    title: '最后补梯度',
-    desc: result.bao && result.bao.length ? '保底组至少保留 2-3 个接受度高的专业组，避免整张表过冲。' : '当前保底组不足，先补兜底再谈冲刺。'
-  })
-  steps.push({
-    title: '和家长统一口径',
-    desc: '把“保学校 / 保专业 / 保城市”三者优先级先讲清楚，再决定正式志愿表排序。'
-  })
-  return steps
+  if (activeLens === 'major') {
+    return [
+      { title: '先锁定命中专业', desc: `先从“优先保专业”里找能真正覆盖 ${majorText} 的专业组。` },
+      { title: '再看相近方向', desc: '如果完全命中的组不多，再看名称接近、培养方向相近的专业组。' },
+      { title: '最后补保底', desc: '保底组只负责兜录取，不要用它来承担主要专业诉求。' },
+      { title: '明确调剂边界', desc: '和家长先讲清楚哪些专业可以接受，哪些方向坚决不接受。' }
+    ]
+  }
+  if (activeLens === 'city') {
+    return [
+      { title: '先定城市优先级', desc: '先明确是保目标城市、保省内，还是允许跨省换城市。' },
+      { title: '再看城市里的学校', desc: '同一城市里再比较学校层次、组内专业和录取概率。' },
+      { title: '给外省留备份', desc: '如果目标城市供给不足，要给外省城市留少量备选。' },
+      { title: '最后核查通勤与成本', desc: '城市选择不仅是地理偏好，也要核查生活成本和家庭接受度。' }
+    ]
+  }
+  return [
+    { title: '先定学校梯度', desc: sections.length > 1 && sections[1].itemCount ? `先从“${sections[1].title}”里挑主力学校，稳住录取把握。` : '先从主力学校池里定好稳妥学校。' },
+    { title: '再保专业不跑偏', desc: `围绕 ${majorText} 逐一核查组内专业，避免学校合适但专业读偏。` },
+    { title: '最后留足保底', desc: '保底池至少保留 2-3 个接受度高的学校，避免整张表过冲。' },
+    { title: '统一家庭决策口径', desc: '先把保学校、保专业、保城市的排序讲清楚，再排正式志愿表。' }
+  ]
 }
 
-function buildFamilySummary(student, result) {
-  var chong = (result.chong || []).length
-  var wen = (result.wen || []).length
-  var bao = (result.bao || []).length
-  var core = getTopItem(result.wen) || getTopItem(result.chong) || getTopItem(result.bao)
-  var targetMajor = student.targetMajor || '未明确意向专业'
+function buildLensFamilySummary(student, activeLens, sections) {
+  var focusText = activeLens === 'major' ? '当前这版方案优先保专业。' : activeLens === 'city' ? '当前这版方案优先保城市。' : '当前这版方案优先保学校层次和录取结果。'
+  var top = sections.length ? getTopItem(sections[0].items) : null
   var lines = [
     `黑龙江 ${student.subject || ''} 考生，分数 ${student.score || ''}，位次 ${student.rank || ''}。`,
-    `当前方案按冲稳保分成 ${chong}/${wen}/${bao} 组。`,
-    `目前主力建议优先看 ${targetMajor} 相关方向。`
+    focusText,
+    '正式填报前，建议家长和考生先统一保学校 / 保专业 / 保城市三者顺序。'
   ]
-  if (core) {
-    lines.push(`首个建议重点讨论的专业组是：${core.college_name} ${core.groupLabel}。`)
+  if (top) {
+    lines.push(`当前优先讨论的专业组：${top.college_name}${top.city ? '（' + top.city + '）' : ''} ${top.groupLabel}。`)
   }
-  lines.push('正式填报前建议家长和考生先统一是保专业、保城市还是保学校层次。')
   return lines.join('\n')
 }
 
@@ -308,6 +472,9 @@ Page({
     favoriteCount: 0,
     applicationCount: 0,
     scenarioCount: 0,
+    lensOptions: LENS_OPTIONS,
+    activeLens: 'school',
+    activeLensMeta: LENS_OPTIONS[0],
     topSummary: [],
     strategyCards: [],
     comparisonRows: [],
@@ -384,51 +551,21 @@ Page({
     ]
   },
 
-  buildSections(result, favoriteMap) {
-    var configs = [
-      { key: 'chong', title: '冲刺组', subtitle: '适合冲更高层次院校和热门专业组', expanded: true },
-      { key: 'wen', title: '稳妥组', subtitle: '作为主力填报区间，兼顾把握和专业匹配', expanded: true },
-      { key: 'bao', title: '保底组', subtitle: '兜住录取结果，避免整体志愿风险过高', expanded: false }
-    ]
-    var sections = []
-
-    for (var i = 0; i < configs.length; i += 1) {
-      var config = configs[i]
-      var sourceItems = result[config.key] || []
-      var items = []
-      for (var j = 0; j < sourceItems.length; j += 1) {
-        var item = sourceItems[j]
-        item.favoriteActive = !!favoriteMap[item.itemKey]
-        item.favoriteClass = item.favoriteActive ? 'item-action-active' : ''
-        item.favoriteText = item.favoriteActive ? '已收藏' : '收藏专业组'
-        items.push(item)
-      }
-      sections.push({
-        key: config.key,
-        title: config.title,
-        subtitle: config.subtitle,
-        expanded: config.expanded,
-        arrowText: config.expanded ? '收起' : '展开',
-        itemCount: items.length,
-        items: items
-      })
-    }
-
-    return sections
-  },
-
   applyViewModel() {
     var result = this.data.result || { chong: [], wen: [], bao: [] }
     var favoriteMap = this.data.favoriteMap || {}
     var student = this.data.student || {}
+    var activeLens = this.data.activeLens || 'school'
+    var sections = buildLensSections(activeLens, student, result, favoriteMap)
     this.setData({
       summary: this.buildSummary(result),
       topSummary: this.buildTopSummary(result),
-      sections: this.buildSections(result, favoriteMap),
+      sections: sections,
+      activeLensMeta: getLensMeta(activeLens),
       strategyCards: buildStrategyCards(student, result),
-      comparisonRows: buildComparisonRows(result),
-      decisionSteps: buildDecisionSteps(student, result),
-      familySummary: buildFamilySummary(student, result)
+      comparisonRows: buildLensComparisonRows(sections),
+      decisionSteps: buildLensDecisionSteps(activeLens, student, sections),
+      familySummary: buildLensFamilySummary(student, activeLens, sections)
     })
   },
 
@@ -479,6 +616,15 @@ Page({
 
   openVip() {
     wx.navigateTo({ url: '/pages/vip/vip' })
+  },
+
+  onSwitchLens(e) {
+    var lens = e.currentTarget.dataset.lens
+    if (!lens || lens === this.data.activeLens) {
+      return
+    }
+    this.setData({ activeLens: lens })
+    this.applyViewModel()
   },
 
   copyFamilySummary() {

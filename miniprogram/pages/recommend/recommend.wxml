@@ -45,6 +45,18 @@
   </view>
 
   <view class="card" wx:if="{{!loadError}}">
+    <view class="section-title">三种决策视角</view>
+    <view class="meta">把同一批推荐结果切成“保学校 / 保专业 / 保城市”三种看法，先选清楚你最想守住的东西。</view>
+    <view class="lens-row">
+      <block wx:for="{{lensOptions}}" wx:key="key">
+        <view class="lens-chip {{activeLens === item.key ? 'lens-chip-active' : ''}}" data-lens="{{item.key}}" bindtap="onSwitchLens">{{item.title}}</view>
+      </block>
+    </view>
+    <view class="lens-helper-title">当前视角：{{activeLensMeta.title}}</view>
+    <view class="lens-helper-desc">{{activeLensMeta.desc}}</view>
+  </view>
+
+  <view class="card" wx:if="{{!loadError}}">
     <view class="section-title">免费版与 VIP 边界</view>
     <view class="compare-row vip-compare-row">
       <view class="compare-tag">免费可看</view>
@@ -65,13 +77,14 @@
   </view>
 
   <view class="card" wx:if="{{!loadError && comparisonRows.length}}">
-    <view class="section-title">梯度对比表</view>
-    <view class="meta">每个分组先抓 1 个代表项，方便和家长快速比较。</view>
+    <view class="section-title">当前视角代表项</view>
+    <view class="meta">每个视角先抓 1 个代表项，方便和家长快速比较。</view>
     <block wx:for="{{comparisonRows}}" wx:key="label">
       <view class="compare-row">
         <view class="compare-tag">{{item.label}}</view>
         <view class="compare-main">
           <view class="compare-title">{{item.college}} {{item.groupLabel}}</view>
+          <view class="compare-sub">{{item.city}}</view>
           <view class="compare-sub">{{item.majorPreview}}</view>
           <view class="compare-sub">{{item.rankText}} · 概率 {{item.probabilityText}}</view>
         </view>
@@ -114,7 +127,7 @@
           <block wx:for="{{section.items}}" wx:for-item="school" wx:key="itemKey">
             <view class="item">
               <view class="item-title">{{school.college_name}}</view>
-              <view class="item-sub">{{school.groupLabel}} · {{school.batch}} · 选科 {{school.subject_requirement}}</view>
+              <view class="item-sub">{{school.city || school.province}} · {{school.groupLabel}} · {{school.batch}} · 选科 {{school.subject_requirement}}</view>
               <view class="item-sub">组内专业：{{school.majorPreview}}</view>
               <view class="item-sub">计划：{{school.planText}}</view>
               <view class="item-sub">最低位次 {{school.min_rank}} · 最低分 {{school.min_score}} · 概率 {{school.probabilityText}}</view>

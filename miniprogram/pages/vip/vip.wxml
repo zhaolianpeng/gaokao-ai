@@ -2,25 +2,53 @@
   <view class="vip-shell">
     <view class="card vip-hero-card">
       <view class="vip-badge">VIP 中心</view>
-      <view class="vip-title">把免费体验和深度服务分开讲清楚</view>
-      <view class="vip-desc">免费版先解决“能不能快速出结果”，VIP 更适合需要反复比较方案、生成深度 AI 报告、和家长老师多轮讨论的人。购买前需要先完成手机号快捷登录，这样服务端才能绑定账号并创建支付订单。</view>
+      <view class="vip-title">按竞品主流价带，把套餐边界讲清楚</view>
+      <view class="vip-desc">基础查询和冲稳保推荐继续免费开放。真正适合付费的，是需要深度 AI 解释、长期保存多套方案、反复和家长老师讨论的高频决策场景。购买前需要先完成手机号快捷登录，这样服务端才能绑定账号并创建支付订单。</view>
       <button wx:if="{{!user}}" class="primary-btn vip-login-btn" bindtap="goLogin">先去登录</button>
       <view wx:if="{{user}}" class="vip-user">当前账号：{{user.nickname}}{{user.phone ? '（' + user.phone + '）' : ''}}</view>
       <view class="vip-status {{canPay ? 'vip-status-ok' : 'vip-status-warn'}}">{{loginHint}}</view>
     </view>
 
     <view class="card vip-product-card">
-      <view class="vip-product-title">能力边界</view>
-      <view class="vip-product-desc">不是所有功能都必须付费，但高频、重度、反复决策场景更适合放进 VIP 服务。</view>
-      <block wx:for="{{accessMatrix}}" wx:key="feature">
-        <view class="vip-matrix-row">
-          <view class="vip-matrix-feature">{{item.feature}}</view>
-          <view class="vip-matrix-values">
-            <view class="vip-matrix-chip vip-matrix-free">免费：{{item.free}}</view>
-            <view class="vip-matrix-chip vip-matrix-vip">VIP：{{item.vip}}</view>
+      <view class="vip-product-title">市场价格带锚点</view>
+      <view class="vip-product-desc">主流高考报考产品的价格，大致落在这 4 个区间。当前页面直接把你的套餐放进这个坐标系里。</view>
+      <view class="vip-band-grid">
+        <block wx:for="{{priceBands}}" wx:key="label">
+          <view class="vip-band-card">
+            <view class="vip-band-label">{{item.label}}</view>
+            <view class="vip-band-price">{{item.price}}</view>
+            <view class="vip-band-desc">{{item.desc}}</view>
           </view>
+        </block>
+      </view>
+    </view>
+
+    <view class="card vip-product-card">
+      <view class="vip-product-title">权益对比</view>
+      <view class="vip-product-desc">把“免费 / 轻量体验 / 标准决策 / 全周期”四层讲清楚，用户更容易知道自己该买哪档。</view>
+      <view class="vip-access-table">
+        <view class="vip-access-head">
+          <view class="vip-access-cell vip-access-feature">能力</view>
+          <view class="vip-access-cell">免费</view>
+          <view class="vip-access-cell">轻量</view>
+          <view class="vip-access-cell">标准</view>
+          <view class="vip-access-cell">全程</view>
         </view>
-      </block>
+        <block wx:for="{{accessMatrix}}" wx:key="feature">
+          <view class="vip-access-row">
+            <view class="vip-access-cell vip-access-feature">{{item.feature}}</view>
+            <view class="vip-access-cell">{{item.free}}</view>
+            <view class="vip-access-cell">{{item.lite}}</view>
+            <view class="vip-access-cell">{{item.core}}</view>
+            <view class="vip-access-cell">{{item.full}}</view>
+          </view>
+        </block>
+      </view>
+    </view>
+
+    <view class="card vip-product-card">
+      <view class="vip-product-title">套餐建议</view>
+      <view class="vip-product-desc">套餐不是越贵越好，关键是和你的使用频次、决策周期、复盘需求匹配。</view>
     </view>
 
     <view class="card vip-product-card" wx:for="{{products}}" wx:key="id">
@@ -34,6 +62,16 @@
         </view>
         <view class="vip-product-badge">{{item.badge}}</view>
       </view>
+      <view class="vip-product-meta-row">
+        <view class="vip-product-meta-chip">{{item.anchorText}}</view>
+        <view class="vip-product-meta-text">{{item.suitedFor}}</view>
+      </view>
+      <block wx:for="{{item.highlights}}" wx:key="index">
+        <view class="vip-highlight-row">
+          <view class="vip-highlight-dot"></view>
+          <view class="vip-highlight-text">{{item}}</view>
+        </view>
+      </block>
       <button class="primary-btn vip-buy-btn" data-product-id="{{item.id}}" bindtap="purchase" loading="{{loadingProductId === item.id}}">立即购买</button>
     </view>
   </view>

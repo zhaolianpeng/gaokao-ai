@@ -5,6 +5,30 @@
     <view class="hero-sub">输入你对城市、学校层次、专业方向、调剂接受度等要求，AI 会给出可执行的报考策略。</view>
   </view>
 
+  <view class="card workflow-card">
+    <view class="section-title">为什么这里做成异步任务</view>
+    <view class="tip">竞品里真正依赖大模型的深度分析，普遍不会和秒级推荐放在同一条链路里。这里把体验拆开，先保证查询和推荐快，再让 AI 做深挖。</view>
+    <block wx:for="{{workflow}}" wx:key="key">
+      <view class="workflow-row">
+        <view class="workflow-main">
+          <view class="workflow-title">{{index + 1}}. {{item.title}}</view>
+          <view class="workflow-desc">{{item.desc}}</view>
+        </view>
+        <view class="workflow-eta">{{item.eta}}</view>
+      </view>
+    </block>
+  </view>
+
+  <view class="card deliverable-card">
+    <view class="section-title">这次 AI 会重点给你什么</view>
+    <block wx:for="{{deliverables}}" wx:key="index">
+      <view class="deliverable-row">
+        <view class="deliverable-dot"></view>
+        <view class="deliverable-text">{{item}}</view>
+      </view>
+    </block>
+  </view>
+
   <view class="card">
     <view class="section-title">基础信息</view>
     <view class="field fixed-field">地区：黑龙江</view>

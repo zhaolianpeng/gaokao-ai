@@ -144,6 +144,45 @@ const CLOUD_DATASET_OVERVIEW = {
   stat_count: 73059
 }
 
+const HOME_DECISION_FLOW = [
+  {
+    key: 'data',
+    title: '先查数据',
+    eta: '通常 1 秒内',
+    desc: '先把批次线、一分一段、院校库和专业组看清楚，再决定要不要进入推荐。'
+  },
+  {
+    key: 'recommend',
+    title: '再出方案',
+    eta: '通常 1-2 秒',
+    desc: '智能推荐先给出冲稳保梯度，方便你和家长快速比学校、比专业、比城市。'
+  },
+  {
+    key: 'ai',
+    title: '最后做 AI 深挖',
+    eta: '通常 60-120 秒',
+    desc: '深度 AI 报告单独异步处理，适合做多轮讨论、风险解释和正式填报前复盘。'
+  }
+]
+
+const HOME_SERVICE_LAYERS = [
+  {
+    label: '免费先用',
+    badge: '零门槛',
+    desc: '院校查询、专业组浏览、批次线、一分一段、冲稳保推荐、家长沟通摘要。'
+  },
+  {
+    label: 'AI 深度分析',
+    badge: '异步完成',
+    desc: '更适合需要解释推荐原因、比较多套路径、补齐风险提示的考生。'
+  },
+  {
+    label: 'VIP 高频决策',
+    badge: '重度用户',
+    desc: '适合需要长期保存多套方案、反复和家长老师沟通、集中填报的人。'
+  }
+]
+
 Page({
   data: {
     loading: false,
@@ -163,6 +202,8 @@ Page({
     scoreRankDashboard: null,
     suggestedScore: 0,
     suggestedRank: 0,
+    decisionFlow: HOME_DECISION_FLOW,
+    serviceLayers: HOME_SERVICE_LAYERS,
     quickActions: [
       { key: 'explore', title: '院校库', desc: '查学校、专业组、招生计划', action: 'openExplorePage' },
       { key: 'province-lines', title: '黑龙江批次线', desc: '查看 2025-2022 批次线', action: 'openProvinceLinesPage' },
@@ -290,6 +331,10 @@ Page({
     wx.navigateTo({
       url: `/pages/ai-agent/ai-agent?subject=${encodeURIComponent(form.subject)}&score=${encodeURIComponent(form.score || '')}&rank=${encodeURIComponent(form.rank || '')}&targetMajor=${encodeURIComponent(form.targetMajor || '')}&notes=${encodeURIComponent(form.notes || '')}&analysisYear=${encodeURIComponent(form.analysisYear || '2025')}`
     })
+  },
+
+  openVipPage() {
+    wx.navigateTo({ url: '/pages/vip/vip' })
   },
 
   handleQuickAction(e) {

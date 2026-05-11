@@ -9,6 +9,33 @@ const DEMAND_TEMPLATES = [
   { id: 'adjust', label: '接受调剂', prompt: '如果整体层次更合适，我可以接受组内调剂。', keyword: '' }
 ]
 
+const AGENT_WORKFLOW = [
+  {
+    key: 'submit',
+    title: '先提交需求',
+    eta: '10-20 秒内入队',
+    desc: '这里主要收集你的城市、学校层次、专业偏好和调剂接受度。'
+  },
+  {
+    key: 'task',
+    title: '异步生成分析',
+    eta: '通常 60-120 秒',
+    desc: 'AI 智能体会单独跑任务，不占住首页查询和推荐链路。'
+  },
+  {
+    key: 'report',
+    title: '输出可执行结论',
+    eta: '完成后可直接查看',
+    desc: '最终会给出报考策略、解释文本和可继续查院校的建议入口。'
+  }
+]
+
+const AGENT_DELIVERABLES = [
+  '先讲结论，再解释为什么这么排。',
+  '重点说明学校层次、专业命中和调剂风险。',
+  '输出给家长也能直接看懂的报考建议。'
+]
+
 function unique(values) {
   return Array.from(new Set((values || []).filter(Boolean)))
 }
@@ -80,6 +107,8 @@ Page({
     taskResult: null,
     subjectOptions: ['历史', '物理'],
     templates: DEMAND_TEMPLATES,
+    workflow: AGENT_WORKFLOW,
+    deliverables: AGENT_DELIVERABLES,
     selectedTemplateIds: [],
     form: {
       province: '黑龙江',

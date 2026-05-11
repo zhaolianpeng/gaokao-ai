@@ -169,6 +169,7 @@ type RecommendItem struct {
 	CollegeID            int     `json:"college_id"`
 	CollegeName          string  `json:"college_name"`
 	Province             string  `json:"province"`
+	City                 string  `json:"city"`
 	GroupCode            string  `json:"group_code"`
 	GroupName            string  `json:"group_name"`
 	Batch                string  `json:"batch"`
