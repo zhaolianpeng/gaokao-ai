@@ -26,6 +26,7 @@ var misPageRoutes = map[string]struct{}{
 	"staff":           {},
 	"volunteers":      {},
 	"ai-tasks":        {},
+	"vip-entry":       {},
 	"payment-items":   {},
 }
 
@@ -539,6 +540,28 @@ func registerAdminRoutes(r *gin.Engine, adminService *service.AdminService, payS
 				return
 			}
 			c.JSON(http.StatusOK, gin.H{"id": id, "ok": true})
+		})
+
+		adminGroup.GET("/vip-entry-config", func(c *gin.Context) {
+			item, err := adminService.Repo().GetVIPEntryControlConfig(c.Request.Context())
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusOK, item)
+		})
+
+		adminGroup.POST("/vip-entry-config", func(c *gin.Context) {
+			var req model.VIPEntryControlConfig
+			if err := c.ShouldBindJSON(&req); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				return
+			}
+			if err := adminService.Repo().SaveVIPEntryControlConfig(c.Request.Context(), req.ShowVIPEntry); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"ok": true})
 		})
 
 		adminGroup.POST("/vip-products/:id/toggle", func(c *gin.Context) {

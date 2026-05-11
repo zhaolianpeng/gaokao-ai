@@ -46,6 +46,10 @@
 }
 
 .login-card {
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+  margin-bottom: 0;
   padding: 36rpx 32rpx;
 }
 
@@ -91,6 +95,12 @@
 
 .login-submit {
   margin-top: 12rpx;
+}
+
+.login-submit::after,
+.login-demo-btn::after {
+  border: 0;
+  display: none;
 }
 
 .login-consent-box {

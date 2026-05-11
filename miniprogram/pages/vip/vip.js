@@ -51,6 +51,36 @@ const PRODUCTS = [
   }
 ]
 
+function buildProductPriceText(amountFen) {
+  return `当前内测价 ${formatPrice(amountFen)}`
+}
+
+function buildDisplayProducts(configuredProducts) {
+  const configuredMap = {}
+  ;(configuredProducts || []).forEach((item) => {
+    if (item && item.productId) {
+      configuredMap[item.productId] = item
+    }
+  })
+
+  return PRODUCTS
+    .filter((product) => {
+      const configured = configuredMap[product.id]
+      return !configuredProducts || !configuredProducts.length || (configured && configured.enabled !== false)
+    })
+    .map((product) => {
+      const configured = configuredMap[product.id] || null
+      const amountFen = configured && Number.isFinite(Number(configured.amountFen))
+        ? Number(configured.amountFen)
+        : product.amountFen
+      return {
+        ...product,
+        amountFen,
+        priceText: buildProductPriceText(amountFen)
+      }
+    })
+}
+
 const ACCESS_MATRIX = [
   { feature: '院校/专业组/批次线/位次查询', free: '全部可用', lite: '可用', core: '可用', full: '可用' },
   { feature: '冲稳保推荐与家长摘要', free: '可用', lite: '可用', core: '可用', full: '可用' },
@@ -108,10 +138,7 @@ Page({
   data: {
     user: null,
     priceBands: PRICE_BANDS,
-    products: PRODUCTS.map((product) => ({
-      ...product,
-      priceText: `当前内测价 ${formatPrice(product.amountFen)}`
-    })),
+    products: buildDisplayProducts(),
     accessMatrix: ACCESS_MATRIX,
     loadingProductId: '',
     canPay: false,
@@ -125,6 +152,22 @@ Page({
       canPay: isServerUser(user),
       loginHint: this.buildLoginHint(user)
     })
+    this.loadProducts()
+  },
+
+  async loadProducts() {
+    try {
+      const products = await request({
+        url: '/api/vip/products',
+        method: 'POST',
+        data: {}
+      })
+      if (Array.isArray(products) && products.length) {
+        this.setData({ products: buildDisplayProducts(products) })
+      }
+    } catch (err) {
+      // Keep the local fallback copy so the page remains usable when the list request fails.
+    }
   },
 
   buildLoginHint(user) {

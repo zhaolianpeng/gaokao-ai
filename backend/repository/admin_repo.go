@@ -83,6 +83,11 @@ func (r *AdminRepository) EnsureBootstrap(ctx context.Context, defaultPasswordHa
 			UNIQUE KEY uq_vip_product_config_product_id (product_id),
 			KEY idx_vip_product_config_sort_order (sort_order)
 		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+		`CREATE TABLE IF NOT EXISTS vip_entry_control_config (
+			id TINYINT NOT NULL PRIMARY KEY,
+			show_vip_entry TINYINT(1) NOT NULL DEFAULT 1,
+			updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
 		`CREATE TABLE IF NOT EXISTS vip_payment_order (
 			id INT AUTO_INCREMENT PRIMARY KEY,
 			order_id VARCHAR(64) NOT NULL,
@@ -163,6 +168,13 @@ func (r *AdminRepository) EnsureBootstrap(ctx context.Context, defaultPasswordHa
 		FROM DUAL
 		WHERE NOT EXISTS (SELECT 1 FROM mis_admin_user WHERE username = 'admin')
 	`, defaultPasswordHash); err != nil {
+		return err
+	}
+	if _, err := r.db.ExecContext(ctx, `
+		INSERT INTO vip_entry_control_config (id, show_vip_entry)
+		VALUES (1, 1)
+		ON DUPLICATE KEY UPDATE id = id
+	`); err != nil {
 		return err
 	}
 	for _, product := range defaultVIPProducts {
@@ -957,6 +969,35 @@ func (r *AdminRepository) SaveVIPProduct(ctx context.Context, item model.VIPProd
 	}
 	id, _ := result.LastInsertId()
 	return int(id), nil
+}
+
+func (r *AdminRepository) GetVIPEntryControlConfig(ctx context.Context) (*model.VIPEntryControlConfig, error) {
+	var item model.VIPEntryControlConfig
+	if err := r.db.QueryRowContext(ctx, `
+		SELECT show_vip_entry, updated_at
+		FROM vip_entry_control_config
+		WHERE id = 1
+	`).Scan(&item.ShowVIPEntry, &item.UpdatedAt); err != nil {
+		return nil, err
+	}
+	return &item, nil
+}
+
+func (r *AdminRepository) SaveVIPEntryControlConfig(ctx context.Context, showVIPEntry bool) error {
+	_, err := r.db.ExecContext(ctx, `
+		INSERT INTO vip_entry_control_config (id, show_vip_entry, updated_at)
+		VALUES (1, ?, CURRENT_TIMESTAMP)
+		ON DUPLICATE KEY UPDATE show_vip_entry = VALUES(show_vip_entry), updated_at = CURRENT_TIMESTAMP
+	`, showVIPEntry)
+	return err
+}
+
+func (r *AdminRepository) ShouldShowVIPEntry(ctx context.Context) (bool, error) {
+	item, err := r.GetVIPEntryControlConfig(ctx)
+	if err != nil {
+		return false, err
+	}
+	return item.ShowVIPEntry, nil
 }
 
 func (r *AdminRepository) SetVIPProductEnabled(ctx context.Context, id int, enabled bool) error {

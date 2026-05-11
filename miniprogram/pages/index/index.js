@@ -300,7 +300,7 @@ Page({
   },
 
   onLoad(query) {
-    this.syncVIPEntryVisibility()
+    this.syncVIPEntryVisibility(true)
     var safeQuery = query || {}
     var hasSharePayload = !!(safeQuery.subject || safeQuery.score || safeQuery.rank || safeQuery.targetMajor || safeQuery.notes || safeQuery.analysisYear || safeQuery.schoolName || safeQuery.schoolYear || safeQuery.className || safeQuery.fromRecommend)
     if (!hasSharePayload) {
@@ -329,7 +329,7 @@ Page({
 
   onShow() {
     enableShareMenus()
-    this.syncVIPEntryVisibility()
+    this.syncVIPEntryVisibility(true)
     const history = getRecommendHistory().slice(0, 3).map((item) => ({
       ...item,
       archiveText: buildArchiveText(item.student),
@@ -348,8 +348,8 @@ Page({
     this.loadInsightData()
   },
 
-  syncVIPEntryVisibility() {
-	return getVIPEntryVisibility().then((showVipEntry) => {
+  syncVIPEntryVisibility(forceRefresh) {
+  return getVIPEntryVisibility(forceRefresh).then((showVipEntry) => {
 		if (this.data.showVipEntry !== showVipEntry) {
 			this.setData({ showVipEntry })
 		}

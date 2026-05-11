@@ -137,11 +137,11 @@ Page({
     })
     wx.setNavigationBarTitle({ title })
     saveReportHistory({ report, student })
-    this.syncVIPEntryVisibility()
+    this.syncVIPEntryVisibility(true)
   },
 
-  syncVIPEntryVisibility() {
-	return getVIPEntryVisibility().then((showVipEntry) => {
+  syncVIPEntryVisibility(forceRefresh) {
+	return getVIPEntryVisibility(forceRefresh).then((showVipEntry) => {
 		if (this.data.showVipEntry !== showVipEntry) {
 			this.setData({ showVipEntry })
 		}

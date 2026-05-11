@@ -245,7 +245,40 @@ func NewRouter(recommendService *service.RecommendService, aiService *service.AI
 		c.JSON(http.StatusOK, result)
 	})
 
+	r.POST("/api/vip/products", func(c *gin.Context) {
+		if adminService == nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "admin service unavailable"})
+			return
+		}
+		items, err := adminService.Repo().ListVIPProducts(c.Request.Context())
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		visibleItems := make([]model.VIPProductConfig, 0, len(items))
+		for _, item := range items {
+			if !item.Enabled {
+				continue
+			}
+			visibleItems = append(visibleItems, item)
+		}
+		c.JSON(http.StatusOK, visibleItems)
+	})
+
 	r.GET("/api/vip/entry-config", func(c *gin.Context) {
+		if adminService == nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "admin service unavailable"})
+			return
+		}
+		showVIPEntry, err := adminService.ShouldShowVIPEntry(c.Request.Context())
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, model.VIPEntryConfigResponse{ShowVIPEntry: showVIPEntry})
+	})
+
+	r.POST("/api/vip/entry-config", func(c *gin.Context) {
 		if adminService == nil {
 			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "admin service unavailable"})
 			return

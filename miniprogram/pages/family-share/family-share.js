@@ -99,11 +99,11 @@ Page({
       fromRecommendText: student.fromRecommend ? '推荐来源：是' : ''
     })
     wx.setNavigationBarTitle({ title: (payload && payload.title) || '家长沟通卡片' })
-    this.syncVIPEntryVisibility()
+    this.syncVIPEntryVisibility(true)
   },
 
-  syncVIPEntryVisibility() {
-	return getVIPEntryVisibility().then((showVipEntry) => {
+  syncVIPEntryVisibility(forceRefresh) {
+	return getVIPEntryVisibility(forceRefresh).then((showVipEntry) => {
 		if (this.data.showVipEntry !== showVipEntry) {
 			this.setData({ showVipEntry })
 		}

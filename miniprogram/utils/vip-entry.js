@@ -19,7 +19,7 @@ function getVIPEntryVisibility(forceRefresh) {
   if (pendingPromise) {
     return pendingPromise
   }
-  pendingPromise = request({ url: '/api/vip/entry-config', method: 'GET' })
+  pendingPromise = request({ url: '/api/vip/entry-config', method: 'POST', data: {} })
     .then((payload) => {
       cachedValue = normalizeEntryVisibility(payload)
       cacheExpiresAt = Date.now() + 30000

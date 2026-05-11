@@ -536,7 +536,7 @@ Page({
 
   onLoad(query) {
     enableShareMenus()
-    this.syncVIPEntryVisibility()
+    this.syncVIPEntryVisibility(true)
     var safeQuery = query || {}
     this.bindEventChannelPayload()
     try {
@@ -559,7 +559,7 @@ Page({
 
   onShow() {
     enableShareMenus()
-    this.syncVIPEntryVisibility()
+    this.syncVIPEntryVisibility(true)
     if (!hasKeys(this.data.student)) {
       var pendingPayload = getPendingRecommendPayload() || null
       if (pendingPayload) {
@@ -578,8 +578,8 @@ Page({
     this.stopAnalyzePolling()
   },
 
-  syncVIPEntryVisibility() {
-	return getVIPEntryVisibility().then((showVipEntry) => {
+  syncVIPEntryVisibility(forceRefresh) {
+  return getVIPEntryVisibility(forceRefresh).then((showVipEntry) => {
 		if (this.data.showVipEntry !== showVipEntry) {
 			this.setData({ showVipEntry })
 		}

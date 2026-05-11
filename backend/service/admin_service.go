@@ -33,16 +33,7 @@ func (s *AdminService) EnsureBootstrap(ctx context.Context) error {
 }
 
 func (s *AdminService) ShouldShowVIPEntry(ctx context.Context) (bool, error) {
-	items, err := s.repo.ListVIPProducts(ctx)
-	if err != nil {
-		return false, err
-	}
-	for _, item := range items {
-		if item.Enabled && item.ShowEntry {
-			return true, nil
-		}
-	}
-	return false, nil
+	return s.repo.ShouldShowVIPEntry(ctx)
 }
 
 func (s *AdminService) Login(ctx context.Context, username, password string) (string, *model.AdminUser, error) {

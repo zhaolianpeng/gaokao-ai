@@ -451,7 +451,6 @@ CREATE TABLE IF NOT EXISTS vip_product_config (
   description VARCHAR(255) NOT NULL DEFAULT '',
   amount_fen INT NOT NULL DEFAULT 1,
   enabled TINYINT(1) NOT NULL DEFAULT 1,
-  show_entry TINYINT(1) NOT NULL DEFAULT 1,
   validity_type VARCHAR(20) NOT NULL DEFAULT 'unlimited',
   valid_times INT NOT NULL DEFAULT 0,
   valid_from TIMESTAMP NULL DEFAULT NULL,
@@ -461,6 +460,12 @@ CREATE TABLE IF NOT EXISTS vip_product_config (
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY uq_vip_product_config_product_id (product_id),
   KEY idx_vip_product_config_sort_order (sort_order)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS vip_entry_control_config (
+  id TINYINT NOT NULL PRIMARY KEY,
+  show_vip_entry TINYINT(1) NOT NULL DEFAULT 1,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS vip_payment_order (

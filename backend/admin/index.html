@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>高报 MIS 管理平台</title>
+  <title>志愿星途高报助手管理平台</title>
   <style>
     :root {
       --bg: #f5f1e8;
@@ -365,6 +365,59 @@
       min-height: 48px;
     }
 
+    .vip-entry-card {
+      max-width: 760px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(247,250,255,0.96));
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      padding: 22px;
+      box-shadow: var(--shadow);
+    }
+
+    .vip-entry-toggle-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 18px;
+      padding: 18px 20px;
+      border: 1px solid rgba(31,41,55,0.08);
+      border-radius: 18px;
+      background: #f8fbff;
+    }
+
+    .vip-entry-toggle-copy {
+      display: grid;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .vip-entry-toggle-copy strong {
+      font-size: 16px;
+      color: var(--text);
+    }
+
+    .vip-entry-toggle-copy span {
+      color: var(--muted);
+      line-height: 1.6;
+      font-size: 14px;
+    }
+
+    .vip-entry-checkbox {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--text);
+      font-weight: 600;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .vip-entry-meta {
+      margin-top: 16px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
     .viewer {
       white-space: pre-wrap;
       background: #f8fafc;
@@ -387,14 +440,16 @@
       .app-shell { grid-template-columns: 1fr; }
       .sidebar { border-right: none; border-bottom: 1px solid var(--line); }
       .form-grid { grid-template-columns: 1fr; }
+      .vip-entry-toggle-row { flex-direction: column; align-items: flex-start; }
+      .vip-entry-checkbox { white-space: normal; }
     }
   </style>
 </head>
 <body>
   <div id="loginShell" class="login-shell">
     <div class="login-card">
-      <div class="eyebrow">Gaokao MIS</div>
-      <h1>高报后台管理平台</h1>
+      <div class="eyebrow">Zhiyuan Xingtu Admin</div>
+      <h1>志愿星途高报助手管理平台</h1>
       <p class="sub">管理院校、分数、考生、员工、志愿方案、AI 请求结果和 VIP 付费项目。默认账号已按你的要求预置。</p>
       <form id="loginForm" class="stack">
         <div class="field">
@@ -415,7 +470,7 @@
   <div id="appShell" class="app-shell hidden">
     <aside class="sidebar">
       <div class="brand">
-        <strong>高报 MIS</strong>
+        <strong>志愿星途高报助手</strong>
         <span>PC 端运营后台</span>
       </div>
       <div id="nav" class="nav"></div>
@@ -590,7 +645,7 @@
       },
       staff: {
         label: '员工管理',
-        desc: '维护 MIS 账号、角色、状态和密码。',
+        desc: '维护管理平台账号、角色、状态和密码。',
         endpoint: '/api/admin/staff',
         type: 'crud',
         searchable: true,
@@ -623,6 +678,12 @@
         type: 'tasks',
         searchable: true
       },
+      vipEntryControl: {
+        label: 'VIP 入口控制',
+        desc: '统一控制小程序 VIP 入口是否展示。',
+        endpoint: '/api/admin/vip-entry-config',
+        type: 'vip-entry'
+      },
       paymentItems: {
         label: '付费项目管理',
         desc: '统一维护金额、上下架、有效次数和有效期范围。',
@@ -632,7 +693,7 @@
       }
     }
 
-    const navOrder = ['dashboard', 'colleges', 'provinceLines', 'scoreRanks', 'students', 'profileOptions', 'orders', 'staff', 'volunteers', 'aiTasks', 'paymentItems']
+    const navOrder = ['dashboard', 'colleges', 'provinceLines', 'scoreRanks', 'students', 'profileOptions', 'orders', 'staff', 'volunteers', 'aiTasks', 'vipEntryControl', 'paymentItems']
     const SECTION_PATHS = {
       dashboard: '/mis/dashboard',
       colleges: '/mis/colleges',
@@ -644,6 +705,7 @@
       staff: '/mis/staff',
       volunteers: '/mis/volunteers',
       aiTasks: '/mis/ai-tasks',
+      vipEntryControl: '/mis/vip-entry',
       paymentItems: '/mis/payment-items'
     }
     const PATH_SECTION_MAP = {
@@ -657,6 +719,7 @@
       'staff': 'staff',
       'volunteers': 'volunteers',
       'ai-tasks': 'aiTasks',
+      'vip-entry': 'vipEntryControl',
       'payment-items': 'paymentItems'
     }
     const DEFAULT_PAGE_LIMIT = 20
@@ -1671,6 +1734,44 @@
       })
     }
 
+    async function renderVIPEntryControl() {
+      const section = SECTION_DEFS.vipEntryControl
+      const data = await api('/api/admin/vip-entry-config', { method: 'GET' })
+      document.getElementById('contentPanel').innerHTML = `
+        ${buildToolbar(section, `<span class="badge">统一开关</span>`)}
+        <div class="stack">
+          <div class="tip">这里控制的是小程序各页面的 VIP 入口统一显示状态，不再跟具体付费项目绑定。</div>
+          <div class="vip-entry-card">
+            <div class="vip-entry-toggle-row">
+              <div class="vip-entry-toggle-copy">
+                <strong>VIP 入口展示</strong>
+                <span>开启后，小程序相关页面展示 VIP 入口；关闭后统一隐藏。</span>
+              </div>
+              <label class="vip-entry-checkbox"><input id="vipEntryToggle" type="checkbox" ${data.showVipEntry ? 'checked' : ''} /> 在小程序中展示</label>
+            </div>
+            <div class="vip-entry-meta">最近更新时间：${fmtDate(data.updatedAt)}</div>
+            <div class="toolbar-actions" style="justify-content:flex-end; margin-top: 18px;">
+              <button id="saveVipEntryBtn" class="btn btn-primary">保存</button>
+            </div>
+            <div id="vipEntryError" class="error"></div>
+          </div>
+        </div>
+      `
+      bindToolbar('vipEntryControl', section, () => renderVIPEntryControl(), null)
+      document.getElementById('saveVipEntryBtn')?.addEventListener('click', async () => {
+        try {
+          await api('/api/admin/vip-entry-config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ showVipEntry: !!document.getElementById('vipEntryToggle')?.checked })
+          })
+          renderVIPEntryControl()
+        } catch (error) {
+          document.getElementById('vipEntryError').textContent = error.message
+        }
+      })
+    }
+
     function renderCell(key, value) {
       if (key === 'updatedAt' || key === 'createdAt' || key === 'lastLoginAt' || key === 'paidAt') return fmtDate(value)
       if (typeof value === 'boolean') return value ? renderStatus('enabled') : renderStatus('disabled')
@@ -1818,7 +1919,6 @@
         { name: 'validFrom', label: '开始时间', type: 'datetime-local', full: true },
         { name: 'validUntil', label: '结束时间', type: 'datetime-local', full: true },
         { name: 'sortOrder', label: '排序', type: 'number', required: true },
-        { name: 'showEntry', label: '展示 VIP 入口', type: 'checkbox', full: true },
         { name: 'enabled', label: '启用', type: 'checkbox', full: true }
       ]
       document.getElementById('modal').innerHTML = `
@@ -1878,7 +1978,7 @@
           return
         }
         if (field.type === 'datetime-local') {
-          data[field.name] = element.value ? new Date(element.value).toISOString() : ''
+          data[field.name] = element.value ? new Date(element.value).toISOString() : null
           return
         }
         data[field.name] = element.value
@@ -1925,6 +2025,7 @@
       if (state.active === 'scoreRanks') return renderScoreRanks()
       if (state.active === 'orders') return renderOrders()
       if (state.active === 'volunteers' || state.active === 'aiTasks') return renderTasks(state.active)
+      if (state.active === 'vipEntryControl') return renderVIPEntryControl()
       if (state.active === 'vipProducts' || state.active === 'paymentItems') return renderVIP('paymentItems')
       return renderCRUD(state.active)
     }

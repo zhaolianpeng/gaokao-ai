@@ -235,12 +235,12 @@ Page({
   },
 
   onShow() {
-    this.syncVIPEntryVisibility()
+    this.syncVIPEntryVisibility(true)
     this.refreshData()
   },
 
-  syncVIPEntryVisibility() {
-	return getVIPEntryVisibility().then((showVipEntry) => {
+  syncVIPEntryVisibility(forceRefresh) {
+	return getVIPEntryVisibility(forceRefresh).then((showVipEntry) => {
 		if (this.data.showVipEntry !== showVipEntry) {
 			this.setData({ showVipEntry })
 		}

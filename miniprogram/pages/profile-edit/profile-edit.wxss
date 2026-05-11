@@ -39,7 +39,6 @@
   margin-bottom: 12rpx;
 }
 
-.profile-edit-input,
 .profile-edit-picker,
 .profile-edit-static {
   min-height: 88rpx;
@@ -55,8 +54,15 @@
 }
 
 .profile-edit-input {
-  height: 88rpx;
-  line-height: 88rpx;
+  min-height: 88rpx;
+  padding: 20rpx 24rpx;
+  background: #f6f9fc;
+  border: 2rpx solid #d9e4f1;
+  border-radius: 16rpx;
+  box-sizing: border-box;
+  font-size: 28rpx;
+  line-height: 1.5;
+  color: #1d2a39;
   width: 100%;
 }
 
