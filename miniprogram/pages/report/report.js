@@ -1,4 +1,5 @@
 const { saveReportHistory, savePendingExploreFilters } = require('../../utils/storage')
+const { getVIPEntryVisibility } = require('../../utils/vip-entry')
 
 function buildReportBlocks(report) {
   return (report || '')
@@ -99,7 +100,8 @@ Page({
     stats: null,
     checklist: [],
     familyBrief: '',
-    vipPrompt: null
+    vipPrompt: null,
+    showVipEntry: false
   },
 
   onLoad(query) {
@@ -135,6 +137,15 @@ Page({
     })
     wx.setNavigationBarTitle({ title })
     saveReportHistory({ report, student })
+    this.syncVIPEntryVisibility()
+  },
+
+  syncVIPEntryVisibility() {
+	return getVIPEntryVisibility().then((showVipEntry) => {
+		if (this.data.showVipEntry !== showVipEntry) {
+			this.setData({ showVipEntry })
+		}
+	})
   },
 
   copyReport() {

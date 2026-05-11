@@ -174,7 +174,7 @@
         <view class="section-title section-title-small">能力分层</view>
         <view class="knowledge-sub">先免费把核心决策做起来，真的需要长时间比较和深度解释，再进入 AI 和 VIP。</view>
       </view>
-      <view class="link-btn knowledge-link" bindtap="openVipPage">看 VIP</view>
+      <view wx:if="{{showVipEntry}}" class="link-btn knowledge-link" bindtap="openVipPage">看 VIP</view>
     </view>
     <block wx:for="{{serviceLayers}}" wx:key="label">
       <view class="layer-row">

@@ -451,6 +451,7 @@ CREATE TABLE IF NOT EXISTS vip_product_config (
   description VARCHAR(255) NOT NULL DEFAULT '',
   amount_fen INT NOT NULL DEFAULT 1,
   enabled TINYINT(1) NOT NULL DEFAULT 1,
+  show_entry TINYINT(1) NOT NULL DEFAULT 1,
   validity_type VARCHAR(20) NOT NULL DEFAULT 'unlimited',
   valid_times INT NOT NULL DEFAULT 0,
   valid_from TIMESTAMP NULL DEFAULT NULL,

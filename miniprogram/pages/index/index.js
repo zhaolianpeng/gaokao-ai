@@ -1,5 +1,6 @@
 const { request } = require('../../utils/request')
 const { getRecommendHistory, getFavoriteProgramGroups, getApplicationPlan, getUserProfile, getAuthUser, saveUserProfile, savePendingRecommendPayload, savePendingExploreSubject } = require('../../utils/storage')
+const { getVIPEntryVisibility } = require('../../utils/vip-entry')
 
 function buildFormFromProfile(form, profile) {
   if (!profile) {
@@ -272,6 +273,7 @@ Page({
     suggestedRank: 0,
     decisionFlow: HOME_DECISION_FLOW,
     serviceLayers: HOME_SERVICE_LAYERS,
+    showVipEntry: false,
     quickActions: [
       { key: 'explore', title: '院校库', desc: '查学校、专业组、招生计划', action: 'openExplorePage' },
       { key: 'province-lines', title: '黑龙江批次线', desc: '查看 2025-2022 批次线', action: 'openProvinceLinesPage' },
@@ -298,6 +300,7 @@ Page({
   },
 
   onLoad(query) {
+    this.syncVIPEntryVisibility()
     var safeQuery = query || {}
     var hasSharePayload = !!(safeQuery.subject || safeQuery.score || safeQuery.rank || safeQuery.targetMajor || safeQuery.notes || safeQuery.analysisYear || safeQuery.schoolName || safeQuery.schoolYear || safeQuery.className || safeQuery.fromRecommend)
     if (!hasSharePayload) {
@@ -326,6 +329,7 @@ Page({
 
   onShow() {
     enableShareMenus()
+    this.syncVIPEntryVisibility()
     const history = getRecommendHistory().slice(0, 3).map((item) => ({
       ...item,
       archiveText: buildArchiveText(item.student),
@@ -342,6 +346,14 @@ Page({
       analysisContext: buildYearContext(nextForm.analysisYear, nextForm.subject)
     })
     this.loadInsightData()
+  },
+
+  syncVIPEntryVisibility() {
+	return getVIPEntryVisibility().then((showVipEntry) => {
+		if (this.data.showVipEntry !== showVipEntry) {
+			this.setData({ showVipEntry })
+		}
+	})
   },
 
   onSubjectChange(e) {

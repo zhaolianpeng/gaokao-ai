@@ -28,7 +28,7 @@
         <view class="my-sync-desc">头像请直接点击上方头像更新。昵称和报考档案请进入编辑页统一修改并保存。</view>
         <view class="ghost-btn my-ghost-btn my-action-btn" hover-class="my-btn-hover" bindtap="openProfileEditor">编辑昵称和档案</view>
       </view>
-      <view class="primary-btn my-primary-btn my-action-btn" hover-class="my-btn-hover" bindtap="openVip">进入 VIP 中心</view>
+      <view wx:if="{{showVipEntry}}" class="primary-btn my-primary-btn my-action-btn" hover-class="my-btn-hover" bindtap="openVip">进入 VIP 中心</view>
     </view>
 
     <view class="card my-form-card" wx:if="{{user}}">

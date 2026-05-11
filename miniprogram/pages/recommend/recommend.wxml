@@ -76,7 +76,7 @@
       </view>
     </view>
     <view class="page-actions">
-      <button class="ghost-btn" bindtap="openVip">查看 VIP 中心</button>
+      <button wx:if="{{showVipEntry}}" class="ghost-btn" bindtap="openVip">查看 VIP 中心</button>
       <button class="ghost-btn" bindtap="openPlanList">查看方案对比库</button>
     </view>
   </view>

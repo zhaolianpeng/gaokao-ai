@@ -1,3 +1,5 @@
+const { getVIPEntryVisibility } = require('../../utils/vip-entry')
+
 function decodePayload(value) {
   if (!value) {
     return null
@@ -80,7 +82,8 @@ Page({
     posterLead: '',
     signatureText: '',
     archiveText: '',
-    fromRecommendText: ''
+    fromRecommendText: '',
+    showVipEntry: false
   },
 
   onLoad(query) {
@@ -96,6 +99,15 @@ Page({
       fromRecommendText: student.fromRecommend ? '推荐来源：是' : ''
     })
     wx.setNavigationBarTitle({ title: (payload && payload.title) || '家长沟通卡片' })
+    this.syncVIPEntryVisibility()
+  },
+
+  syncVIPEntryVisibility() {
+	return getVIPEntryVisibility().then((showVipEntry) => {
+		if (this.data.showVipEntry !== showVipEntry) {
+			this.setData({ showVipEntry })
+		}
+	})
   },
 
   copyCardText() {

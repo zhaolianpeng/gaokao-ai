@@ -245,6 +245,19 @@ func NewRouter(recommendService *service.RecommendService, aiService *service.AI
 		c.JSON(http.StatusOK, result)
 	})
 
+	r.GET("/api/vip/entry-config", func(c *gin.Context) {
+		if adminService == nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "admin service unavailable"})
+			return
+		}
+		showVIPEntry, err := adminService.ShouldShowVIPEntry(c.Request.Context())
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, model.VIPEntryConfigResponse{ShowVIPEntry: showVIPEntry})
+	})
+
 	r.POST("/api/vip/pay/confirm", func(c *gin.Context) {
 		var req model.WechatPayConfirmRequest
 		if err := c.ShouldBindJSON(&req); err != nil {

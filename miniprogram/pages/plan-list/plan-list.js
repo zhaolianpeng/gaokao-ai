@@ -8,6 +8,7 @@ const {
   removeApplicationPlanItem,
   clearApplicationPlan
 } = require('../../utils/storage')
+const { getVIPEntryVisibility } = require('../../utils/vip-entry')
 
 function formatTime(timestamp) {
   const date = new Date(timestamp)
@@ -229,11 +230,21 @@ Page({
       { value: 'scoreDesc', label: '按最低分降序' },
       { value: 'collegeAsc', label: '按院校名称' }
     ],
-    currentSortLabel: '按加入时间'
+    currentSortLabel: '按加入时间',
+    showVipEntry: false
   },
 
   onShow() {
+    this.syncVIPEntryVisibility()
     this.refreshData()
+  },
+
+  syncVIPEntryVisibility() {
+	return getVIPEntryVisibility().then((showVipEntry) => {
+		if (this.data.showVipEntry !== showVipEntry) {
+			this.setData({ showVipEntry })
+		}
+	})
   },
 
   refreshData() {

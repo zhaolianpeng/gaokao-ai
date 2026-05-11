@@ -1,4 +1,5 @@
 const { request } = require('../../utils/request')
+const { getVIPEntryVisibility } = require('../../utils/vip-entry')
 const {
   saveRecommendHistory,
   getPendingRecommendPayload,
@@ -529,11 +530,13 @@ Page({
     analyzeTaskId: '',
     analyzeTaskStatus: '',
     analyzeProgressPercent: 0,
-    analyzeHelperText: ANALYZE_HELPER_IDLE
+    analyzeHelperText: ANALYZE_HELPER_IDLE,
+    showVipEntry: false
   },
 
   onLoad(query) {
     enableShareMenus()
+    this.syncVIPEntryVisibility()
     var safeQuery = query || {}
     this.bindEventChannelPayload()
     try {
@@ -556,6 +559,7 @@ Page({
 
   onShow() {
     enableShareMenus()
+    this.syncVIPEntryVisibility()
     if (!hasKeys(this.data.student)) {
       var pendingPayload = getPendingRecommendPayload() || null
       if (pendingPayload) {
@@ -572,6 +576,14 @@ Page({
   onUnload() {
     this.clearAnalyzeTimers()
     this.stopAnalyzePolling()
+  },
+
+  syncVIPEntryVisibility() {
+	return getVIPEntryVisibility().then((showVipEntry) => {
+		if (this.data.showVipEntry !== showVipEntry) {
+			this.setData({ showVipEntry })
+		}
+	})
   },
 
   buildSummary(result) {

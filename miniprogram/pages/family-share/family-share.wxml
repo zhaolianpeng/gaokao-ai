@@ -125,7 +125,7 @@
     </view>
     <view class="action-row action-row-second">
       <button class="ghost-btn" bindtap="openPlanList">去方案对比库</button>
-      <button class="ghost-btn" bindtap="openVip">查看 VIP 中心</button>
+      <button wx:if="{{showVipEntry}}" class="ghost-btn" bindtap="openVip">查看 VIP 中心</button>
     </view>
   </view>
 </view>

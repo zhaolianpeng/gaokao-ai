@@ -1,5 +1,6 @@
 const { getAuthUser, saveAuthUser, clearAuthUser, getUserProfile, saveUserProfile, clearUserProfile, hasPrivacyConsent } = require('../../utils/storage')
 const { request, uploadFile } = require('../../utils/request')
+const { getVIPEntryVisibility } = require('../../utils/vip-entry')
 
 function ensurePrivacyConsent(actionText) {
   if (hasPrivacyConsent()) {
@@ -88,7 +89,8 @@ Page({
     syncSubmitting: false,
     avatarSubmitting: false,
     profile: defaultProfile(),
-    subjectOptions: ['历史', '物理']
+    subjectOptions: ['历史', '物理'],
+    showVipEntry: false
   },
 
   onShow() {
@@ -104,6 +106,15 @@ Page({
       syncDraftNickname: (user && user.nickname) || '',
       profile
     })
+    this.syncVIPEntryVisibility()
+  },
+
+  syncVIPEntryVisibility() {
+	return getVIPEntryVisibility().then((showVipEntry) => {
+		if (this.data.showVipEntry !== showVipEntry) {
+			this.setData({ showVipEntry })
+		}
+	})
   },
 
   getUserInitial(user) {

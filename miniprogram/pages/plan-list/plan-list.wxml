@@ -44,7 +44,7 @@
     </scroll-view>
     <view class="action-row action-grid">
       <button class="ghost-btn" bindtap="openFamilyShareCard">生成家长沟通卡片</button>
-      <button class="ghost-btn" bindtap="openVip">查看 VIP 深度服务</button>
+      <button wx:if="{{showVipEntry}}" class="ghost-btn" bindtap="openVip">查看 VIP 深度服务</button>
     </view>
   </view>
 

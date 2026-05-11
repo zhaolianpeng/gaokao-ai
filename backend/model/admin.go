@@ -158,6 +158,7 @@ type VIPProductConfig struct {
 	Description  string     `json:"description"`
 	AmountFen    int        `json:"amountFen"`
 	Enabled      bool       `json:"enabled"`
+	ShowEntry    bool       `json:"showEntry"`
 	ValidityType string     `json:"validityType"`
 	ValidTimes   int        `json:"validTimes"`
 	ValidFrom    *time.Time `json:"validFrom"`
@@ -166,6 +167,10 @@ type VIPProductConfig struct {
 	SortOrder    int        `json:"sortOrder"`
 	CreatedAt    time.Time  `json:"createdAt"`
 	UpdatedAt    time.Time  `json:"updatedAt"`
+}
+
+type VIPEntryConfigResponse struct {
+	ShowVIPEntry bool `json:"showVipEntry"`
 }
 
 type AdminListResponse[T any] struct {
