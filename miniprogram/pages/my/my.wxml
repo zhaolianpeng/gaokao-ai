@@ -23,6 +23,19 @@
         </view>
       </view>
       <view class="login-footnote">登录后保存的考分和偏好会在首页自动带出。</view>
+      <view class="my-vip-card" wx:if="{{vipMembershipLoaded}}">
+        <view class="my-vip-head">
+          <view class="my-vip-title">当前 VIP</view>
+          <view class="my-vip-tag {{vipMembership && vipMembership.active ? 'my-vip-tag-active' : 'my-vip-tag-inactive'}}">{{vipMembership && vipMembership.statusText ? vipMembership.statusText : '未开通'}}</view>
+        </view>
+        <block wx:if="{{vipMembership && vipMembership.productName}}">
+          <view class="my-vip-name">{{vipMembership.productName}}</view>
+          <view class="my-vip-desc">级别：{{vipMembership.levelText || '长期'}} ｜ {{vipMembership.validityText || '长期有效'}}</view>
+          <view class="my-vip-time">起始时间：{{vipMembership.startText || '—'}}</view>
+          <view class="my-vip-time">结束时间：{{vipMembership.endText || '—'}}</view>
+        </block>
+        <view wx:else class="my-vip-empty">你当前还没有开通生效中的 VIP 会员。</view>
+      </view>
       <view class="my-sync-card">
         <view class="my-sync-title">管理昵称、头像和档案</view>
         <view class="my-sync-desc">头像请直接点击上方头像更新。昵称和报考档案请进入编辑页统一修改并保存。</view>

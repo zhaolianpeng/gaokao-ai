@@ -67,6 +67,58 @@
   color: #9a3412;
 }
 
+.vip-membership-card {
+  margin-top: 20rpx;
+  padding: 22rpx;
+  border-radius: 20rpx;
+  background: linear-gradient(135deg, #fff9eb 0%, #f8fbff 100%);
+  border: 2rpx solid #f2dfb3;
+}
+
+.vip-membership-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+}
+
+.vip-membership-title {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #10233f;
+}
+
+.vip-membership-tag {
+  padding: 10rpx 18rpx;
+  border-radius: 999rpx;
+  font-size: 22rpx;
+  font-weight: 700;
+}
+
+.vip-membership-tag-active {
+  background: rgba(184, 134, 11, 0.14);
+  color: #9a6700;
+}
+
+.vip-membership-tag-idle {
+  background: rgba(96, 115, 137, 0.12);
+  color: #607389;
+}
+
+.vip-membership-name {
+  margin-top: 14rpx;
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #10233f;
+}
+
+.vip-membership-line {
+  margin-top: 10rpx;
+  font-size: 24rpx;
+  line-height: 1.7;
+  color: #50657f;
+}
+
 .vip-band-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);

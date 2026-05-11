@@ -96,7 +96,7 @@ function buildOrderId(productId) {
 
 function isServerUser(user) {
   const userId = user && user.id ? String(user.id) : ''
-  return !!user && user.storageMode === 'server' && /^\d+$/.test(userId)
+  return !!user && user.storageMode === 'server' && !!userId
 }
 
 function requestWechatPayment(payParams) {
@@ -134,6 +134,24 @@ function formatPrice(amountFen) {
   return `￥${(Number(amountFen || 0) / 100).toFixed(2)}`
 }
 
+function shouldPromptActiveMembership(vipMembership) {
+  return !!(vipMembership && vipMembership.active && Number(vipMembership.endAt || 0) > Date.now())
+}
+
+function confirmRenewal(vipMembership) {
+  const endText = vipMembership && vipMembership.endText ? vipMembership.endText : '当前有效期结束后'
+  return new Promise((resolve) => {
+    wx.showModal({
+      title: '当前 VIP 生效中',
+      content: `当前 VIP 正在生效，有效期到 ${endText}。继续支付后，将在现有 VIP 基础上顺延有效期，是否继续？`,
+      confirmText: '继续支付',
+      cancelText: '暂不支付',
+      success: (res) => resolve(!!(res && res.confirm)),
+      fail: () => resolve(false)
+    })
+  })
+}
+
 Page({
   data: {
     user: null,
@@ -142,7 +160,9 @@ Page({
     accessMatrix: ACCESS_MATRIX,
     loadingProductId: '',
     canPay: false,
-    loginHint: ''
+  loginHint: '',
+  vipMembership: null,
+  vipMembershipLoaded: false
   },
 
   onShow() {
@@ -153,6 +173,28 @@ Page({
       loginHint: this.buildLoginHint(user)
     })
     this.loadProducts()
+  this.loadMembership(user)
+  },
+
+  loadMembership(user) {
+    if (!isServerUser(user)) {
+    this.setData({ vipMembership: null, vipMembershipLoaded: true })
+    return Promise.resolve()
+    }
+    return request({
+    url: '/api/vip/membership',
+    method: 'POST',
+    data: {
+      userId: String(user.id)
+    }
+    }).then((vipMembership) => {
+    const normalized = vipMembership && (vipMembership.productId || vipMembership.productName || vipMembership.statusText)
+      ? vipMembership
+      : null
+    this.setData({ vipMembership: normalized, vipMembershipLoaded: true })
+    }).catch(() => {
+    this.setData({ vipMembership: null, vipMembershipLoaded: true })
+    })
   },
 
   async loadProducts() {
@@ -195,6 +237,14 @@ Page({
       return
     }
 
+	const vipMembership = this.data.vipMembership
+	if (shouldPromptActiveMembership(vipMembership)) {
+	  const shouldContinue = await confirmRenewal(vipMembership)
+	  if (!shouldContinue) {
+		return
+	  }
+	}
+
     const orderId = buildOrderId(productId)
     this.setData({ loadingProductId: productId })
     try {
@@ -224,6 +274,8 @@ Page({
           userId: String(user.id)
         }
       })
+
+	  await this.loadMembership(user)
 
       wx.showToast({ title: '支付成功', icon: 'success' })
     } catch (err) {

@@ -109,6 +109,7 @@ CREATE TABLE IF NOT EXISTS crawl_job_log (
 
 CREATE TABLE IF NOT EXISTS mini_auth_user (
   id INT AUTO_INCREMENT PRIMARY KEY,
+  object_id VARCHAR(24) NOT NULL DEFAULT '',
   openid VARCHAR(255) NOT NULL DEFAULT '',
   phone VARCHAR(32) NOT NULL DEFAULT '',
   nickname VARCHAR(255) NOT NULL DEFAULT '',
@@ -123,6 +124,7 @@ CREATE TABLE IF NOT EXISTS mini_auth_user (
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   last_login_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_mini_auth_user_object_id (object_id),
   UNIQUE KEY uq_mini_auth_user_openid (openid),
   KEY idx_mini_auth_user_phone (phone)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -471,7 +473,7 @@ CREATE TABLE IF NOT EXISTS vip_entry_control_config (
 CREATE TABLE IF NOT EXISTS vip_payment_order (
   id INT AUTO_INCREMENT PRIMARY KEY,
   order_id VARCHAR(64) NOT NULL,
-  user_id INT NOT NULL DEFAULT 0,
+  user_id VARCHAR(24) NOT NULL DEFAULT '',
   openid VARCHAR(128) NOT NULL DEFAULT '',
   product_id VARCHAR(64) NOT NULL DEFAULT '',
   product_name VARCHAR(100) NOT NULL DEFAULT '',
@@ -483,6 +485,9 @@ CREATE TABLE IF NOT EXISTS vip_payment_order (
   transaction_id VARCHAR(128) NOT NULL DEFAULT '',
   remark VARCHAR(255) NOT NULL DEFAULT '',
   paid_at TIMESTAMP NULL DEFAULT NULL,
+  expires_at TIMESTAMP NULL DEFAULT NULL,
+  effective_from TIMESTAMP NULL DEFAULT NULL,
+  effective_until TIMESTAMP NULL DEFAULT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY uq_vip_payment_order_order_id (order_id),

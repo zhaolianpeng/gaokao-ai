@@ -196,6 +196,60 @@
   color: #50657f;
 }
 
+.my-vip-card {
+  margin-top: 20rpx;
+  padding: 22rpx;
+  border-radius: 20rpx;
+  background: linear-gradient(135deg, #fff9eb 0%, #f8fbff 100%);
+  border: 2rpx solid #f2dfb3;
+}
+
+.my-vip-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+}
+
+.my-vip-title {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #10233f;
+}
+
+.my-vip-tag {
+  padding: 10rpx 18rpx;
+  border-radius: 999rpx;
+  font-size: 22rpx;
+  font-weight: 700;
+}
+
+.my-vip-tag-active {
+  background: rgba(184, 134, 11, 0.14);
+  color: #9a6700;
+}
+
+.my-vip-tag-inactive {
+  background: rgba(96, 115, 137, 0.12);
+  color: #607389;
+}
+
+.my-vip-name {
+  margin-top: 14rpx;
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #10233f;
+}
+
+.my-vip-desc,
+.my-vip-time,
+.my-vip-empty {
+  margin-top: 10rpx;
+  font-size: 24rpx;
+  line-height: 1.7;
+  color: #50657f;
+}
+
 .my-form-title {
   font-size: 36rpx;
   font-weight: 700;

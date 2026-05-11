@@ -90,7 +90,9 @@ Page({
     avatarSubmitting: false,
     profile: defaultProfile(),
     subjectOptions: ['历史', '物理'],
-    showVipEntry: false
+	showVipEntry: false,
+	vipMembership: null,
+	vipMembershipLoaded: false
   },
 
   onShow() {
@@ -107,6 +109,28 @@ Page({
       profile
     })
     this.syncVIPEntryVisibility(true)
+  this.loadVIPMembership(rawUser)
+  },
+
+  loadVIPMembership(user) {
+    if (!user || user.storageMode !== 'server' || !user.id) {
+    this.setData({ vipMembership: null, vipMembershipLoaded: true })
+    return Promise.resolve()
+    }
+    return request({
+    url: '/api/vip/membership',
+    method: 'POST',
+    data: {
+      userId: String(user.id)
+    }
+    }).then((vipMembership) => {
+    const normalized = vipMembership && (vipMembership.productId || vipMembership.productName || vipMembership.statusText)
+      ? vipMembership
+      : null
+    this.setData({ vipMembership: normalized, vipMembershipLoaded: true })
+    }).catch(() => {
+    this.setData({ vipMembership: null, vipMembershipLoaded: true })
+    })
   },
 
    syncVIPEntryVisibility(forceRefresh) {
@@ -217,6 +241,8 @@ Page({
       user: null,
       userInitial: '考',
       avatarDisplayUrl: '',
+      vipMembership: null,
+      vipMembershipLoaded: false,
       profile: {
         ...defaultProfile()
       }

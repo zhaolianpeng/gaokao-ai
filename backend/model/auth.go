@@ -23,7 +23,7 @@ type AuthUser struct {
 }
 
 type AuthUserRecord struct {
-	ID            int
+	ID            string
 	OpenID        string
 	Phone         string
 	Nickname      string
@@ -89,9 +89,30 @@ type WechatPayDebug struct {
 type WechatPayResponse struct {
 	AmountFen int                 `json:"amountFen"`
 	Debug     WechatPayDebug      `json:"debug"`
+	ExpiresAt int64               `json:"expiresAt"`
 	OrderID   string              `json:"orderId"`
 	Payment   WechatPaymentParams `json:"payment"`
 	ProductID string              `json:"productId"`
+}
+
+type WechatVIPMembershipRequest struct {
+	UserID string `json:"userId" binding:"required"`
+}
+
+type VIPMembershipStatusResponse struct {
+	Active       bool   `json:"active"`
+	OrderID      string `json:"orderId"`
+	ProductID    string `json:"productId"`
+	ProductName  string `json:"productName"`
+	LevelType    string `json:"levelType"`
+	LevelText    string `json:"levelText"`
+	StatusText   string `json:"statusText"`
+	ValidityText string `json:"validityText"`
+	StartAt      int64  `json:"startAt"`
+	EndAt        int64  `json:"endAt"`
+	PaidAt       int64  `json:"paidAt"`
+	StartText    string `json:"startText"`
+	EndText      string `json:"endText"`
 }
 
 type TaskStudent struct {

@@ -55,6 +55,8 @@ func main() {
 	payService, err = service.NewPayService(cfg.WeChatAppID, cfg.WeChatPayMchID, cfg.WeChatPayCertSerial, cfg.WeChatPayPrivateKeyPath, cfg.WeChatPayNotifyURL, authRepo, adminRepo)
 	if err != nil {
 		log.Printf("init pay service failed: %v", err)
+	} else {
+		payService.StartPendingOrderCloser(context.Background())
 	}
 
 	router := api.NewRouter(recommendService, aiService, explorerService, authService, payService, taskService, feedbackService, adminService, cfg.TrustedProxies, cfg.UploadDir, cfg.PublicBaseURL, cfg.LogBodyLimitBytes)

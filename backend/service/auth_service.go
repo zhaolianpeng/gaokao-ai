@@ -8,7 +8,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -56,8 +55,8 @@ func (s *AuthService) Login(ctx context.Context, req model.WechatLoginRequest) (
 }
 
 func (s *AuthService) UpdateProfile(ctx context.Context, req model.WechatProfileUpdateRequest) (*model.AuthUser, error) {
-	userID, err := strconv.Atoi(strings.TrimSpace(req.UserID))
-	if err != nil || userID <= 0 {
+	userID, err := s.repo.ResolveUserID(ctx, req.UserID)
+	if err != nil {
 		return nil, fmt.Errorf("invalid user id")
 	}
 	if req.Phone != nil {
@@ -97,11 +96,11 @@ func (s *AuthService) UpdateProfile(ctx context.Context, req model.WechatProfile
 }
 
 func (s *AuthService) GetUserByID(ctx context.Context, userID string) (*model.AuthUser, error) {
-	parsedID, err := strconv.Atoi(strings.TrimSpace(userID))
-	if err != nil || parsedID <= 0 {
+	resolvedUserID, err := s.repo.ResolveUserID(ctx, userID)
+	if err != nil {
 		return nil, fmt.Errorf("invalid user id")
 	}
-	record, err := s.repo.GetUserByID(ctx, parsedID)
+	record, err := s.repo.GetUserByID(ctx, resolvedUserID)
 	if err != nil {
 		return nil, err
 	}
@@ -224,7 +223,7 @@ func toAuthUser(record *model.AuthUserRecord, created bool) *model.AuthUser {
 		return nil
 	}
 	return &model.AuthUser{
-		ID:            strconv.Itoa(record.ID),
+		ID:            record.ID,
 		OpenID:        record.OpenID,
 		Phone:         record.Phone,
 		Nickname:      record.Nickname,

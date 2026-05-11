@@ -295,7 +295,7 @@ func registerAdminRoutes(r *gin.Engine, adminService *service.AdminService, payS
 				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 				return
 			}
-			if req.ID <= 0 {
+			if strings.TrimSpace(req.ID) == "" {
 				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid student id"})
 				return
 			}

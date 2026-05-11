@@ -7,6 +7,19 @@
       <button wx:if="{{!user}}" class="primary-btn vip-login-btn" bindtap="goLogin">先去登录</button>
       <view wx:if="{{user}}" class="vip-user">当前账号：{{user.nickname}}{{user.phone ? '（' + user.phone + '）' : ''}}</view>
       <view class="vip-status {{canPay ? 'vip-status-ok' : 'vip-status-warn'}}">{{loginHint}}</view>
+      <view class="vip-membership-card" wx:if="{{vipMembershipLoaded && user}}">
+        <view class="vip-membership-head">
+          <view class="vip-membership-title">当前账号 VIP 信息</view>
+          <view class="vip-membership-tag {{vipMembership && vipMembership.active ? 'vip-membership-tag-active' : 'vip-membership-tag-idle'}}">{{vipMembership && vipMembership.statusText ? vipMembership.statusText : '未开通'}}</view>
+        </view>
+        <block wx:if="{{vipMembership && vipMembership.productName}}">
+          <view class="vip-membership-name">{{vipMembership.productName}}</view>
+          <view class="vip-membership-line">级别：{{vipMembership.levelText || '长期'}} ｜ {{vipMembership.validityText || '长期有效'}}</view>
+          <view class="vip-membership-line">起始时间：{{vipMembership.startText || '—'}}</view>
+          <view class="vip-membership-line">结束时间：{{vipMembership.endText || '—'}}</view>
+        </block>
+        <view wx:else class="vip-membership-line">当前账号还没有已生效的 VIP 会员。</view>
+      </view>
     </view>
 
     <view class="card vip-product-card">

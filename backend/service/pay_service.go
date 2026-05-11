@@ -34,12 +34,21 @@ type vipProduct struct {
 	AmountFen   int
 }
 
+type membershipWindow struct {
+	effectiveFrom  *time.Time
+	effectiveUntil *time.Time
+	validityType   string
+}
+
 var vipProducts = map[string]vipProduct{
 	"vip_single": {Description: "VIP 次卡", AmountFen: 1},
 	"vip_day":    {Description: "VIP 天卡", AmountFen: 1},
 	"vip_month":  {Description: "VIP 月卡", AmountFen: 1},
 	"vip_season": {Description: "VIP 季卡", AmountFen: 1},
 }
+
+const pendingOrderTTL = 10 * time.Minute
+const pendingOrderCloseInterval = time.Second
 
 type PayService struct {
 	appID      string
@@ -90,8 +99,33 @@ func NewPayService(appID, mchID, certSerial, privateKeyPath, notifyURL string, a
 	}, nil
 }
 
+func (s *PayService) StartPendingOrderCloser(ctx context.Context) {
+	if s == nil || s.adminRepo == nil {
+		return
+	}
+	go func() {
+		ticker := time.NewTicker(pendingOrderCloseInterval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				if err := s.adminRepo.CloseExpiredCreatedOrders(context.Background(), time.Now()); err != nil {
+					logging.LogEvent("pay_close_expired_orders", map[string]any{"status": "failed", "error": err.Error()})
+				}
+			}
+		}
+	}()
+}
+
 func (s *PayService) CreatePayment(ctx context.Context, req model.WechatPayRequest) (*model.WechatPayResponse, error) {
 	logging.LogEvent("pay_create_start", map[string]any{"orderId": strings.TrimSpace(req.OrderID), "userId": strings.TrimSpace(req.UserID), "productId": strings.TrimSpace(req.ProductID), "hasOpenID": strings.TrimSpace(req.OpenID) != ""})
+	if s.adminRepo != nil {
+		if err := s.adminRepo.CloseExpiredCreatedOrders(ctx, time.Now()); err != nil {
+			return nil, fmt.Errorf("close expired pending orders failed: %w", err)
+		}
+	}
 	product, ok := vipProducts[strings.TrimSpace(req.ProductID)]
 	if s.adminRepo != nil {
 		configured, err := s.adminRepo.GetVIPProductByProductID(ctx, strings.TrimSpace(req.ProductID))
@@ -106,8 +140,8 @@ func (s *PayService) CreatePayment(ctx context.Context, req model.WechatPayReque
 	if !ok {
 		return nil, fmt.Errorf("invalid vip product")
 	}
-	userID, err := strconv.Atoi(strings.TrimSpace(req.UserID))
-	if err != nil || userID <= 0 {
+	userID, err := s.authRepo.ResolveUserID(ctx, req.UserID)
+	if err != nil {
 		return nil, fmt.Errorf("invalid user id")
 	}
 	userRecord, err := s.authRepo.GetUserByID(ctx, userID)
@@ -179,6 +213,7 @@ func (s *PayService) CreatePayment(ctx context.Context, req model.WechatPayReque
 		return nil, err
 	}
 	if s.adminRepo != nil {
+		expiresAt := time.Now().Add(pendingOrderTTL)
 		_ = s.adminRepo.UpsertPaymentOrder(ctx, model.AdminOrder{
 			OrderID:        strings.TrimSpace(req.OrderID),
 			UserID:         userID,
@@ -190,6 +225,7 @@ func (s *PayService) CreatePayment(ctx context.Context, req model.WechatPayReque
 			Status:         "created",
 			PaymentChannel: "wechat-pay",
 			PrepayID:       strings.TrimSpace(payload.PrepayID),
+			ExpiresAt:      &expiresAt,
 		})
 	}
 	logging.LogEvent("pay_create_complete", map[string]any{"orderId": strings.TrimSpace(req.OrderID), "userId": userID, "productId": strings.TrimSpace(req.ProductID), "amountFen": product.AmountFen, "prepayId": strings.TrimSpace(payload.PrepayID), "status": "created"})
@@ -200,6 +236,7 @@ func (s *PayService) CreatePayment(ctx context.Context, req model.WechatPayReque
 			PrepayID:  payload.PrepayID,
 			TimeStamp: timestamp,
 		},
+		ExpiresAt: time.Now().Add(pendingOrderTTL).UnixMilli(),
 		OrderID:   req.OrderID,
 		ProductID: req.ProductID,
 		Payment: model.WechatPaymentParams{
@@ -213,35 +250,157 @@ func (s *PayService) CreatePayment(ctx context.Context, req model.WechatPayReque
 	}, nil
 }
 
-func (s *PayService) ConfirmPayment(ctx context.Context, req model.WechatPayConfirmRequest) map[string]any {
+func (s *PayService) ConfirmPayment(ctx context.Context, req model.WechatPayConfirmRequest) (map[string]any, error) {
 	logging.LogEvent("pay_confirm", map[string]any{"orderId": strings.TrimSpace(req.OrderID), "userId": strings.TrimSpace(req.UserID), "productId": strings.TrimSpace(req.ProductID), "status": "start"})
+	resolvedUserID := strings.TrimSpace(req.UserID)
+	if s.authRepo != nil {
+		if value, err := s.authRepo.ResolveUserID(ctx, req.UserID); err == nil {
+			resolvedUserID = value
+		}
+	}
+	if s.adminRepo == nil {
+		return nil, fmt.Errorf("pay service unavailable")
+	}
+	if err := s.adminRepo.CloseExpiredCreatedOrders(ctx, time.Now()); err != nil {
+		return nil, fmt.Errorf("close expired pending orders failed: %w", err)
+	}
+	order, err := s.adminRepo.GetPaymentOrderByOrderID(ctx, req.OrderID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("order not found")
+		}
+		return nil, err
+	}
+	if strings.TrimSpace(order.UserID) != "" && strings.TrimSpace(order.UserID) != resolvedUserID {
+		return nil, fmt.Errorf("order user mismatch")
+	}
+	if order.Status == "closed" {
+		return nil, fmt.Errorf("当前订单已超时关闭，请重新创建订单后支付")
+	}
+	if order.Status == "paid" {
+		return map[string]any{
+			"confirmedAt":    time.Now().UnixMilli(),
+			"ok":             true,
+			"orderId":        req.OrderID,
+			"paymentChannel": "wechat-pay",
+			"productId":      req.ProductID,
+		}, nil
+	}
 	if s.adminRepo != nil {
 		paidAt := time.Now()
+		configuredProduct, _ := s.adminRepo.GetVIPProductByProductID(ctx, strings.TrimSpace(req.ProductID))
+		window := s.buildMembershipWindow(ctx, resolvedUserID, strings.TrimSpace(req.ProductID), configuredProduct, paidAt)
 		_ = s.adminRepo.UpsertPaymentOrder(ctx, model.AdminOrder{
 			OrderID:        strings.TrimSpace(req.OrderID),
-			UserID:         parseUserID(req.UserID),
+			UserID:         resolvedUserID,
 			ProductID:      strings.TrimSpace(req.ProductID),
 			Status:         "paid",
 			PaymentChannel: "wechat-pay",
 			PaidAt:         &paidAt,
+			ExpiresAt:      order.ExpiresAt,
+			EffectiveFrom:  window.effectiveFrom,
+			EffectiveUntil: window.effectiveUntil,
 		})
 	}
-	logging.LogEvent("pay_confirm", map[string]any{"orderId": strings.TrimSpace(req.OrderID), "userId": parseUserID(req.UserID), "productId": strings.TrimSpace(req.ProductID), "status": "paid"})
+	logging.LogEvent("pay_confirm", map[string]any{"orderId": strings.TrimSpace(req.OrderID), "userId": resolvedUserID, "productId": strings.TrimSpace(req.ProductID), "status": "paid"})
 	return map[string]any{
 		"confirmedAt":    time.Now().UnixMilli(),
 		"ok":             true,
 		"orderId":        req.OrderID,
 		"paymentChannel": "wechat-pay",
 		"productId":      req.ProductID,
-	}
+	}, nil
 }
 
-func parseUserID(raw string) int {
-	value, err := strconv.Atoi(strings.TrimSpace(raw))
-	if err != nil || value < 0 {
+func (s *PayService) GetMembership(ctx context.Context, userID string) (*model.VIPMembershipStatusResponse, error) {
+	if s.adminRepo == nil {
+		return nil, fmt.Errorf("membership service unavailable")
+	}
+	resolvedUserID := strings.TrimSpace(userID)
+	if s.authRepo != nil {
+		value, err := s.authRepo.ResolveUserID(ctx, userID)
+		if err != nil {
+			return nil, fmt.Errorf("invalid user id")
+		}
+		resolvedUserID = value
+	}
+	if resolvedUserID == "" {
+		return nil, fmt.Errorf("invalid user id")
+	}
+	order, err := s.adminRepo.GetLatestPaidOrderByUserID(ctx, resolvedUserID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return &model.VIPMembershipStatusResponse{}, nil
+		}
+		return nil, err
+	}
+	var product *model.VIPProductConfig
+	if strings.TrimSpace(order.ProductID) != "" {
+		configured, productErr := s.adminRepo.GetVIPProductByProductID(ctx, strings.TrimSpace(order.ProductID))
+		if productErr == nil {
+			product = configured
+		}
+	}
+	status := s.adminRepo.InferVIPMembership(*order, product, time.Now())
+	return &status, nil
+}
+
+func (s *PayService) buildMembershipWindow(ctx context.Context, userID, productID string, product *model.VIPProductConfig, paidAt time.Time) membershipWindow {
+	validityType := ""
+	if product != nil {
+		validityType = strings.TrimSpace(product.ValidityType)
+	}
+	if validityType == "" || validityType == "unlimited" {
+		switch strings.TrimSpace(productID) {
+		case "vip_day", "vip_month", "vip_season":
+			validityType = "range"
+		case "vip_single":
+			validityType = "times"
+		default:
+			validityType = "unlimited"
+		}
+	}
+	window := membershipWindow{validityType: validityType}
+	if validityType != "range" {
+		return window
+	}
+	baseStart := paidAt
+	baseEnd := paidAt
+	currentMembership, err := s.GetMembership(ctx, userID)
+	if err == nil && currentMembership != nil && currentMembership.Active && currentMembership.EndAt > paidAt.UnixMilli() {
+		baseStart = time.UnixMilli(currentMembership.StartAt)
+		baseEnd = time.UnixMilli(currentMembership.EndAt)
+	}
+	duration := s.resolveProductRangeDuration(productID, product, paidAt)
+	if duration <= 0 {
+		return window
+	}
+	effectiveFrom := baseStart
+	effectiveUntil := baseEnd.Add(duration)
+	if baseEnd.Before(paidAt) {
+		effectiveFrom = paidAt
+		effectiveUntil = paidAt.Add(duration)
+	}
+	window.effectiveFrom = &effectiveFrom
+	window.effectiveUntil = &effectiveUntil
+	return window
+}
+
+func (s *PayService) resolveProductRangeDuration(productID string, product *model.VIPProductConfig, reference time.Time) time.Duration {
+	if product != nil && strings.TrimSpace(product.ValidityType) == "range" && product.ValidFrom != nil && product.ValidUntil != nil && product.ValidUntil.After(*product.ValidFrom) {
+		return product.ValidUntil.Sub(*product.ValidFrom)
+	}
+	switch strings.TrimSpace(productID) {
+	case "vip_day":
+		return 24 * time.Hour
+	case "vip_month":
+		return time.Time{}.AddDate(0, 0, 30).Sub(time.Time{})
+	case "vip_season":
+		return time.Time{}.AddDate(0, 0, 90).Sub(time.Time{})
+	default:
+		_ = reference
 		return 0
 	}
-	return value
 }
 
 func (s *PayService) BackfillOrders(ctx context.Context, startDate, endDate string) (*OrderBackfillResult, error) {
@@ -290,7 +449,7 @@ func (s *PayService) BackfillOrders(ctx context.Context, startDate, endDate stri
 					amountFen = configured.AmountFen
 				}
 			}
-			userID := 0
+			userID := ""
 			if strings.TrimSpace(row.OpenID) != "" {
 				if user, userErr := s.authRepo.GetUserByOpenID(ctx, strings.TrimSpace(row.OpenID)); userErr == nil && user != nil {
 					userID = user.ID

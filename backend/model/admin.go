@@ -76,7 +76,7 @@ type AdminScoreRank struct {
 }
 
 type AdminStudent struct {
-	ID            int       `json:"id"`
+	ID            string    `json:"id"`
 	OpenID        string    `json:"openId"`
 	Phone         string    `json:"phone"`
 	Nickname      string    `json:"nickname"`
@@ -133,7 +133,7 @@ type AdminTask struct {
 type AdminOrder struct {
 	ID             int        `json:"id"`
 	OrderID        string     `json:"orderId"`
-	UserID         int        `json:"userId"`
+	UserID         string     `json:"userId"`
 	UserNickname   string     `json:"userNickname"`
 	UserPhone      string     `json:"userPhone"`
 	OpenID         string     `json:"openId"`
@@ -147,6 +147,9 @@ type AdminOrder struct {
 	TransactionID  string     `json:"transactionId"`
 	Remark         string     `json:"remark"`
 	PaidAt         *time.Time `json:"paidAt"`
+	ExpiresAt      *time.Time `json:"expiresAt"`
+	EffectiveFrom  *time.Time `json:"effectiveFrom"`
+	EffectiveUntil *time.Time `json:"effectiveUntil"`
 	CreatedAt      time.Time  `json:"createdAt"`
 	UpdatedAt      time.Time  `json:"updatedAt"`
 }

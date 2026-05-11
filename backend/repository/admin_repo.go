@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"gaokao-ai/backend/model"
 )
@@ -91,7 +92,7 @@ func (r *AdminRepository) EnsureBootstrap(ctx context.Context, defaultPasswordHa
 		`CREATE TABLE IF NOT EXISTS vip_payment_order (
 			id INT AUTO_INCREMENT PRIMARY KEY,
 			order_id VARCHAR(64) NOT NULL,
-			user_id INT NOT NULL DEFAULT 0,
+			user_id VARCHAR(24) NOT NULL DEFAULT '',
 			openid VARCHAR(128) NOT NULL DEFAULT '',
 			product_id VARCHAR(64) NOT NULL DEFAULT '',
 			product_name VARCHAR(100) NOT NULL DEFAULT '',
@@ -103,6 +104,9 @@ func (r *AdminRepository) EnsureBootstrap(ctx context.Context, defaultPasswordHa
 			transaction_id VARCHAR(128) NOT NULL DEFAULT '',
 			remark VARCHAR(255) NOT NULL DEFAULT '',
 			paid_at TIMESTAMP NULL DEFAULT NULL,
+			expires_at TIMESTAMP NULL DEFAULT NULL,
+			effective_from TIMESTAMP NULL DEFAULT NULL,
+			effective_until TIMESTAMP NULL DEFAULT NULL,
 			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			UNIQUE KEY uq_vip_payment_order_order_id (order_id),
@@ -138,11 +142,15 @@ func (r *AdminRepository) EnsureBootstrap(ctx context.Context, defaultPasswordHa
 		{tableName: "vip_product_config", column: "valid_from", statement: `ALTER TABLE vip_product_config ADD COLUMN valid_from TIMESTAMP NULL DEFAULT NULL AFTER valid_times`},
 		{tableName: "vip_product_config", column: "valid_until", statement: `ALTER TABLE vip_product_config ADD COLUMN valid_until TIMESTAMP NULL DEFAULT NULL AFTER valid_from`},
 		{tableName: "mini_auth_user", column: "id_card", statement: `ALTER TABLE mini_auth_user ADD COLUMN id_card VARCHAR(64) NOT NULL DEFAULT '' AFTER avatar_url`},
+		{tableName: "mini_auth_user", column: "object_id", statement: `ALTER TABLE mini_auth_user ADD COLUMN object_id VARCHAR(24) NOT NULL DEFAULT '' AFTER id`},
 		{tableName: "mini_auth_user", column: "school_name", statement: `ALTER TABLE mini_auth_user ADD COLUMN school_name VARCHAR(128) NOT NULL DEFAULT '' AFTER id_card`},
 		{tableName: "mini_auth_user", column: "school_year", statement: `ALTER TABLE mini_auth_user ADD COLUMN school_year VARCHAR(64) NOT NULL DEFAULT '' AFTER school_name`},
 		{tableName: "mini_auth_user", column: "class_name", statement: `ALTER TABLE mini_auth_user ADD COLUMN class_name VARCHAR(128) NOT NULL DEFAULT '' AFTER school_year`},
 		{tableName: "mini_auth_user", column: "student_no", statement: `ALTER TABLE mini_auth_user ADD COLUMN student_no VARCHAR(64) NOT NULL DEFAULT '' AFTER class_name`},
 		{tableName: "mini_auth_user", column: "from_recommend", statement: `ALTER TABLE mini_auth_user ADD COLUMN from_recommend TINYINT(1) NOT NULL DEFAULT 0 AFTER student_no`},
+		{tableName: "vip_payment_order", column: "expires_at", statement: `ALTER TABLE vip_payment_order ADD COLUMN expires_at TIMESTAMP NULL DEFAULT NULL AFTER paid_at`},
+		{tableName: "vip_payment_order", column: "effective_from", statement: `ALTER TABLE vip_payment_order ADD COLUMN effective_from TIMESTAMP NULL DEFAULT NULL AFTER paid_at`},
+		{tableName: "vip_payment_order", column: "effective_until", statement: `ALTER TABLE vip_payment_order ADD COLUMN effective_until TIMESTAMP NULL DEFAULT NULL AFTER effective_from`},
 		{tableName: "province_score_line", column: "source_name", statement: `ALTER TABLE province_score_line ADD COLUMN source_name VARCHAR(100) NOT NULL DEFAULT '' AFTER score`},
 		{tableName: "province_score_line", column: "source_url", statement: `ALTER TABLE province_score_line ADD COLUMN source_url TEXT NULL AFTER source_name`},
 		{tableName: "province_score_line", column: "updated_at", statement: `ALTER TABLE province_score_line ADD COLUMN updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP AFTER source_url`},
@@ -161,6 +169,12 @@ func (r *AdminRepository) EnsureBootstrap(ctx context.Context, defaultPasswordHa
 		if _, err := r.db.ExecContext(ctx, item.statement); err != nil {
 			return err
 		}
+	}
+	if err := r.ensureMiniAuthUserObjectIDs(ctx); err != nil {
+		return err
+	}
+	if err := r.ensureVIPPaymentOrderUserIDObjectIDs(ctx); err != nil {
+		return err
 	}
 	if _, err := r.db.ExecContext(ctx, `
 		INSERT INTO mis_admin_user (username, password_hash, display_name, phone, role, status)
@@ -594,7 +608,7 @@ func (r *AdminRepository) ListStudents(ctx context.Context, keyword string, page
 		return nil, 0, err
 	}
 	rows, err := r.db.QueryContext(ctx, `
-		SELECT id, openid, phone, nickname, COALESCE(avatar_url, ''), COALESCE(id_card, ''), COALESCE(school_name, ''), COALESCE(school_year, ''), COALESCE(class_name, ''), COALESCE(student_no, ''), COALESCE(from_recommend, 0), login_type, created_at, updated_at, last_login_at
+		SELECT object_id, openid, phone, nickname, COALESCE(avatar_url, ''), COALESCE(id_card, ''), COALESCE(school_name, ''), COALESCE(school_year, ''), COALESCE(class_name, ''), COALESCE(student_no, ''), COALESCE(from_recommend, 0), login_type, created_at, updated_at, last_login_at
 		FROM mini_auth_user
 		WHERE openid LIKE ? OR phone LIKE ? OR nickname LIKE ? OR school_name LIKE ? OR class_name LIKE ? OR student_no LIKE ?
 		ORDER BY id DESC LIMIT ? OFFSET ?
@@ -618,7 +632,7 @@ func (r *AdminRepository) SaveStudent(ctx context.Context, item model.AdminStude
 	_, err := r.db.ExecContext(ctx, `
 		UPDATE mini_auth_user
 		SET phone = ?, nickname = ?, avatar_url = ?, id_card = ?, school_name = ?, school_year = ?, class_name = ?, student_no = ?, from_recommend = ?, login_type = ?, updated_at = CURRENT_TIMESTAMP
-		WHERE id = ?
+		WHERE object_id = ?
 	`, item.Phone, item.Nickname, item.AvatarURL, item.IDCard, item.SchoolName, item.SchoolYear, item.ClassName, item.StudentNo, item.FromRecommend, item.LoginType, item.ID)
 	return err
 }
@@ -786,27 +800,33 @@ func (r *AdminRepository) UpsertPaymentOrder(ctx context.Context, item model.Adm
 	_, err := r.db.ExecContext(ctx, `
 		INSERT INTO vip_payment_order (
 			order_id, user_id, openid, product_id, product_name, content, amount_fen,
-			status, payment_channel, prepay_id, transaction_id, remark, paid_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			status, payment_channel, prepay_id, transaction_id, remark, paid_at, expires_at, effective_from, effective_until
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON DUPLICATE KEY UPDATE
-			user_id = VALUES(user_id),
-			openid = VALUES(openid),
-			product_id = VALUES(product_id),
-			product_name = VALUES(product_name),
-			content = VALUES(content),
-			amount_fen = VALUES(amount_fen),
+			user_id = CASE WHEN VALUES(user_id) <> '' THEN VALUES(user_id) ELSE user_id END,
+			openid = CASE WHEN VALUES(openid) <> '' THEN VALUES(openid) ELSE openid END,
+			product_id = CASE WHEN VALUES(product_id) <> '' THEN VALUES(product_id) ELSE product_id END,
+			product_name = CASE WHEN VALUES(product_name) <> '' THEN VALUES(product_name) ELSE product_name END,
+			content = CASE WHEN VALUES(content) <> '' THEN VALUES(content) ELSE content END,
+			amount_fen = CASE WHEN VALUES(amount_fen) > 0 THEN VALUES(amount_fen) ELSE amount_fen END,
 			status = VALUES(status),
-			payment_channel = VALUES(payment_channel),
-			prepay_id = VALUES(prepay_id),
-			transaction_id = VALUES(transaction_id),
-			remark = VALUES(remark),
-			paid_at = VALUES(paid_at),
+			payment_channel = CASE WHEN VALUES(payment_channel) <> '' THEN VALUES(payment_channel) ELSE payment_channel END,
+			prepay_id = CASE WHEN VALUES(prepay_id) <> '' THEN VALUES(prepay_id) ELSE prepay_id END,
+			transaction_id = CASE WHEN VALUES(transaction_id) <> '' THEN VALUES(transaction_id) ELSE transaction_id END,
+			remark = CASE WHEN VALUES(remark) <> '' THEN VALUES(remark) ELSE remark END,
+			paid_at = COALESCE(VALUES(paid_at), paid_at),
+			expires_at = COALESCE(VALUES(expires_at), expires_at),
+			effective_from = COALESCE(VALUES(effective_from), effective_from),
+			effective_until = COALESCE(VALUES(effective_until), effective_until),
 			updated_at = CURRENT_TIMESTAMP
-	`, strings.TrimSpace(item.OrderID), item.UserID, strings.TrimSpace(item.OpenID), strings.TrimSpace(item.ProductID), strings.TrimSpace(item.ProductName), strings.TrimSpace(item.Content), item.AmountFen, strings.TrimSpace(item.Status), strings.TrimSpace(item.PaymentChannel), strings.TrimSpace(item.PrepayID), strings.TrimSpace(item.TransactionID), strings.TrimSpace(item.Remark), item.PaidAt)
+	`, strings.TrimSpace(item.OrderID), item.UserID, strings.TrimSpace(item.OpenID), strings.TrimSpace(item.ProductID), strings.TrimSpace(item.ProductName), strings.TrimSpace(item.Content), item.AmountFen, strings.TrimSpace(item.Status), strings.TrimSpace(item.PaymentChannel), strings.TrimSpace(item.PrepayID), strings.TrimSpace(item.TransactionID), strings.TrimSpace(item.Remark), item.PaidAt, item.ExpiresAt, item.EffectiveFrom, item.EffectiveUntil)
 	return err
 }
 
 func (r *AdminRepository) ListOrders(ctx context.Context, keyword, status, productID string, page, limit int) ([]model.AdminOrder, int, error) {
+	if err := r.CloseExpiredCreatedOrders(ctx, time.Now()); err != nil {
+		return nil, 0, err
+	}
 	page, limit = normalizePage(page, limit)
 	conditions := []string{"1 = 1"}
 	args := make([]any, 0)
@@ -827,7 +847,7 @@ func (r *AdminRepository) ListOrders(ctx context.Context, keyword, status, produ
 	countQuery := `
 		SELECT COUNT(*)
 		FROM vip_payment_order o
-		LEFT JOIN mini_auth_user u ON u.id = o.user_id
+		LEFT JOIN mini_auth_user u ON u.object_id = o.user_id
 		WHERE ` + where
 	var total int
 	if err := r.db.QueryRowContext(ctx, countQuery, args...).Scan(&total); err != nil {
@@ -837,9 +857,9 @@ func (r *AdminRepository) ListOrders(ctx context.Context, keyword, status, produ
 	query := `
 		SELECT o.id, o.order_id, o.user_id, COALESCE(u.nickname, ''), COALESCE(u.phone, ''), o.openid,
 			o.product_id, o.product_name, o.content, o.amount_fen, o.status, o.payment_channel,
-			o.prepay_id, o.transaction_id, o.remark, o.paid_at, o.created_at, o.updated_at
+			o.prepay_id, o.transaction_id, o.remark, o.paid_at, o.expires_at, o.effective_from, o.effective_until, o.created_at, o.updated_at
 		FROM vip_payment_order o
-		LEFT JOIN mini_auth_user u ON u.id = o.user_id
+		LEFT JOIN mini_auth_user u ON u.object_id = o.user_id
 		WHERE ` + where + `
 		ORDER BY o.id DESC LIMIT ? OFFSET ?`
 	rows, err := r.db.QueryContext(ctx, query, queryArgs...)
@@ -851,15 +871,183 @@ func (r *AdminRepository) ListOrders(ctx context.Context, keyword, status, produ
 	for rows.Next() {
 		var item model.AdminOrder
 		var paidAt sql.NullTime
-		if err := rows.Scan(&item.ID, &item.OrderID, &item.UserID, &item.UserNickname, &item.UserPhone, &item.OpenID, &item.ProductID, &item.ProductName, &item.Content, &item.AmountFen, &item.Status, &item.PaymentChannel, &item.PrepayID, &item.TransactionID, &item.Remark, &paidAt, &item.CreatedAt, &item.UpdatedAt); err != nil {
+		var expiresAt sql.NullTime
+		var effectiveFrom sql.NullTime
+		var effectiveUntil sql.NullTime
+		if err := rows.Scan(&item.ID, &item.OrderID, &item.UserID, &item.UserNickname, &item.UserPhone, &item.OpenID, &item.ProductID, &item.ProductName, &item.Content, &item.AmountFen, &item.Status, &item.PaymentChannel, &item.PrepayID, &item.TransactionID, &item.Remark, &paidAt, &expiresAt, &effectiveFrom, &effectiveUntil, &item.CreatedAt, &item.UpdatedAt); err != nil {
 			return nil, 0, err
 		}
 		if paidAt.Valid {
 			item.PaidAt = &paidAt.Time
 		}
+		if expiresAt.Valid {
+			item.ExpiresAt = &expiresAt.Time
+		}
+		if effectiveFrom.Valid {
+			item.EffectiveFrom = &effectiveFrom.Time
+		}
+		if effectiveUntil.Valid {
+			item.EffectiveUntil = &effectiveUntil.Time
+		}
 		items = append(items, item)
 	}
 	return items, total, rows.Err()
+}
+
+func (r *AdminRepository) GetLatestPaidOrderByUserID(ctx context.Context, userID string) (*model.AdminOrder, error) {
+	row := r.db.QueryRowContext(ctx, `
+		SELECT id, order_id, user_id, openid, product_id, product_name, content, amount_fen,
+			status, payment_channel, prepay_id, transaction_id, remark, paid_at, expires_at, effective_from, effective_until, created_at, updated_at
+		FROM vip_payment_order
+		WHERE user_id = ? AND status = 'paid'
+		ORDER BY COALESCE(paid_at, created_at) DESC, id DESC
+		LIMIT 1
+	`, userID)
+
+	var item model.AdminOrder
+	var paidAt sql.NullTime
+	var expiresAt sql.NullTime
+	var effectiveFrom sql.NullTime
+	var effectiveUntil sql.NullTime
+	if err := row.Scan(&item.ID, &item.OrderID, &item.UserID, &item.OpenID, &item.ProductID, &item.ProductName, &item.Content, &item.AmountFen, &item.Status, &item.PaymentChannel, &item.PrepayID, &item.TransactionID, &item.Remark, &paidAt, &expiresAt, &effectiveFrom, &effectiveUntil, &item.CreatedAt, &item.UpdatedAt); err != nil {
+		return nil, err
+	}
+	if paidAt.Valid {
+		item.PaidAt = &paidAt.Time
+	}
+	if expiresAt.Valid {
+		item.ExpiresAt = &expiresAt.Time
+	}
+	if effectiveFrom.Valid {
+		item.EffectiveFrom = &effectiveFrom.Time
+	}
+	if effectiveUntil.Valid {
+		item.EffectiveUntil = &effectiveUntil.Time
+	}
+	return &item, nil
+}
+
+func (r *AdminRepository) InferVIPMembership(order model.AdminOrder, product *model.VIPProductConfig, now time.Time) model.VIPMembershipStatusResponse {
+	startTime := order.CreatedAt
+	if order.PaidAt != nil && !order.PaidAt.IsZero() {
+		startTime = *order.PaidAt
+	}
+	if order.EffectiveFrom != nil && !order.EffectiveFrom.IsZero() {
+		startTime = *order.EffectiveFrom
+	}
+
+	validityType := ""
+	validTimes := 0
+	var validFrom *time.Time
+	var validUntil *time.Time
+	productName := strings.TrimSpace(order.ProductName)
+	if product != nil {
+		if productName == "" {
+			productName = strings.TrimSpace(product.Name)
+		}
+		validityType = strings.TrimSpace(product.ValidityType)
+		validTimes = product.ValidTimes
+		validFrom = product.ValidFrom
+		validUntil = product.ValidUntil
+	}
+
+	if validityType == "" || validityType == "unlimited" {
+		switch strings.TrimSpace(order.ProductID) {
+		case "vip_single":
+			validityType = "times"
+			if validTimes <= 0 {
+				validTimes = 1
+			}
+		case "vip_day":
+			validityType = "range"
+			if validFrom == nil {
+				validFrom = &startTime
+			}
+			if validUntil == nil {
+				end := startTime.Add(24 * time.Hour)
+				validUntil = &end
+			}
+		case "vip_month":
+			validityType = "range"
+			if validFrom == nil {
+				validFrom = &startTime
+			}
+			if validUntil == nil {
+				end := startTime.AddDate(0, 0, 30)
+				validUntil = &end
+			}
+		case "vip_season":
+			validityType = "range"
+			if validFrom == nil {
+				validFrom = &startTime
+			}
+			if validUntil == nil {
+				end := startTime.AddDate(0, 0, 90)
+				validUntil = &end
+			}
+		}
+	}
+
+	if validityType == "" {
+		validityType = "unlimited"
+	}
+
+	if validFrom != nil && !validFrom.IsZero() {
+		startTime = *validFrom
+	}
+	if order.EffectiveUntil != nil && !order.EffectiveUntil.IsZero() {
+		validUntil = order.EffectiveUntil
+	}
+
+	status := model.VIPMembershipStatusResponse{
+		Active:      true,
+		OrderID:     strings.TrimSpace(order.OrderID),
+		ProductID:   strings.TrimSpace(order.ProductID),
+		ProductName: productName,
+		LevelType:   validityType,
+		StartAt:     startTime.UnixMilli(),
+		PaidAt:      startTime.UnixMilli(),
+		StartText:   startTime.Format("2006-01-02 15:04"),
+	}
+	if order.PaidAt != nil && !order.PaidAt.IsZero() {
+		status.PaidAt = order.PaidAt.UnixMilli()
+	}
+
+	switch validityType {
+	case "times":
+		if validTimes <= 0 {
+			validTimes = 1
+		}
+		status.LevelText = "单次"
+		status.StatusText = "单次会员"
+		status.ValidityText = fmt.Sprintf("%d 次有效", validTimes)
+		status.EndText = fmt.Sprintf("剩余 %d 次内有效", validTimes)
+	case "range":
+		status.LevelText = "长期"
+		status.StatusText = "长期会员"
+		if validUntil != nil && !validUntil.IsZero() {
+			status.EndAt = validUntil.UnixMilli()
+			status.EndText = validUntil.Format("2006-01-02 15:04")
+			status.ValidityText = fmt.Sprintf("%s 至 %s", status.StartText, status.EndText)
+			if validUntil.Before(now) {
+				status.Active = false
+				status.StatusText = "已到期"
+			}
+		} else {
+			status.EndText = "长期有效"
+			status.ValidityText = "长期有效"
+		}
+	default:
+		status.LevelText = "长期"
+		status.StatusText = "长期会员"
+		status.ValidityText = "长期有效"
+		status.EndText = "长期有效"
+	}
+
+	if status.ProductName == "" {
+		status.ProductName = strings.TrimSpace(order.ProductID)
+	}
+	return status
 }
 
 func (r *AdminRepository) SaveOrder(ctx context.Context, item model.AdminOrder) (int, error) {
@@ -867,22 +1055,65 @@ func (r *AdminRepository) SaveOrder(ctx context.Context, item model.AdminOrder) 
 		_, err := r.db.ExecContext(ctx, `
 			UPDATE vip_payment_order
 			SET order_id = ?, user_id = ?, openid = ?, product_id = ?, product_name = ?, content = ?, amount_fen = ?,
-				status = ?, payment_channel = ?, prepay_id = ?, transaction_id = ?, remark = ?, paid_at = ?, updated_at = CURRENT_TIMESTAMP
+				status = ?, payment_channel = ?, prepay_id = ?, transaction_id = ?, remark = ?, paid_at = ?, expires_at = ?, effective_from = ?, effective_until = ?, updated_at = CURRENT_TIMESTAMP
 			WHERE id = ?
-		`, strings.TrimSpace(item.OrderID), item.UserID, strings.TrimSpace(item.OpenID), strings.TrimSpace(item.ProductID), strings.TrimSpace(item.ProductName), strings.TrimSpace(item.Content), item.AmountFen, strings.TrimSpace(item.Status), strings.TrimSpace(item.PaymentChannel), strings.TrimSpace(item.PrepayID), strings.TrimSpace(item.TransactionID), strings.TrimSpace(item.Remark), item.PaidAt, item.ID)
+		`, strings.TrimSpace(item.OrderID), item.UserID, strings.TrimSpace(item.OpenID), strings.TrimSpace(item.ProductID), strings.TrimSpace(item.ProductName), strings.TrimSpace(item.Content), item.AmountFen, strings.TrimSpace(item.Status), strings.TrimSpace(item.PaymentChannel), strings.TrimSpace(item.PrepayID), strings.TrimSpace(item.TransactionID), strings.TrimSpace(item.Remark), item.PaidAt, item.ExpiresAt, item.EffectiveFrom, item.EffectiveUntil, item.ID)
 		return item.ID, err
 	}
 	result, err := r.db.ExecContext(ctx, `
 		INSERT INTO vip_payment_order (
 			order_id, user_id, openid, product_id, product_name, content, amount_fen,
-			status, payment_channel, prepay_id, transaction_id, remark, paid_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, strings.TrimSpace(item.OrderID), item.UserID, strings.TrimSpace(item.OpenID), strings.TrimSpace(item.ProductID), strings.TrimSpace(item.ProductName), strings.TrimSpace(item.Content), item.AmountFen, strings.TrimSpace(item.Status), strings.TrimSpace(item.PaymentChannel), strings.TrimSpace(item.PrepayID), strings.TrimSpace(item.TransactionID), strings.TrimSpace(item.Remark), item.PaidAt)
+				status, payment_channel, prepay_id, transaction_id, remark, paid_at, expires_at, effective_from, effective_until
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		`, strings.TrimSpace(item.OrderID), item.UserID, strings.TrimSpace(item.OpenID), strings.TrimSpace(item.ProductID), strings.TrimSpace(item.ProductName), strings.TrimSpace(item.Content), item.AmountFen, strings.TrimSpace(item.Status), strings.TrimSpace(item.PaymentChannel), strings.TrimSpace(item.PrepayID), strings.TrimSpace(item.TransactionID), strings.TrimSpace(item.Remark), item.PaidAt, item.ExpiresAt, item.EffectiveFrom, item.EffectiveUntil)
 	if err != nil {
 		return 0, err
 	}
 	id, _ := result.LastInsertId()
 	return int(id), nil
+}
+
+func (r *AdminRepository) GetPaymentOrderByOrderID(ctx context.Context, orderID string) (*model.AdminOrder, error) {
+	row := r.db.QueryRowContext(ctx, `
+		SELECT id, order_id, user_id, openid, product_id, product_name, content, amount_fen,
+			status, payment_channel, prepay_id, transaction_id, remark, paid_at, expires_at, effective_from, effective_until, created_at, updated_at
+		FROM vip_payment_order
+		WHERE order_id = ?
+		LIMIT 1
+	`, strings.TrimSpace(orderID))
+	var item model.AdminOrder
+	var paidAt sql.NullTime
+	var expiresAt sql.NullTime
+	var effectiveFrom sql.NullTime
+	var effectiveUntil sql.NullTime
+	if err := row.Scan(&item.ID, &item.OrderID, &item.UserID, &item.OpenID, &item.ProductID, &item.ProductName, &item.Content, &item.AmountFen, &item.Status, &item.PaymentChannel, &item.PrepayID, &item.TransactionID, &item.Remark, &paidAt, &expiresAt, &effectiveFrom, &effectiveUntil, &item.CreatedAt, &item.UpdatedAt); err != nil {
+		return nil, err
+	}
+	if paidAt.Valid {
+		item.PaidAt = &paidAt.Time
+	}
+	if expiresAt.Valid {
+		item.ExpiresAt = &expiresAt.Time
+	}
+	if effectiveFrom.Valid {
+		item.EffectiveFrom = &effectiveFrom.Time
+	}
+	if effectiveUntil.Valid {
+		item.EffectiveUntil = &effectiveUntil.Time
+	}
+	return &item, nil
+}
+
+func (r *AdminRepository) CloseExpiredCreatedOrders(ctx context.Context, now time.Time) error {
+	_, err := r.db.ExecContext(ctx, `
+		UPDATE vip_payment_order
+		SET status = 'closed',
+			expires_at = COALESCE(expires_at, DATE_ADD(created_at, INTERVAL 10 MINUTE)),
+			remark = CASE WHEN COALESCE(remark, '') = '' THEN '订单超时自动关闭' ELSE remark END,
+			updated_at = CURRENT_TIMESTAMP
+		WHERE status = 'created' AND COALESCE(expires_at, DATE_ADD(created_at, INTERVAL 10 MINUTE)) <= ?
+	`, now)
+	return err
 }
 
 func (r *AdminRepository) ListVIPProducts(ctx context.Context) ([]model.VIPProductConfig, error) {
@@ -1036,6 +1267,88 @@ func (r *AdminRepository) columnExists(ctx context.Context, tableName, columnNam
 		FROM information_schema.columns
 		WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ?
 	`, strings.TrimSpace(tableName), strings.TrimSpace(columnName)).Scan(&count); err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
+func (r *AdminRepository) ensureMiniAuthUserObjectIDs(ctx context.Context) error {
+	rows, err := r.db.QueryContext(ctx, `SELECT id FROM mini_auth_user WHERE COALESCE(object_id, '') = '' ORDER BY id ASC`)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	legacyIDs := make([]int, 0)
+	for rows.Next() {
+		var id int
+		if err := rows.Scan(&id); err != nil {
+			return err
+		}
+		legacyIDs = append(legacyIDs, id)
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	for _, legacyID := range legacyIDs {
+		objectID, err := newObjectID()
+		if err != nil {
+			return err
+		}
+		if _, err := r.db.ExecContext(ctx, `UPDATE mini_auth_user SET object_id = ? WHERE id = ? AND COALESCE(object_id, '') = ''`, objectID, legacyID); err != nil {
+			return err
+		}
+	}
+	indexExists, err := r.indexExists(ctx, "mini_auth_user", "uq_mini_auth_user_object_id")
+	if err != nil {
+		return err
+	}
+	if indexExists {
+		return nil
+	}
+	if _, err := r.db.ExecContext(ctx, `CREATE UNIQUE INDEX uq_mini_auth_user_object_id ON mini_auth_user (object_id)`); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *AdminRepository) ensureVIPPaymentOrderUserIDObjectIDs(ctx context.Context) error {
+	typeValue, err := r.columnType(ctx, "vip_payment_order", "user_id")
+	if err != nil {
+		return err
+	}
+	if !strings.Contains(typeValue, "char") && !strings.Contains(typeValue, "text") {
+		if _, err := r.db.ExecContext(ctx, `ALTER TABLE vip_payment_order MODIFY COLUMN user_id VARCHAR(24) NOT NULL DEFAULT ''`); err != nil {
+			return err
+		}
+	}
+	_, err = r.db.ExecContext(ctx, `
+		UPDATE vip_payment_order o
+		JOIN mini_auth_user u ON CONVERT(u.id, CHAR(24)) COLLATE utf8mb4_unicode_ci = o.user_id COLLATE utf8mb4_unicode_ci
+		SET o.user_id = u.object_id
+		WHERE o.user_id <> '' AND u.object_id <> '' AND o.user_id <> u.object_id
+	`)
+	return err
+}
+
+func (r *AdminRepository) columnType(ctx context.Context, tableName, columnName string) (string, error) {
+	var dataType string
+	if err := r.db.QueryRowContext(ctx, `
+		SELECT LOWER(COALESCE(data_type, ''))
+		FROM information_schema.columns
+		WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ?
+	`, strings.TrimSpace(tableName), strings.TrimSpace(columnName)).Scan(&dataType); err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(dataType), nil
+}
+
+func (r *AdminRepository) indexExists(ctx context.Context, tableName, indexName string) (bool, error) {
+	var count int
+	if err := r.db.QueryRowContext(ctx, `
+		SELECT COUNT(*)
+		FROM information_schema.statistics
+		WHERE table_schema = DATABASE() AND table_name = ? AND index_name = ?
+	`, strings.TrimSpace(tableName), strings.TrimSpace(indexName)).Scan(&count); err != nil {
 		return false, err
 	}
 	return count > 0, nil

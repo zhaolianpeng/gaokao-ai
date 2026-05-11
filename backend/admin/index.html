@@ -625,12 +625,12 @@
         creatable: false,
         deletable: false,
         columns: [
-          ['orderId', '订单号'], ['userNickname', '用户昵称'], ['userPhone', '手机号'], ['productName', '产品'], ['amountFen', '金额(分)'], ['status', '状态'], ['paidAt', '支付时间'], ['createdAt', '创建时间']
+          ['orderId', '订单号'], ['userId', '用户ID'], ['openId', 'OpenID'], ['userNickname', '用户昵称'], ['userPhone', '手机号'], ['productName', '产品'], ['amountFen', '金额(分)'], ['status', '状态'], ['paidAt', '支付时间'], ['createdAt', '创建时间']
         ],
         fields: [
           { name: 'id', type: 'hidden' },
           { name: 'orderId', label: '订单号', type: 'text', required: true, full: true },
-          { name: 'userId', label: '用户ID', type: 'number' },
+          { name: 'userId', label: '用户ID', type: 'text' },
           { name: 'openId', label: 'OpenID', type: 'text', full: true },
           { name: 'productId', label: '产品标识', type: 'text', required: true },
           { name: 'productName', label: '产品名称', type: 'text', required: true },

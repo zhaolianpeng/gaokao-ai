@@ -265,6 +265,28 @@ func NewRouter(recommendService *service.RecommendService, aiService *service.AI
 		c.JSON(http.StatusOK, visibleItems)
 	})
 
+	r.POST("/api/vip/membership", func(c *gin.Context) {
+		var req model.WechatVIPMembershipRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		if payService == nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "pay service unavailable"})
+			return
+		}
+		status, err := payService.GetMembership(c.Request.Context(), req.UserID)
+		if err != nil {
+			statusCode := http.StatusBadRequest
+			if !strings.Contains(err.Error(), "invalid") {
+				statusCode = http.StatusInternalServerError
+			}
+			c.JSON(statusCode, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, status)
+	})
+
 	r.GET("/api/vip/entry-config", func(c *gin.Context) {
 		if adminService == nil {
 			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "admin service unavailable"})
@@ -301,7 +323,16 @@ func NewRouter(recommendService *service.RecommendService, aiService *service.AI
 			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "pay service unavailable"})
 			return
 		}
-		c.JSON(http.StatusOK, payService.ConfirmPayment(c.Request.Context(), req))
+		result, err := payService.ConfirmPayment(c.Request.Context(), req)
+		if err != nil {
+			statusCode := http.StatusBadRequest
+			if !strings.Contains(err.Error(), "not found") && !strings.Contains(err.Error(), "mismatch") && !strings.Contains(err.Error(), "超时关闭") {
+				statusCode = http.StatusInternalServerError
+			}
+			c.JSON(statusCode, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, result)
 	})
 
 	r.POST("/api/vip/pay/notify", func(c *gin.Context) {
