@@ -180,6 +180,7 @@ type RecommendItem struct {
 	MatchedMajor         string  `json:"matched_major"`
 	RecommendationReason string  `json:"recommendation_reason"`
 	MinScore             int     `json:"min_score"`
+	ScoreLastYear        int     `json:"score_last_year"`
 	MinRank              int     `json:"min_rank"`
 	AvgScore             int     `json:"avg_score"`
 	RankLastYear         int     `json:"rank_last_year"`

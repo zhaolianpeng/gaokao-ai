@@ -137,7 +137,7 @@
               <view class="item-sub">{{school.city || school.province}} · {{school.groupLabel}} · {{school.batch}} · 选科 {{school.subject_requirement}}</view>
               <view class="item-sub">组内专业：{{school.majorPreview}}</view>
               <view class="item-sub">计划：{{school.planText}}</view>
-              <view class="item-sub">{{school.weightedRankText || ('最低位次 ' + school.min_rank)}} · 最低分 {{school.min_score}} · {{school.probabilityLabel || ('录取概率 ' + school.probabilityText)}}</view>
+              <view class="item-sub">{{school.weightedRankText || ('最低位次 ' + school.min_rank)}} · {{school.lastYearScoreText || ('最低分 ' + school.min_score)}} · {{school.probabilityLabel || ('录取概率 ' + school.probabilityText)}}</view>
               <view class="item-sub" wx:if="{{school.recentRankText}}">近3年最低位次：{{school.recentRankText}}</view>
               <view class="item-reason">{{school.recommendation_reason}}</view>
               <view class="item-actions">

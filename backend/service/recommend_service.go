@@ -55,7 +55,7 @@ func (s *RecommendService) Recommend(ctx context.Context, req model.RecommendReq
 			if !ok {
 				continue
 			}
-			item.Probability = estimateProbability(item, diff)
+			item.Probability = estimateProbability(req, item, diff)
 			item.ProbabilityLabel = buildProbabilityLabel(item.Probability)
 			item.RecommendationReason = buildReason(req, item, diff)
 
@@ -73,13 +73,13 @@ func (s *RecommendService) Recommend(ctx context.Context, req model.RecommendReq
 		}
 
 		sort.Slice(chong, func(i, j int) bool {
-			return compareBucketItems(chong[i], chong[j], req.Rank, "chong")
+			return compareBucketItems(chong[i], chong[j], req.Rank, req.Score, "chong")
 		})
 		sort.Slice(wen, func(i, j int) bool {
-			return compareBucketItems(wen[i], wen[j], req.Rank, "wen")
+			return compareBucketItems(wen[i], wen[j], req.Rank, req.Score, "wen")
 		})
 		sort.Slice(bao, func(i, j int) bool {
-			return compareBucketItems(bao[i], bao[j], req.Rank, "bao")
+			return compareBucketItems(bao[i], bao[j], req.Rank, req.Score, "bao")
 		})
 
 		return model.RecommendResponse{
@@ -103,6 +103,16 @@ func buildReason(req model.RecommendRequest, item model.RecommendItem, rankDiff 
 			parts = append(parts, fmt.Sprintf("你当前位次 %d，与该组近年主流录取位次 %d 接近，家长一般会把这类学校放进主力稳妥区。", req.Rank, item.WeightedRank))
 		} else {
 			parts = append(parts, fmt.Sprintf("你当前位次 %d，明显优于该组近年主流录取位次 %d，这类学校更适合承担保底职责。", req.Rank, item.WeightedRank))
+		}
+	}
+	if req.Score > 0 && item.ScoreLastYear > 0 {
+		scoreDiff := req.Score - item.ScoreLastYear
+		if scoreDiff >= 8 {
+			parts = append(parts, fmt.Sprintf("按去年最低分看，你高出约 %d 分，分数层面相对更稳。", scoreDiff))
+		} else if scoreDiff >= -3 {
+			parts = append(parts, fmt.Sprintf("按去年最低分看，你和该组只差 %d 分以内，属于可以重点比较的区间。", absInt(scoreDiff)))
+		} else {
+			parts = append(parts, fmt.Sprintf("按去年最低分看，你还低约 %d 分，更适合少量前置冲刺。", -scoreDiff))
 		}
 	}
 	if req.TargetMajor != "" && item.MatchedMajor != "" {
@@ -206,11 +216,27 @@ func bucketTargetGap(bucket string) float64 {
 	}
 }
 
-func compareBucketItems(left, right model.RecommendItem, userRank int, bucket string) bool {
+func bucketTargetScoreGap(bucket string) int {
+	switch bucket {
+	case "chong":
+		return -2
+	case "bao":
+		return 12
+	default:
+		return 3
+	}
+}
+
+func compareBucketItems(left, right model.RecommendItem, userRank int, userScore int, bucket string) bool {
 	leftFit := math.Abs(normalizedRankGap(buildBenchmarkRank(left), userRank) - bucketTargetGap(bucket))
 	rightFit := math.Abs(normalizedRankGap(buildBenchmarkRank(right), userRank) - bucketTargetGap(bucket))
 	if leftFit != rightFit {
 		return leftFit < rightFit
+	}
+	leftScoreFit := scoreFitDistance(left.ScoreLastYear, userScore, bucket)
+	rightScoreFit := scoreFitDistance(right.ScoreLastYear, userScore, bucket)
+	if leftScoreFit != rightScoreFit {
+		return leftScoreFit < rightScoreFit
 	}
 	if left.Probability != right.Probability {
 		return left.Probability > right.Probability
@@ -224,7 +250,14 @@ func compareBucketItems(left, right model.RecommendItem, userRank int, bucket st
 	return absRankDiff(left.MinRank, userRank) < absRankDiff(right.MinRank, userRank)
 }
 
-func estimateProbability(item model.RecommendItem, rankDiff int) float64 {
+func scoreFitDistance(lastYearScore int, userScore int, bucket string) int {
+	if lastYearScore <= 0 || userScore <= 0 {
+		return 999
+	}
+	return absInt((userScore - lastYearScore) - bucketTargetScoreGap(bucket))
+}
+
+func estimateProbability(req model.RecommendRequest, item model.RecommendItem, rankDiff int) float64 {
 	benchmarkRank := buildBenchmarkRank(item)
 	ratio := normalizedRankGap(benchmarkRank, benchmarkRank-rankDiff)
 	probability := 0.5
@@ -247,6 +280,21 @@ func estimateProbability(item model.RecommendItem, rankDiff int) float64 {
 	if item.MatchedMajor != "" {
 		probability += 0.03
 	}
+	if req.Score > 0 && item.ScoreLastYear > 0 {
+		scoreDiff := req.Score - item.ScoreLastYear
+		switch {
+		case scoreDiff >= 12:
+			probability += 0.06
+		case scoreDiff >= 6:
+			probability += 0.04
+		case scoreDiff >= 0:
+			probability += 0.02
+		case scoreDiff >= -5:
+			probability -= 0.01
+		default:
+			probability -= 0.04
+		}
+	}
 	if item.RankLastYear > 0 && item.RankTwoYearsAgo > 0 && item.RankThreeYearsAgo > 0 {
 		probability += 0.02
 	}
@@ -257,6 +305,13 @@ func estimateProbability(item model.RecommendItem, rankDiff int) float64 {
 		probability -= 0.02
 	}
 	return math.Max(0.05, math.Min(0.97, probability))
+}
+
+func absInt(value int) int {
+	if value < 0 {
+		return -value
+	}
+	return value
 }
 
 func buildProbabilityLabel(probability float64) string {

@@ -99,9 +99,10 @@ FROM (
 		COUNT(DISTINCT cep.id) AS major_count,
 		GROUP_CONCAT(DISTINCT cep.major_name ORDER BY cep.major_name SEPARATOR '、') AS majors,
 		%s AS matched_major,
-		COALESCE(MIN(NULLIF(cmas.min_score, 0)), MIN(NULLIF(cpg.group_min_score, 0)), 0) AS min_score,
+		COALESCE(MIN(CASE WHEN cmas.stat_year = ? AND cmas.min_score > 0 THEN cmas.min_score END), MIN(NULLIF(cpg.group_min_score, 0)), 0) AS min_score,
 		COALESCE(MIN(NULLIF(cmas.min_rank, 0)), MIN(NULLIF(cpg.group_min_rank, 0)), 0) AS min_rank,
 		COALESCE(CAST(AVG(NULLIF(cmas.min_score, 0)) AS SIGNED), 0) AS avg_score,
+		COALESCE(MIN(CASE WHEN cmas.stat_year = ? AND cmas.min_score > 0 THEN cmas.min_score END), 0) AS score_last_year,
 		COALESCE(MIN(CASE WHEN cmas.stat_year = ? AND cmas.min_rank > 0 THEN cmas.min_rank END), 0) AS rank_last_year,
 		COALESCE(MIN(CASE WHEN cmas.stat_year = ? AND cmas.min_rank > 0 THEN cmas.min_rank END), 0) AS rank_two_years_ago,
 		COALESCE(MIN(CASE WHEN cmas.stat_year = ? AND cmas.min_rank > 0 THEN cmas.min_rank END), 0) AS rank_three_years_ago,
@@ -128,7 +129,7 @@ ORDER BY
 	id ASC
 LIMIT ?;`, matchedMajorExpr, targetHitExpr)
 
-	queryArgs = append(queryArgs, year-1, year-2, year-3, year-3, year)
+	queryArgs = append(queryArgs, year-1, year-1, year-1, year-2, year-3, year-3, year)
 	queryArgs = append(queryArgs, province, subject, year, targetRank, targetRank, limit)
 	rows, err := r.db.QueryContext(ctx, query, queryArgs...)
 	if err != nil {
@@ -156,6 +157,7 @@ LIMIT ?;`, matchedMajorExpr, targetHitExpr)
 			&item.MinScore,
 			&item.MinRank,
 			&item.AvgScore,
+			&item.ScoreLastYear,
 			&item.RankLastYear,
 			&item.RankTwoYearsAgo,
 			&item.RankThreeYearsAgo,
