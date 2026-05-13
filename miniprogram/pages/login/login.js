@@ -55,7 +55,6 @@ function syncProfileFromUser(user) {
     rank: current.rank || draft.rank || '',
     targetMajor: current.targetMajor || draft.targetMajor || '',
     notes: current.notes || draft.notes || '',
-    idCard: (user && user.idCard) || current.idCard || '',
     schoolName: (user && user.schoolName) || current.schoolName || draft.schoolName || '',
     schoolYear: (user && user.schoolYear) || current.schoolYear || draft.schoolYear || '',
     className: (user && user.className) || current.className || draft.className || '',

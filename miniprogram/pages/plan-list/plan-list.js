@@ -1,6 +1,7 @@
 const {
   getFavoriteProgramGroups,
   getApplicationPlan,
+  replaceApplicationPlan,
   getPlanScenarios,
   buildApplicationPlanFromFavorites,
   applyPlanScenario,
@@ -10,6 +11,17 @@ const {
 } = require('../../utils/storage')
 const { getVIPEntryVisibility } = require('../../utils/vip-entry')
 const { shouldRequireShareGate, markShareGateUnlocked, createShareGateToken } = require('../../utils/share-gate')
+
+const TAG_ORDER = {
+  chong: 1,
+  jiaochong: 2,
+  wen: 3,
+  jiaobao: 4,
+  bao: 5,
+  other: 6
+}
+
+const DRAG_ROW_RPX = 160
 
 function enableShareMenus() {
   if (wx.showShareMenu) {
@@ -28,6 +40,8 @@ function formatTime(timestamp) {
 
 function comparePlanItems(sortMode) {
   switch (sortMode) {
+    case 'manual':
+      return () => 0
     case 'rankAsc':
       return (left, right) => (left.item.min_rank || Number.MAX_SAFE_INTEGER) - (right.item.min_rank || Number.MAX_SAFE_INTEGER)
     case 'scoreDesc':
@@ -39,7 +53,16 @@ function comparePlanItems(sortMode) {
   }
 }
 
+function buildOrderedPlanList(list, sortMode) {
+  const source = Array.isArray(list) ? list.slice() : []
+  if (sortMode === 'manual') {
+    return source
+  }
+  return source.sort(comparePlanItems(sortMode))
+}
+
 function buildGroupedPlanList(list, sortMode) {
+  const orderedList = buildOrderedPlanList(list, sortMode)
   const groups = {
     chong: { key: 'chong', title: '冲刺组', items: [] },
     jiaochong: { key: 'jiaochong', title: '较冲组', items: [] },
@@ -48,7 +71,7 @@ function buildGroupedPlanList(list, sortMode) {
     bao: { key: 'bao', title: '保底组', items: [] },
     other: { key: 'other', title: '待定组', items: [] }
   }
-  list.forEach((entry) => {
+  orderedList.forEach((entry) => {
     const key = entry.item.tag || 'other'
     if (!groups[key]) {
       groups.other.items.push(entry)
@@ -84,7 +107,7 @@ function buildStudentSummary(student) {
   }
 }
 
-function buildExportText(groups, summary) {
+function buildExportText(list, summary, sequenceRisk) {
   const lines = ['黑龙江正式志愿表']
   if (summary && summary.baseText) {
     lines.push(summary.baseText)
@@ -95,16 +118,151 @@ function buildExportText(groups, summary) {
   if (summary && summary.sourceText) {
     lines.push(summary.sourceText)
   }
-  groups.forEach((group) => {
-    lines.push(`\n【${group.title}】`)
-    group.items.forEach((entry, index) => {
-      const item = entry.item || {}
-      lines.push(
-        `${index + 1}. ${item.college_name || ''} ${item.group_code || ''} ${item.group_name || ''} | ${item.batch || ''} | 选科 ${item.subject_requirement || '不限'} | 最低位次 ${item.min_rank || '无'} | 最低分 ${item.min_score || '无'} | 专业 ${item.majorPreview || item.matched_major || item.major || '未提供'}`
-      )
-    })
+  if (sequenceRisk && sequenceRisk.summaryText) {
+    lines.push(`顺序评估：${sequenceRisk.summaryText}`)
+  }
+  ;(Array.isArray(list) ? list : []).forEach((entry, index) => {
+    const item = entry.item || {}
+    const tagText = item.tag === 'chong' ? '冲刺' : item.tag === 'jiaochong' ? '较冲' : item.tag === 'wen' ? '稳妥' : item.tag === 'jiaobao' ? '较保' : item.tag === 'bao' ? '保底' : '待定'
+    lines.push(
+      `${index + 1}. [${tagText}] ${item.college_name || ''} ${item.group_code || ''} ${item.group_name || ''} | ${item.batch || ''} | 选科 ${item.subject_requirement || '不限'} | 最低位次 ${item.min_rank || '无'} | 最低分 ${item.min_score || '无'} | 专业 ${item.majorPreview || item.matched_major || item.major || '未提供'}`
+    )
   })
   return lines.join('\n')
+}
+
+function getTagOrderValue(tag) {
+  return TAG_ORDER[tag] || TAG_ORDER.other
+}
+
+function buildSequenceRisk(list) {
+  const ordered = Array.isArray(list) ? list : []
+  if (!ordered.length) {
+    return {
+      score: 0,
+      level: '未开始',
+      levelClass: 'pending',
+      summaryText: '先加入志愿后再看顺序风险。',
+      warnings: ['当前志愿表还没有内容。'],
+      suggestions: ['先从推荐结果页加入学校，再开始拖动微调顺序。'],
+      conflictDetails: []
+    }
+  }
+
+  let reverseTagCount = 0
+  let reverseRankCount = 0
+  let denseCount = 0
+  const warnings = []
+  const conflictDetails = []
+  for (let i = 1; i < ordered.length; i += 1) {
+    const prev = ordered[i - 1].item || {}
+    const next = ordered[i].item || {}
+    if (getTagOrderValue(next.tag) < getTagOrderValue(prev.tag)) {
+      reverseTagCount += 1
+      conflictDetails.push({
+        key: `tag-${i}`,
+        type: '层级回跳',
+        firstId: ordered[i - 1].id,
+        secondId: ordered[i].id,
+        firstIndex: i,
+        secondIndex: i + 1,
+        text: `第 ${i} 志愿 ${prev.college_name || '未命名院校'} 之后，紧跟的第 ${i + 1} 志愿 ${next.college_name || '未命名院校'} 更冲。`
+      })
+    }
+    const prevRank = Number(prev.min_rank || 0)
+    const nextRank = Number(next.min_rank || 0)
+    if (prevRank && nextRank) {
+      if (nextRank < prevRank) {
+        reverseRankCount += 1
+        conflictDetails.push({
+          key: `rank-${i}`,
+          type: '位次倒挂',
+          firstId: ordered[i - 1].id,
+          secondId: ordered[i].id,
+          firstIndex: i,
+          secondIndex: i + 1,
+          text: `第 ${i} 志愿 ${prev.college_name || '未命名院校'} 最低位次 ${prevRank}，但第 ${i + 1} 志愿 ${next.college_name || '未命名院校'} 更高到 ${nextRank}。`
+        })
+      }
+      const threshold = Math.max(120, Math.round(prevRank * 0.03))
+      if (Math.abs(nextRank - prevRank) < threshold) {
+        denseCount += 1
+        conflictDetails.push({
+          key: `dense-${i}`,
+          type: '梯度过密',
+          firstId: ordered[i - 1].id,
+          secondId: ordered[i].id,
+          firstIndex: i,
+          secondIndex: i + 1,
+          text: `第 ${i} 志愿 ${prev.college_name || '未命名院校'} 和第 ${i + 1} 志愿 ${next.college_name || '未命名院校'} 位次差仅 ${Math.abs(nextRank - prevRank)}。`
+        })
+      }
+    }
+  }
+
+  let deduction = 0
+  if (reverseTagCount) {
+    warnings.push('前后志愿的冲稳保层级有回跳，后面的学校比前面更冲。')
+    deduction += Math.min(20, reverseTagCount * 6)
+  }
+  if (reverseRankCount) {
+    warnings.push('部分后置志愿的最低位次比前项更高，顺序存在倒挂。')
+    deduction += Math.min(18, reverseRankCount * 5)
+  }
+  if (denseCount >= 2) {
+    warnings.push('相邻志愿位次过密，容易出现整段扎堆。')
+    deduction += Math.min(16, denseCount * 4)
+  }
+
+  const score = Math.max(0, 100 - deduction)
+  let level = '顺序合理'
+  let levelClass = 'excellent'
+  if (score < 50) {
+    level = '顺序风险高'
+    levelClass = 'danger'
+  } else if (score < 75) {
+    level = '顺序需调整'
+    levelClass = 'warning'
+  } else if (score < 90) {
+    level = '基本合理'
+    levelClass = 'good'
+  }
+
+  const suggestions = []
+  if (reverseTagCount || reverseRankCount) {
+    suggestions.push('把更冲的学校往前拖，把更稳和保底的学校放到后段。')
+  }
+  if (denseCount >= 2) {
+    suggestions.push('拉开相邻学校最低位次差，避免志愿密集在同一区间。')
+  }
+  if (!suggestions.length) {
+    suggestions.push('当前顺序已经比较顺，可以继续细看专业和城市偏好。')
+  }
+
+  return {
+    score,
+    level,
+    levelClass,
+    summaryText: `倒挂 ${reverseRankCount} 处，层级回跳 ${reverseTagCount} 处，密集 ${denseCount} 处。`,
+    warnings: warnings.length ? warnings : ['当前顺序没有明显倒挂，整体梯度比较顺。'],
+    suggestions,
+    conflictDetails: conflictDetails.slice(0, 6)
+  }
+}
+
+function buildDragPlanList(list, rowHeightPx, draggingId, dragYMap, fromIndex, targetIndex) {
+  const ordered = Array.isArray(list) ? list : []
+  return ordered.map((entry, index) => ({
+    ...entry,
+    orderIndex: index + 1,
+    dragY: draggingId === entry.id && dragYMap && typeof dragYMap[entry.id] === 'number'
+      ? dragYMap[entry.id]
+      : index * rowHeightPx + (draggingId && typeof fromIndex === 'number' && typeof targetIndex === 'number'
+        ? (fromIndex < targetIndex && index > fromIndex && index <= targetIndex
+          ? -rowHeightPx
+          : (fromIndex > targetIndex && index >= targetIndex && index < fromIndex ? rowHeightPx : 0))
+        : 0)
+  }))
 }
 
 function buildScenarioCompareBoard(scenarios) {
@@ -239,8 +397,23 @@ Page({
     studentSummary: null,
     scenarios: [],
     compareBoard: null,
-    sortMode: 'createdDesc',
+    orderedApplicationList: [],
+    dragPlanList: [],
+    dragRowHeightPx: 0,
+    dragViewportHeightPx: 0,
+    dragAreaHeightPx: 0,
+    draggingPlanId: '',
+    dragReadyPlanId: '',
+    draggingFromIndex: -1,
+    currentDropIndex: -1,
+    dragYMap: {},
+    dragScrollTop: 0,
+    highlightedPlanIds: [],
+    activeConflictKey: '',
+    sequenceRisk: buildSequenceRisk([]),
+    sortMode: 'manual',
     sortOptions: [
+      { value: 'manual', label: '自定义顺序' },
       { value: 'createdDesc', label: '按加入时间' },
       { value: 'rankAsc', label: '按最低位次升序' },
       { value: 'scoreDesc', label: '按最低分降序' },
@@ -255,6 +428,9 @@ Page({
 
   onLoad(query) {
     this.shareToken = (query && query.shareToken) || ''
+    const info = wx.getSystemInfoSync ? wx.getSystemInfoSync() : { windowWidth: 375, windowHeight: 812 }
+    this.dragRowHeightPx = Math.round((info.windowWidth || 375) * DRAG_ROW_RPX / 750)
+    this.dragViewportHeightPx = Math.min(Math.round((info.windowHeight || 812) * 0.52), this.dragRowHeightPx * 6)
   },
 
   onShow() {
@@ -308,12 +484,17 @@ Page({
       ...entry,
       timeText: formatTime(entry.createdAt)
     }))
+    const orderedApplicationList = buildOrderedPlanList(applicationList, this.data.sortMode)
     const primaryStudent = (applicationList[0] && applicationList[0].student) || (rawScenarios[0] && rawScenarios[0].student) || null
     this.setData({
       favorites,
       scenarios,
       compareBoard: buildScenarioCompareBoard(scenarios),
       applicationList,
+      orderedApplicationList,
+      dragPlanList: buildDragPlanList(orderedApplicationList, this.dragRowHeightPx, this.data.draggingPlanId, this.data.dragYMap, this.data.draggingFromIndex, this.data.currentDropIndex),
+      dragAreaHeightPx: orderedApplicationList.length * this.dragRowHeightPx,
+      sequenceRisk: buildSequenceRisk(orderedApplicationList),
       groupedApplicationList: buildGroupedPlanList(applicationList, this.data.sortMode),
       studentSummary: buildStudentSummary(primaryStudent),
       currentSortLabel: (this.data.sortOptions.find((option) => option.value === this.data.sortMode) || this.data.sortOptions[0]).label
@@ -332,15 +513,28 @@ Page({
 
   onSortChange(e) {
     const sortMode = this.data.sortOptions[e.detail.value].value
+    const orderedApplicationList = buildOrderedPlanList(this.data.applicationList, sortMode)
     this.setData({
       sortMode,
+      orderedApplicationList,
       currentSortLabel: this.data.sortOptions[e.detail.value].label,
-      groupedApplicationList: buildGroupedPlanList(this.data.applicationList, sortMode)
+      groupedApplicationList: buildGroupedPlanList(this.data.applicationList, sortMode),
+      dragPlanList: buildDragPlanList(orderedApplicationList, this.dragRowHeightPx, '', {}, -1, -1),
+      dragAreaHeightPx: orderedApplicationList.length * this.dragRowHeightPx,
+      draggingPlanId: '',
+      dragReadyPlanId: '',
+      draggingFromIndex: -1,
+      currentDropIndex: -1,
+      dragYMap: {},
+      dragScrollTop: 0,
+      highlightedPlanIds: [],
+      activeConflictKey: '',
+      sequenceRisk: buildSequenceRisk(orderedApplicationList)
     })
   },
 
   onExportPlan() {
-    const text = buildExportText(this.data.groupedApplicationList, this.data.studentSummary)
+    const text = buildExportText(this.data.orderedApplicationList, this.data.studentSummary, this.data.sequenceRisk)
     wx.setClipboardData({
       data: text,
       success: () => wx.showToast({ title: '已复制填报清单', icon: 'none' })
@@ -412,6 +606,131 @@ Page({
       return
     }
     removeApplicationPlanItem(id)
+    this.refreshData()
+  },
+
+  onConflictDetailTap(e) {
+    const detailKey = e.currentTarget.dataset.key
+    const firstId = e.currentTarget.dataset.firstId
+    const secondId = e.currentTarget.dataset.secondId
+    const firstIndex = Number(e.currentTarget.dataset.firstIndex || 1)
+    const secondIndex = Number(e.currentTarget.dataset.secondIndex || firstIndex + 1)
+    if (!detailKey || !firstId || !secondId) {
+      return
+    }
+    if (this.data.activeConflictKey === detailKey) {
+      this.setData({ activeConflictKey: '', highlightedPlanIds: [] })
+      return
+    }
+    const maxScrollTop = Math.max(0, this.data.dragAreaHeightPx - this.dragViewportHeightPx)
+    const centerRow = ((firstIndex + secondIndex) / 2) - 0.5
+    const nextScrollTop = this.data.sortMode === 'manual'
+      ? Math.max(0, Math.min(maxScrollTop, Math.round(centerRow * this.dragRowHeightPx - this.dragViewportHeightPx / 2)))
+      : this.data.dragScrollTop
+    this.setData({
+      activeConflictKey: detailKey,
+      highlightedPlanIds: [firstId, secondId],
+      dragScrollTop: nextScrollTop
+    })
+  },
+
+  onEnablePlanDrag(e) {
+    const id = e.currentTarget.dataset.id
+    if (!id || this.data.sortMode !== 'manual') {
+      return
+    }
+    if (this.dragReadyTimer) {
+      clearTimeout(this.dragReadyTimer)
+      this.dragReadyTimer = null
+    }
+    this.setData({ dragReadyPlanId: id })
+    wx.showToast({ title: '已激活拖动，请拖动当前志愿', icon: 'none' })
+    this.dragReadyTimer = setTimeout(() => {
+      if (this.data.dragReadyPlanId === id && !this.data.draggingPlanId) {
+        this.setData({ dragReadyPlanId: '' })
+        wx.showToast({ title: '拖动激活已失效，请重新长按', icon: 'none' })
+      }
+      this.dragReadyTimer = null
+    }, 5000)
+  },
+
+  onPlanDragStart(e) {
+    const id = e.currentTarget.dataset.id
+    if (!id || this.data.sortMode !== 'manual' || this.data.dragReadyPlanId !== id) {
+      return
+    }
+    if (this.dragReadyTimer) {
+      clearTimeout(this.dragReadyTimer)
+      this.dragReadyTimer = null
+    }
+    const fromIndex = (this.data.orderedApplicationList || []).findIndex((entry) => entry.id === id)
+    this.setData({ draggingPlanId: id, draggingFromIndex: fromIndex, currentDropIndex: fromIndex })
+  },
+
+  onPlanDragChange(e) {
+    const id = e.currentTarget.dataset.id
+    if (!id || this.data.sortMode !== 'manual') {
+      return
+    }
+    const ordered = this.data.orderedApplicationList || []
+    const fromIndex = this.data.draggingFromIndex >= 0 ? this.data.draggingFromIndex : ordered.findIndex((entry) => entry.id === id)
+    const y = e.detail.y || 0
+    const maxIndex = Math.max(0, ordered.length - 1)
+    const nextDropIndex = Math.max(0, Math.min(Math.round(y / Math.max(1, this.dragRowHeightPx)), maxIndex))
+    const maxScrollTop = Math.max(0, this.data.dragAreaHeightPx - this.dragViewportHeightPx)
+    const threshold = Math.round(this.dragRowHeightPx * 1.2)
+    let dragScrollTop = this.data.dragScrollTop || 0
+    const visibleTop = y - dragScrollTop
+    const visibleBottom = dragScrollTop + this.dragViewportHeightPx - y
+    if (visibleTop < threshold) {
+      dragScrollTop = Math.max(0, dragScrollTop - Math.round(this.dragRowHeightPx * 0.7))
+    } else if (visibleBottom < threshold) {
+      dragScrollTop = Math.min(maxScrollTop, dragScrollTop + Math.round(this.dragRowHeightPx * 0.7))
+    }
+    const dragYMap = {
+      ...this.data.dragYMap,
+      [id]: y
+    }
+    this.setData({
+      dragYMap,
+      dragScrollTop,
+      currentDropIndex: nextDropIndex,
+      dragPlanList: buildDragPlanList(ordered, this.dragRowHeightPx, id, dragYMap, fromIndex, nextDropIndex)
+    })
+  },
+
+  onDragListScroll(e) {
+    if (!e || !e.detail) {
+      return
+    }
+    this.setData({ dragScrollTop: e.detail.scrollTop || 0 })
+  },
+
+  onPlanDragEnd(e) {
+    const id = e.currentTarget.dataset.id
+    if (!id || this.data.sortMode !== 'manual') {
+      return
+    }
+    const ordered = (this.data.orderedApplicationList || []).slice()
+    const fromIndex = ordered.findIndex((entry) => entry.id === id)
+    if (fromIndex < 0) {
+      this.setData({ draggingPlanId: '', draggingFromIndex: -1, currentDropIndex: -1, dragYMap: {} })
+      return
+    }
+    const targetIndex = this.data.currentDropIndex >= 0
+      ? this.data.currentDropIndex
+      : Math.max(0, Math.min(fromIndex, ordered.length - 1))
+    if (targetIndex !== fromIndex) {
+      const moved = ordered.splice(fromIndex, 1)[0]
+      ordered.splice(targetIndex, 0, moved)
+      replaceApplicationPlan(ordered)
+      wx.showToast({ title: '已更新志愿顺序', icon: 'none' })
+    }
+    if (this.dragReadyTimer) {
+      clearTimeout(this.dragReadyTimer)
+      this.dragReadyTimer = null
+    }
+    this.setData({ draggingPlanId: '', dragReadyPlanId: '', draggingFromIndex: -1, currentDropIndex: -1, dragYMap: {} })
     this.refreshData()
   },
 

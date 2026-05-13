@@ -12,6 +12,12 @@
   </view>
 
   <view class="card">
+    <view class="section-title">开始 2025 模拟报考</view>
+    <view class="material-summary">不是只看说明，而是直接按步骤完成一轮模拟：填条件、查位次、生成推荐、加入志愿表、回看整张表。</view>
+    <button class="primary-btn" bindtap="openSimulationFlow">进入模拟报考流程</button>
+  </view>
+
+  <view class="card">
     <view class="section-title">优先阅读</view>
     <block wx:for="{{featured}}" wx:key="id">
       <view class="featured-item" data-id="{{item.id}}" bindtap="openMaterial">

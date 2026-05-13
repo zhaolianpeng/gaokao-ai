@@ -6,7 +6,7 @@
 
     <view class="policy-heading">一、我们收集的信息</view>
     <view class="policy-list-item">1. 登录与账号信息：昵称、手机号、头像、openid、服务端账号标识。</view>
-    <view class="policy-list-item">2. 报考档案信息：身份证号、学校、学年、班级、学号、科类、分数、位次、意向专业、报考偏好、推荐来源。</view>
+    <view class="policy-list-item">2. 报考档案信息：学校、学年、班级、学号、科类、分数、位次、意向专业、报考偏好、推荐来源。</view>
     <view class="policy-list-item">3. 使用过程信息：推荐记录、报告记录、收藏与正式志愿表内容、网络诊断记录、反馈内容。</view>
 
     <view class="policy-heading">二、收集方式</view>

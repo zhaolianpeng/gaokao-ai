@@ -1,0 +1,129 @@
+<view class="container simulate-page">
+  <view class="hero">
+    <view class="hero-badge">2025 模拟报考</view>
+    <view class="hero-title">模拟报考全流程</view>
+    <view class="hero-sub">这不是一篇说明文档，而是一轮可直接操作的模拟流程。先填条件，再生成推荐，最后把学校加入正式志愿表。</view>
+  </view>
+
+  <view class="card">
+    <view class="section-title">本轮进度</view>
+    <view class="simulate-next-action">{{nextActionText}}</view>
+    <block wx:for="{{stepCards}}" wx:key="key">
+      <view class="simulate-step-item">
+        <view>
+          <view class="simulate-step-title">{{item.title}}</view>
+          <view class="simulate-step-desc">{{item.desc}}</view>
+        </view>
+        <view class="simulate-step-status {{item.done ? 'simulate-step-status-done' : ''}}">{{item.statusText}}</view>
+      </view>
+    </block>
+  </view>
+
+  <view class="card">
+    <view class="row-between">
+      <view class="section-title">模拟策略</view>
+      <view class="tip">切换不同家庭偏好</view>
+    </view>
+    <view class="simulate-mode-grid">
+      <block wx:for="{{modeCards}}" wx:key="key">
+        <view class="simulate-mode-card {{simulationMode === item.key ? 'simulate-mode-card-active' : ''}}" data-mode="{{item.key}}" bindtap="onChooseMode">
+          <view class="simulate-mode-title">{{item.title}}</view>
+          <view class="simulate-mode-desc">{{item.desc}}</view>
+        </view>
+      </block>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="section-title">流程步骤</view>
+    <block wx:for="{{stepCards}}" wx:key="key">
+      <view class="simulate-step-item">
+        <view class="simulate-step-title">{{item.title}}</view>
+        <view class="simulate-step-desc">{{item.desc}}</view>
+      </view>
+    </block>
+  </view>
+
+  <view class="card">
+    <view class="section-title">先填这轮模拟条件</view>
+    <view class="field fixed-field">地区：黑龙江</view>
+    <view class="field fixed-field">年度：2025 招生计划口径</view>
+
+    <picker mode="selector" range="{{subjectOptions}}" bindchange="onSubjectChange">
+      <view class="field fixed-field">科类：{{form.subject}}</view>
+    </picker>
+
+    <view class="field fixed-field" wx:if="{{form.schoolName || form.schoolYear || form.className}}">档案上下文：{{form.schoolName || '未选学校'}} / {{form.schoolYear || '未选学年'}} / {{form.className || '未选班级'}}</view>
+
+    <input class="input" type="number" placeholder="高考分数" value="{{form.score}}" data-field="score" bindinput="onInput" />
+    <input class="input" type="number" placeholder="全省排名" value="{{form.rank}}" data-field="rank" bindinput="onInput" />
+    <input class="input" placeholder="意向专业，如：计算机类" value="{{form.targetMajor}}" data-field="targetMajor" bindinput="onInput" />
+    <textarea class="textarea" placeholder="补充偏好，例如：优先哈尔滨、尽量公办、接受组内调剂" value="{{form.notes}}" data-field="notes" bindinput="onInput"></textarea>
+
+    <view class="action-row action-grid simulate-action-grid">
+      <button class="ghost-btn" bindtap="openScoreRankPage">先去核对位次</button>
+      <button class="primary-btn" loading="{{loading}}" bindtap="startSimulation">生成这轮模拟推荐</button>
+    </view>
+    <view class="simulate-pending-row" wx:if="{{pendingResultText}}">
+      <view class="tip">{{pendingResultText}}</view>
+      <view class="link-btn" wx:if="{{hasPendingResult}}" bindtap="openPendingRecommendPage">继续查看</view>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="row-between">
+      <view class="section-title">本轮风险评估</view>
+      <view class="simulate-score-badge simulate-score-badge-{{riskSummary.levelClass}}">{{riskSummary.level}} {{riskSummary.score ? riskSummary.score + '分' : ''}}</view>
+    </view>
+    <view class="material-summary">{{riskSummary.ratioText}}</view>
+    <view class="simulate-risk-grid">
+      <view class="simulate-risk-metric">
+        <view class="simulate-risk-label">冲刺</view>
+        <view class="simulate-risk-value">{{riskSummary.counts.chong + riskSummary.counts.jiaochong}}</view>
+      </view>
+      <view class="simulate-risk-metric">
+        <view class="simulate-risk-label">稳妥</view>
+        <view class="simulate-risk-value">{{riskSummary.counts.wen}}</view>
+      </view>
+      <view class="simulate-risk-metric">
+        <view class="simulate-risk-label">保底</view>
+        <view class="simulate-risk-value">{{riskSummary.counts.jiaobao + riskSummary.counts.bao}}</view>
+      </view>
+      <view class="simulate-risk-metric">
+        <view class="simulate-risk-label">命中目标专业</view>
+        <view class="simulate-risk-value">{{riskSummary.targetHits}}</view>
+      </view>
+    </view>
+    <view class="simulate-advice-block">
+      <view class="simulate-advice-title">风险提示</view>
+      <block wx:for="{{riskSummary.warnings}}" wx:key="*this">
+        <view class="simulate-advice-line">{{index + 1}}. {{item}}</view>
+      </block>
+    </view>
+    <view class="simulate-advice-block">
+      <view class="simulate-advice-title">下一步建议</view>
+      <block wx:for="{{riskSummary.suggestions}}" wx:key="*this">
+        <view class="simulate-advice-line">{{index + 1}}. {{item}}</view>
+      </block>
+    </view>
+    <view class="action-row action-grid simulate-action-grid">
+      <button class="ghost-btn" bindtap="exportSimulationResult">导出本轮模拟</button>
+      <button class="ghost-btn" bindtap="saveCurrentSimulationScenario">保存到方案对比</button>
+    </view>
+    <view class="tip">当前方案对比库已有 {{scenarioCount}} 套方案，保存后可在正式志愿表页并排比较。</view>
+  </view>
+
+  <view class="card">
+    <view class="section-title">模拟后下一步</view>
+    <view class="material-summary">推荐结果页里可以直接把学校加入正式志愿表。加完以后，回到这里继续看整张表有没有过冲、过窄或保底不足。</view>
+    <view class="simulate-status-row">
+      <view class="simulate-status-label">当前志愿表条目</view>
+      <view class="simulate-status-value">{{applicationCount}}</view>
+    </view>
+    <view class="action-row action-grid simulate-action-grid">
+      <button class="ghost-btn" bindtap="openPlanListPage">查看正式志愿表</button>
+      <button class="ghost-btn" wx:if="{{hasPendingResult}}" bindtap="openPendingRecommendPage">回到推荐结果</button>
+      <button class="ghost-btn" bindtap="clearSimulationPlan">清空这轮模拟</button>
+    </view>
+  </view>
+</view>

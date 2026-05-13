@@ -1,5 +1,11 @@
 const { getMaterials } = require('../../utils/materials')
 
+const FEATURED_MATERIAL_IDS = [
+  'simulate-2025-application-guide',
+  'simulate-2025-plan-order-guide',
+  'official-admission-charter-guide'
+]
+
 Page({
   data: {
     materials: [],
@@ -10,10 +16,11 @@ Page({
   onLoad() {
     try {
       const materials = getMaterials()
+      const featured = FEATURED_MATERIAL_IDS.map((id) => materials.find((item) => item.id === id)).filter(Boolean)
       this.setData({
         loadError: '',
         materials,
-        featured: materials.slice(0, 3)
+        featured
       })
     } catch (error) {
       this.setData({
@@ -32,5 +39,9 @@ Page({
     wx.navigateTo({
       url: `/pages/material-detail/material-detail?id=${encodeURIComponent(String(id))}`
     })
+  },
+
+  openSimulationFlow() {
+    wx.navigateTo({ url: '/pages/simulate-application/simulate-application' })
   }
 })

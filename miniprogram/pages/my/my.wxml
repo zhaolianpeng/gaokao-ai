@@ -59,11 +59,6 @@
       </view>
 
       <view class="my-field-card">
-        <view class="login-label">身份证号：</view>
-        <view class="my-static-value">{{profile.idCard || '未填写'}}</view>
-      </view>
-
-      <view class="my-field-card">
         <view class="login-label">学校：</view>
         <view class="my-static-value">{{profile.schoolName || '未填写'}}</view>
       </view>

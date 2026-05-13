@@ -13,6 +13,7 @@
     "pages/diagnostics/diagnostics",
     "pages/materials/materials",
     "pages/material-detail/material-detail",
+    "pages/simulate-application/simulate-application",
     "pages/recommend/recommend",
     "pages/ai-agent/ai-agent",
     "pages/report/report",

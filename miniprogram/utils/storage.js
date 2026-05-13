@@ -445,6 +445,10 @@ function getApplicationPlan() {
   return getList(APPLICATION_PLAN_KEY)
 }
 
+function replaceApplicationPlan(list) {
+  saveList(APPLICATION_PLAN_KEY, Array.isArray(list) ? list.slice(0, 100) : [])
+}
+
 function removeApplicationPlanItem(id) {
   saveList(APPLICATION_PLAN_KEY, getList(APPLICATION_PLAN_KEY).filter((item) => item.id !== id))
 }
@@ -471,7 +475,6 @@ function saveAuthUser(user) {
     nickname: user.nickname || '考生用户',
     phone: user.phone || '',
     avatarUrl: user.avatarUrl || '',
-    idCard: user.idCard || '',
     schoolName: user.schoolName || '',
     schoolYear: user.schoolYear || '',
     className: user.className || '',
@@ -589,6 +592,7 @@ module.exports = {
   addApplicationPlanItem,
   buildApplicationPlanFromFavorites,
   getApplicationPlan,
+  replaceApplicationPlan,
   removeApplicationPlanItem,
   clearApplicationPlan,
   savePlanScenario,

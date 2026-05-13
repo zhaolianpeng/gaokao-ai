@@ -96,14 +96,72 @@
       </picker>
       <view class="filter-pill export-pill" bindtap="onExportPlan">导出清单</view>
     </view>
+    <view class="sequence-risk-card">
+      <view class="row-between top-row">
+        <view class="section-title section-title-small">顺序风险提示</view>
+        <view class="sequence-risk-badge sequence-risk-badge-{{sequenceRisk.levelClass}}">{{sequenceRisk.level}} {{sequenceRisk.score ? sequenceRisk.score + '分' : ''}}</view>
+      </view>
+      <view class="tip">{{sequenceRisk.summaryText}}</view>
+      <block wx:for="{{sequenceRisk.warnings}}" wx:key="*this">
+        <view class="sequence-risk-line">{{index + 1}}. {{item}}</view>
+      </block>
+      <view class="sequence-risk-detail-title" wx:if="{{sequenceRisk.conflictDetails.length}}">具体冲突位置</view>
+      <block wx:for="{{sequenceRisk.conflictDetails}}" wx:key="key">
+        <view class="sequence-risk-detail-item {{activeConflictKey === item.key ? 'sequence-risk-detail-item-active' : ''}}" bindtap="onConflictDetailTap" data-key="{{item.key}}" data-first-id="{{item.firstId}}" data-second-id="{{item.secondId}}" data-first-index="{{item.firstIndex}}" data-second-index="{{item.secondIndex}}">
+          <text class="sequence-risk-detail-tag">{{item.type}}</text>
+          <text class="sequence-risk-detail-text">{{item.text}}</text>
+        </view>
+      </block>
+      <block wx:for="{{sequenceRisk.suggestions}}" wx:key="*this">
+        <view class="sequence-risk-suggestion">建议{{index + 1}}：{{item}}</view>
+      </block>
+    </view>
     <view class="action-row action-grid">
       <button class="ghost-btn" bindtap="onBuildFromFavorites">从收藏生成</button>
     </view>
+    <view class="tip" wx:if="{{sortMode === 'manual'}}">当前为自定义顺序模式，请先长按右侧“拖动”手柄激活，再拖动调整顺序。</view>
+    <view wx:if="{{sortMode === 'manual' && orderedApplicationList.length}}" class="drag-plan-shell">
+      <scroll-view class="drag-plan-scroll" scroll-y="true" scroll-top="{{dragScrollTop}}" bindscroll="onDragListScroll" style="height: {{dragViewportHeightPx}}px;">
+        <movable-area class="drag-plan-area" style="height: {{dragAreaHeightPx}}px;">
+          <view
+            wx:if="{{draggingPlanId && currentDropIndex >= 0}}"
+            class="drag-plan-placeholder"
+            style="top: {{currentDropIndex * dragRowHeightPx}}px; height: {{dragRowHeightPx}}px;"
+          ></view>
+          <block wx:for="{{dragPlanList}}" wx:key="id">
+            <movable-view
+              class="drag-plan-view {{draggingPlanId === item.id ? 'drag-plan-view-active' : ''}}"
+              direction="vertical"
+              disabled="{{dragReadyPlanId !== item.id}}"
+              y="{{item.dragY}}"
+              data-id="{{item.id}}"
+              bindchange="onPlanDragChange"
+              bindtouchstart="onPlanDragStart"
+              bindtouchend="onPlanDragEnd"
+              style="height: {{dragRowHeightPx}}px;"
+            >
+              <view class="drag-plan-item {{draggingPlanId === item.id ? 'drag-plan-item-active' : ''}} {{draggingPlanId && draggingPlanId !== item.id ? 'drag-plan-item-shifting' : ''}} {{highlightedPlanIds.indexOf(item.id) >= 0 ? 'drag-plan-item-highlighted' : ''}} {{dragReadyPlanId === item.id ? 'drag-plan-item-ready' : ''}}">
+                <view class="drag-plan-order">{{item.orderIndex}}</view>
+                <view class="drag-plan-main">
+                  <view class="row-between top-row">
+                    <view class="plan-title drag-plan-title">{{item.item.college_name}}</view>
+                    <view class="tag tag-{{item.item.tag || 'other'}}">{{item.item.tag === 'chong' ? '冲刺' : item.item.tag === 'jiaochong' ? '较冲' : item.item.tag === 'wen' ? '稳妥' : item.item.tag === 'jiaobao' ? '较保' : item.item.tag === 'bao' ? '保底' : '待定'}}</view>
+                  </view>
+                  <view class="plan-sub">{{item.item.group_code}} {{item.item.group_name}} · 最低位次 {{item.item.min_rank}} · 最低分 {{item.item.min_score}}</view>
+                  <view class="plan-sub drag-plan-major">{{item.item.majorPreview || item.item.matched_major || item.item.major}}</view>
+                </view>
+                <view class="drag-plan-handle {{dragReadyPlanId === item.id ? 'drag-plan-handle-ready' : ''}}" data-id="{{item.id}}" bindlongpress="onEnablePlanDrag">{{dragReadyPlanId === item.id ? '可拖动' : '长按拖动'}}</view>
+              </view>
+            </movable-view>
+          </block>
+        </movable-area>
+      </scroll-view>
+    </view>
     <block wx:for="{{groupedApplicationList}}" wx:key="key" wx:for-item="group">
-      <view class="group-section">
+      <view class="group-section" wx:if="{{sortMode !== 'manual'}}">
         <view class="group-title">{{group.title}} · {{group.items.length}} 组</view>
         <block wx:for="{{group.items}}" wx:key="id" wx:for-item="plan">
-          <view class="plan-item">
+          <view class="plan-item {{highlightedPlanIds.indexOf(plan.id) >= 0 ? 'plan-item-highlighted' : ''}}">
             <view class="row-between top-row">
               <view class="plan-title">{{plan.item.college_name}}</view>
               <view class="tag tag-{{plan.item.tag || 'other'}}">{{plan.item.tag === 'chong' ? '冲刺' : plan.item.tag === 'jiaochong' ? '较冲' : plan.item.tag === 'wen' ? '稳妥' : plan.item.tag === 'jiaobao' ? '较保' : plan.item.tag === 'bao' ? '保底' : '待定'}}</view>

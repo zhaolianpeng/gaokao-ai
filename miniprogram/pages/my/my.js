@@ -57,7 +57,6 @@ function defaultProfile() {
     rank: '',
     targetMajor: '',
     notes: '',
-    idCard: '',
     schoolName: '',
     schoolYear: '',
     className: '',
@@ -71,7 +70,6 @@ function mergeProfile(profile, user) {
   return {
     ...defaultProfile(),
     ...(profile || {}),
-    idCard: (user && user.idCard) || (profile && profile.idCard) || '',
     schoolName: (user && user.schoolName) || (profile && profile.schoolName) || '',
     schoolYear: (user && user.schoolYear) || (profile && profile.schoolYear) || '',
     className: (user && user.className) || (profile && profile.className) || '',

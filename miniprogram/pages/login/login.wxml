@@ -17,7 +17,7 @@
 
       <view class="login-field">
         <view class="login-label">登录方式</view>
-        <view class="login-tip">我们会在你同意后，收集并使用昵称、手机号、头像、身份证号、学校、学年、班级、学号、分数、位次和报考偏好，用于创建报考档案、生成推荐结果、展示 AI 报告、同步账号数据和提供售后支持。</view>
+        <view class="login-tip">我们会在你同意后，收集并使用昵称、手机号、头像、学校、学年、班级、学号、分数、位次和报考偏好，用于创建报考档案、生成推荐结果、展示 AI 报告、同步账号数据和提供售后支持。</view>
       </view>
 
       <view class="login-consent-box">

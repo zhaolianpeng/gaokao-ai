@@ -304,6 +304,7 @@ Page({
       { key: 'explore', title: '查学校和专业组', desc: '快速看学校、专业组和招生计划', action: 'openExplorePage' },
       { key: 'province-lines', title: '看批次线', desc: '查看 2025-2022 常用批次线', action: 'openProvinceLinesPage' },
       { key: 'score-rank', title: '查位次', desc: '按分数快速查询全省位次', action: 'openScoreRankPage' },
+      { key: 'simulate-guide', title: '模拟报考流程', desc: '直接进入 2025 模拟填报全流程', action: 'openSimulateApplicationPage' },
       { key: 'recommend', title: '生成推荐方案', desc: '按位次与线差生成 5 层方案', action: 'onRecommend' },
       { key: 'agent', title: '做深度分析', desc: '输入需求生成更细的报考分析', action: 'openAiAgentPage' },
       { key: 'plan-list', title: '看正式志愿表', desc: '查看已整理好的填报清单', action: 'openPlanListPage' },
@@ -491,6 +492,10 @@ Page({
 
   openMaterialsPage() {
     wx.navigateTo({ url: '/pages/materials/materials' })
+  },
+
+  openSimulateApplicationPage() {
+    wx.navigateTo({ url: '/pages/simulate-application/simulate-application' })
   },
 
   openAboutPage() {
