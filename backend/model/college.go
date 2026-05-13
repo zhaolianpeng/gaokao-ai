@@ -1,5 +1,7 @@
 package model
 
+import "fmt"
+
 type College struct {
 	ID            int    `json:"id"`
 	Name          string `json:"name"`
@@ -211,6 +213,19 @@ type RecommendRequest struct {
 	FromRecommend bool   `json:"fromRecommend"`
 }
 
+func (r RecommendRequest) Validate() error {
+	if err := ValidateGaokaoScore(r.Score); err != nil {
+		return err
+	}
+	if err := ValidateGaokaoRank(r.Rank); err != nil {
+		return err
+	}
+	if r.Year < 0 {
+		return fmt.Errorf("invalid year")
+	}
+	return nil
+}
+
 type RecommendResponse struct {
 	Chong     []RecommendItem `json:"chong"`
 	JiaoChong []RecommendItem `json:"jiaoChong"`
@@ -223,4 +238,8 @@ type AIAnalyzeRequest struct {
 	Student    RecommendRequest  `json:"student" binding:"required"`
 	Recommend  RecommendResponse `json:"recommend" binding:"required"`
 	ExtraNotes string            `json:"extra_notes"`
+}
+
+func (r AIAnalyzeRequest) Validate() error {
+	return r.Student.Validate()
 }

@@ -24,6 +24,99 @@ type AdminLoginRequest struct {
 	Password string `json:"password" binding:"required"`
 }
 
+type AdminPaginationRequest struct {
+	Page  int `form:"page"`
+	Limit int `form:"limit"`
+}
+
+func (r AdminPaginationRequest) Normalized() (int, int) {
+	page := r.Page
+	limit := r.Limit
+	if page <= 0 {
+		page = 1
+	}
+	if limit <= 0 {
+		limit = 20
+	}
+	return page, limit
+}
+
+type AdminCollegeListRequest struct {
+	AdminPaginationRequest
+	Keyword       string `form:"keyword"`
+	Name          string `form:"name"`
+	Level         string `form:"level"`
+	SchoolType    string `form:"schoolType"`
+	OwnershipType string `form:"ownershipType"`
+	Province      string `form:"province"`
+	City          string `form:"city"`
+	Is985         string `form:"is985"`
+	Is211         string `form:"is211"`
+	IsDoubleFirst string `form:"isDoubleFirst"`
+}
+
+type AdminProvinceScoreLineListRequest struct {
+	AdminPaginationRequest
+	Keyword  string `form:"keyword"`
+	Province string `form:"province"`
+	Year     int    `form:"year"`
+	Subject  string `form:"subject"`
+	Batch    string `form:"batch"`
+}
+
+type AdminScoreRankListRequest struct {
+	AdminPaginationRequest
+	Keyword  string `form:"keyword"`
+	Province string `form:"province"`
+	Year     int    `form:"year"`
+	Subject  string `form:"subject"`
+	Score    int    `form:"score"`
+}
+
+type AdminStudentListRequest struct {
+	AdminPaginationRequest
+	Keyword string `form:"keyword"`
+}
+
+type AdminProfileOptionListRequest struct {
+	AdminPaginationRequest
+	Keyword    string `form:"keyword"`
+	OptionType string `form:"optionType"`
+}
+
+type AdminUserListRequest struct {
+	AdminPaginationRequest
+	Keyword string `form:"keyword"`
+}
+
+type AdminTaskListRequest struct {
+	AdminPaginationRequest
+	Keyword  string `form:"keyword"`
+	TaskType string `form:"taskType"`
+	Status   string `form:"status"`
+}
+
+type AdminOrderListRequest struct {
+	AdminPaginationRequest
+	Keyword   string `form:"keyword"`
+	Status    string `form:"status"`
+	ProductID string `form:"productId"`
+}
+
+type AdminStaffSaveRequest struct {
+	AdminUser
+	Password string `json:"password"`
+}
+
+type AdminOrderBackfillRequest struct {
+	StartDate string `json:"startDate"`
+	EndDate   string `json:"endDate"`
+}
+
+type AdminEnabledRequest struct {
+	Enabled bool `json:"enabled"`
+}
+
 type AdminDashboard struct {
 	CollegeCount      int `json:"collegeCount"`
 	ProvinceLineCount int `json:"provinceLineCount"`
@@ -200,4 +293,25 @@ type AdminListResponse[T any] struct {
 	Total int `json:"total"`
 	Page  int `json:"page"`
 	Limit int `json:"limit"`
+}
+
+type AdminUserResponse struct {
+	User *AdminUser `json:"user"`
+}
+
+type AdminItemsResponse[T any] struct {
+	Items []T `json:"items"`
+}
+
+type AdminOKResponse struct {
+	OK bool `json:"ok"`
+}
+
+type AdminIDResponse struct {
+	ID int  `json:"id"`
+	OK bool `json:"ok"`
+}
+
+type AdminIDOnlyResponse struct {
+	ID int `json:"id"`
 }

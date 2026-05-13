@@ -1,6 +1,9 @@
 package model
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 type AuthUser struct {
 	ID            string `json:"id"`
@@ -130,10 +133,27 @@ type TaskStudent struct {
 	Year          int    `json:"year"`
 }
 
+func (s TaskStudent) Validate() error {
+	if err := ValidateGaokaoScore(s.Score); err != nil {
+		return err
+	}
+	if err := ValidateGaokaoRank(s.Rank); err != nil {
+		return err
+	}
+	if s.Year < 0 {
+		return fmt.Errorf("invalid year")
+	}
+	return nil
+}
+
 type AgentRecommendRequest struct {
 	Student   TaskStudent `json:"student" binding:"required"`
 	Demand    string      `json:"demand" binding:"required"`
 	Templates []string    `json:"templates"`
+}
+
+func (r AgentRecommendRequest) Validate() error {
+	return r.Student.Validate()
 }
 
 type AgentSuggestion struct {

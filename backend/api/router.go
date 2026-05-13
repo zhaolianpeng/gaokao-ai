@@ -44,8 +44,7 @@ func NewRouter(recommendService *service.RecommendService, aiService *service.AI
 
 	r.POST("/api/recommend", func(c *gin.Context) {
 		var req model.RecommendRequest
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		if !bindJSON(c, &req) {
 			return
 		}
 		if req.Year == 0 {
@@ -54,10 +53,14 @@ func NewRouter(recommendService *service.RecommendService, aiService *service.AI
 		if req.Province == "" {
 			req.Province = "黑龙江"
 		}
+		if err := req.Validate(); err != nil {
+			writeError(c, http.StatusBadRequest, err.Error())
+			return
+		}
 
 		resp, err := recommendService.Recommend(c.Request.Context(), req)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			writeError(c, http.StatusInternalServerError, err.Error())
 			return
 		}
 		c.JSON(http.StatusOK, resp)
@@ -65,14 +68,17 @@ func NewRouter(recommendService *service.RecommendService, aiService *service.AI
 
 	r.POST("/api/analyze", func(c *gin.Context) {
 		var req model.AIAnalyzeRequest
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		if !bindJSON(c, &req) {
+			return
+		}
+		if err := req.Validate(); err != nil {
+			writeError(c, http.StatusBadRequest, err.Error())
 			return
 		}
 
 		report, err := aiService.Analyze(c.Request.Context(), req)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			writeError(c, http.StatusInternalServerError, err.Error())
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"report": report})
@@ -80,30 +86,37 @@ func NewRouter(recommendService *service.RecommendService, aiService *service.AI
 
 	r.POST("/api/analyze-task", func(c *gin.Context) {
 		var req model.AIAnalyzeRequest
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		if !bindJSON(c, &req) {
+			return
+		}
+		if err := req.Validate(); err != nil {
+			writeError(c, http.StatusBadRequest, err.Error())
 			return
 		}
 		if taskService == nil {
-			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "task service unavailable"})
+			writeError(c, http.StatusServiceUnavailable, "task service unavailable")
 			return
 		}
 		taskID, status, err := taskService.SubmitAnalyzeTask(c.Request.Context(), req)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			writeError(c, http.StatusInternalServerError, err.Error())
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"taskId": taskID, "status": status, "title": "AI 志愿分析报告"})
 	})
 
 	r.GET("/api/analyze/task", func(c *gin.Context) {
-		if taskService == nil {
-			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "task service unavailable"})
+		var req model.TaskStatusRequest
+		if !bindQuery(c, &req) {
 			return
 		}
-		result, err := taskService.GetTaskStatus(c.Request.Context(), c.Query("taskId"))
+		if taskService == nil {
+			writeError(c, http.StatusServiceUnavailable, "task service unavailable")
+			return
+		}
+		result, err := taskService.GetTaskStatus(c.Request.Context(), req.TaskID)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			writeError(c, http.StatusBadRequest, err.Error())
 			return
 		}
 		c.JSON(http.StatusOK, result)
@@ -111,19 +124,16 @@ func NewRouter(recommendService *service.RecommendService, aiService *service.AI
 
 	r.POST("/api/analyze/task", func(c *gin.Context) {
 		if taskService == nil {
-			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "task service unavailable"})
+			writeError(c, http.StatusServiceUnavailable, "task service unavailable")
 			return
 		}
-		var req struct {
-			TaskID string `json:"taskId" binding:"required"`
-		}
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		var req model.TaskStatusRequest
+		if !bindJSON(c, &req) {
 			return
 		}
 		result, err := taskService.GetTaskStatus(c.Request.Context(), req.TaskID)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			writeError(c, http.StatusBadRequest, err.Error())
 			return
 		}
 		c.JSON(http.StatusOK, result)
@@ -131,17 +141,16 @@ func NewRouter(recommendService *service.RecommendService, aiService *service.AI
 
 	r.POST("/api/auth/wx-login", func(c *gin.Context) {
 		var req model.WechatLoginRequest
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		if !bindJSON(c, &req) {
 			return
 		}
 		if authService == nil {
-			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "auth service unavailable"})
+			writeError(c, http.StatusServiceUnavailable, "auth service unavailable")
 			return
 		}
 		user, err := authService.Login(c.Request.Context(), req)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			writeError(c, http.StatusBadRequest, err.Error())
 			return
 		}
 		c.JSON(http.StatusOK, user)
@@ -149,17 +158,16 @@ func NewRouter(recommendService *service.RecommendService, aiService *service.AI
 
 	r.POST("/api/auth/wx-profile", func(c *gin.Context) {
 		var req model.WechatProfileUpdateRequest
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		if !bindJSON(c, &req) {
 			return
 		}
 		if authService == nil {
-			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "auth service unavailable"})
+			writeError(c, http.StatusServiceUnavailable, "auth service unavailable")
 			return
 		}
 		user, err := authService.UpdateProfile(c.Request.Context(), req)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			writeError(c, http.StatusBadRequest, err.Error())
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"user": user})
@@ -167,12 +175,12 @@ func NewRouter(recommendService *service.RecommendService, aiService *service.AI
 
 	loadProfileOptions := func(c *gin.Context) {
 		if adminService == nil {
-			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "admin service unavailable"})
+			writeError(c, http.StatusServiceUnavailable, "admin service unavailable")
 			return
 		}
 		items, err := adminService.Repo().ListEnabledProfileOptions(c.Request.Context())
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			writeError(c, http.StatusInternalServerError, err.Error())
 			return
 		}
 		c.JSON(http.StatusOK, items)
@@ -182,32 +190,32 @@ func NewRouter(recommendService *service.RecommendService, aiService *service.AI
 
 	r.POST("/api/auth/wx-avatar", func(c *gin.Context) {
 		if authService == nil {
-			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "auth service unavailable"})
+			writeError(c, http.StatusServiceUnavailable, "auth service unavailable")
 			return
 		}
 		userID := strings.TrimSpace(c.PostForm("userId"))
 		if userID == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "userId required"})
+			writeError(c, http.StatusBadRequest, "userId required")
 			return
 		}
 		file, header, err := c.Request.FormFile("avatar")
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "avatar file required"})
+			writeError(c, http.StatusBadRequest, "avatar file required")
 			return
 		}
 		defer file.Close()
 		if header.Size <= 0 || header.Size > maxAvatarUploadSize {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "avatar file too large"})
+			writeError(c, http.StatusBadRequest, "avatar file too large")
 			return
 		}
 		user, err := authService.GetUserByID(c.Request.Context(), userID)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			writeError(c, http.StatusBadRequest, err.Error())
 			return
 		}
 		avatarURL, err := saveAvatarFile(file, header, uploadDir, buildPublicBaseURL(c, publicBaseURL))
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			writeError(c, http.StatusBadRequest, err.Error())
 			return
 		}
 		updatedUser, err := authService.UpdateProfile(c.Request.Context(), model.WechatProfileUpdateRequest{
@@ -217,7 +225,7 @@ func NewRouter(recommendService *service.RecommendService, aiService *service.AI
 			AvatarURL: &avatarURL,
 		})
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			writeError(c, http.StatusBadRequest, err.Error())
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"user": updatedUser, "avatarUrl": avatarURL})
@@ -225,12 +233,11 @@ func NewRouter(recommendService *service.RecommendService, aiService *service.AI
 
 	r.POST("/api/vip/pay", func(c *gin.Context) {
 		var req model.WechatPayRequest
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		if !bindJSON(c, &req) {
 			return
 		}
 		if payService == nil {
-			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "pay service unavailable"})
+			writeError(c, http.StatusServiceUnavailable, "pay service unavailable")
 			return
 		}
 		result, err := payService.CreatePayment(c.Request.Context(), req)
@@ -239,7 +246,7 @@ func NewRouter(recommendService *service.RecommendService, aiService *service.AI
 			if !strings.Contains(err.Error(), "invalid") && !strings.Contains(err.Error(), "missing") {
 				statusCode = http.StatusInternalServerError
 			}
-			c.JSON(statusCode, gin.H{"error": err.Error()})
+			writeError(c, statusCode, err.Error())
 			return
 		}
 		c.JSON(http.StatusOK, result)
@@ -247,12 +254,12 @@ func NewRouter(recommendService *service.RecommendService, aiService *service.AI
 
 	r.POST("/api/vip/products", func(c *gin.Context) {
 		if adminService == nil {
-			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "admin service unavailable"})
+			writeError(c, http.StatusServiceUnavailable, "admin service unavailable")
 			return
 		}
 		items, err := adminService.Repo().ListVIPProducts(c.Request.Context())
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			writeError(c, http.StatusInternalServerError, err.Error())
 			return
 		}
 		visibleItems := make([]model.VIPProductConfig, 0, len(items))
@@ -267,12 +274,11 @@ func NewRouter(recommendService *service.RecommendService, aiService *service.AI
 
 	r.POST("/api/vip/membership", func(c *gin.Context) {
 		var req model.WechatVIPMembershipRequest
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		if !bindJSON(c, &req) {
 			return
 		}
 		if payService == nil {
-			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "pay service unavailable"})
+			writeError(c, http.StatusServiceUnavailable, "pay service unavailable")
 			return
 		}
 		status, err := payService.GetMembership(c.Request.Context(), req.UserID)
@@ -281,7 +287,7 @@ func NewRouter(recommendService *service.RecommendService, aiService *service.AI
 			if !strings.Contains(err.Error(), "invalid") {
 				statusCode = http.StatusInternalServerError
 			}
-			c.JSON(statusCode, gin.H{"error": err.Error()})
+			writeError(c, statusCode, err.Error())
 			return
 		}
 		c.JSON(http.StatusOK, status)
@@ -289,12 +295,12 @@ func NewRouter(recommendService *service.RecommendService, aiService *service.AI
 
 	r.GET("/api/vip/entry-config", func(c *gin.Context) {
 		if adminService == nil {
-			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "admin service unavailable"})
+			writeError(c, http.StatusServiceUnavailable, "admin service unavailable")
 			return
 		}
 		showVIPEntry, err := adminService.ShouldShowVIPEntry(c.Request.Context())
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			writeError(c, http.StatusInternalServerError, err.Error())
 			return
 		}
 		c.JSON(http.StatusOK, model.VIPEntryConfigResponse{ShowVIPEntry: showVIPEntry})
@@ -302,12 +308,12 @@ func NewRouter(recommendService *service.RecommendService, aiService *service.AI
 
 	r.POST("/api/vip/entry-config", func(c *gin.Context) {
 		if adminService == nil {
-			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "admin service unavailable"})
+			writeError(c, http.StatusServiceUnavailable, "admin service unavailable")
 			return
 		}
 		showVIPEntry, err := adminService.ShouldShowVIPEntry(c.Request.Context())
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			writeError(c, http.StatusInternalServerError, err.Error())
 			return
 		}
 		c.JSON(http.StatusOK, model.VIPEntryConfigResponse{ShowVIPEntry: showVIPEntry})
@@ -315,12 +321,12 @@ func NewRouter(recommendService *service.RecommendService, aiService *service.AI
 
 	r.GET("/api/share-gate-config", func(c *gin.Context) {
 		if adminService == nil {
-			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "admin service unavailable"})
+			writeError(c, http.StatusServiceUnavailable, "admin service unavailable")
 			return
 		}
 		config, err := adminService.ShareGateConfig(c.Request.Context())
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			writeError(c, http.StatusInternalServerError, err.Error())
 			return
 		}
 		c.JSON(http.StatusOK, config)
@@ -328,12 +334,12 @@ func NewRouter(recommendService *service.RecommendService, aiService *service.AI
 
 	r.POST("/api/share-gate-config", func(c *gin.Context) {
 		if adminService == nil {
-			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "admin service unavailable"})
+			writeError(c, http.StatusServiceUnavailable, "admin service unavailable")
 			return
 		}
 		config, err := adminService.ShareGateConfig(c.Request.Context())
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			writeError(c, http.StatusInternalServerError, err.Error())
 			return
 		}
 		c.JSON(http.StatusOK, config)
@@ -341,12 +347,11 @@ func NewRouter(recommendService *service.RecommendService, aiService *service.AI
 
 	r.POST("/api/vip/pay/confirm", func(c *gin.Context) {
 		var req model.WechatPayConfirmRequest
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		if !bindJSON(c, &req) {
 			return
 		}
 		if payService == nil {
-			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "pay service unavailable"})
+			writeError(c, http.StatusServiceUnavailable, "pay service unavailable")
 			return
 		}
 		result, err := payService.ConfirmPayment(c.Request.Context(), req)
@@ -355,7 +360,7 @@ func NewRouter(recommendService *service.RecommendService, aiService *service.AI
 			if !strings.Contains(err.Error(), "not found") && !strings.Contains(err.Error(), "mismatch") && !strings.Contains(err.Error(), "超时关闭") {
 				statusCode = http.StatusInternalServerError
 			}
-			c.JSON(statusCode, gin.H{"error": err.Error()})
+			writeError(c, statusCode, err.Error())
 			return
 		}
 		c.JSON(http.StatusOK, result)
@@ -367,17 +372,16 @@ func NewRouter(recommendService *service.RecommendService, aiService *service.AI
 
 	r.POST("/api/about/feedback", func(c *gin.Context) {
 		var req model.FeedbackSubmitRequest
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		if !bindJSON(c, &req) {
 			return
 		}
 		if feedbackService == nil {
-			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "feedback service unavailable"})
+			writeError(c, http.StatusServiceUnavailable, "feedback service unavailable")
 			return
 		}
 		result, err := feedbackService.Submit(c.Request.Context(), req)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			writeError(c, http.StatusInternalServerError, err.Error())
 			return
 		}
 		c.JSON(http.StatusOK, result)
@@ -385,30 +389,37 @@ func NewRouter(recommendService *service.RecommendService, aiService *service.AI
 
 	r.POST("/api/agent-recommend", func(c *gin.Context) {
 		var req model.AgentRecommendRequest
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		if !bindJSON(c, &req) {
+			return
+		}
+		if err := req.Validate(); err != nil {
+			writeError(c, http.StatusBadRequest, err.Error())
 			return
 		}
 		if taskService == nil {
-			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "task service unavailable"})
+			writeError(c, http.StatusServiceUnavailable, "task service unavailable")
 			return
 		}
 		taskID, status, err := taskService.SubmitAgentRecommend(c.Request.Context(), req)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			writeError(c, http.StatusInternalServerError, err.Error())
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"taskId": taskID, "status": status, "title": "AI 智能体报考建议"})
 	})
 
 	r.GET("/api/agent-recommend/task", func(c *gin.Context) {
-		if taskService == nil {
-			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "task service unavailable"})
+		var req model.TaskStatusRequest
+		if !bindQuery(c, &req) {
 			return
 		}
-		result, err := taskService.GetTaskStatus(c.Request.Context(), c.Query("taskId"))
+		if taskService == nil {
+			writeError(c, http.StatusServiceUnavailable, "task service unavailable")
+			return
+		}
+		result, err := taskService.GetTaskStatus(c.Request.Context(), req.TaskID)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			writeError(c, http.StatusBadRequest, err.Error())
 			return
 		}
 		c.JSON(http.StatusOK, result)
@@ -416,210 +427,140 @@ func NewRouter(recommendService *service.RecommendService, aiService *service.AI
 
 	r.POST("/api/agent-recommend/task", func(c *gin.Context) {
 		if taskService == nil {
-			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "task service unavailable"})
+			writeError(c, http.StatusServiceUnavailable, "task service unavailable")
 			return
 		}
-		var req struct {
-			TaskID string `json:"taskId" binding:"required"`
-		}
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		var req model.TaskStatusRequest
+		if !bindJSON(c, &req) {
 			return
 		}
 		result, err := taskService.GetTaskStatus(c.Request.Context(), req.TaskID)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			writeError(c, http.StatusBadRequest, err.Error())
 			return
 		}
 		c.JSON(http.StatusOK, result)
 	})
 
 	r.GET("/api/dashboard/overview", func(c *gin.Context) {
-		year, _ := strconv.Atoi(c.DefaultQuery("year", "2025"))
-		overview, err := explorerService.GetDashboardOverview(c.Request.Context(), c.Query("province"), year, c.Query("subject"))
+		var req model.DashboardOverviewRequest
+		if !bindQuery(c, &req) {
+			return
+		}
+		req.Normalize()
+		overview, err := explorerService.GetDashboardOverview(c.Request.Context(), req.Province, req.Year, req.Subject)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			writeError(c, http.StatusInternalServerError, err.Error())
 			return
 		}
 		c.JSON(http.StatusOK, overview)
 	})
 
 	r.GET("/api/province-lines", func(c *gin.Context) {
-		year, _ := strconv.Atoi(c.DefaultQuery("year", "2025"))
-		province := c.DefaultQuery("province", "黑龙江")
-		subject := normalizeLookupSubject(year, c.Query("subject"))
-		items, err := explorerService.GetProvinceScoreLines(c.Request.Context(), province, year, subject)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		var req model.ProvinceLinesRequest
+		if !bindQuery(c, &req) {
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{"items": items})
+		req.Normalize()
+		subject := normalizeLookupSubject(req.Year, req.Subject)
+		items, err := explorerService.GetProvinceScoreLines(c.Request.Context(), req.Province, req.Year, subject)
+		if err != nil {
+			writeError(c, http.StatusInternalServerError, err.Error())
+			return
+		}
+		writeItems(c, items)
 	})
 
 	r.POST("/api/province-lines", func(c *gin.Context) {
-		var req struct {
-			Province string `json:"province"`
-			Year     int    `json:"year"`
-			Subject  string `json:"subject"`
-		}
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		var req model.ProvinceLinesRequest
+		if !bindJSON(c, &req) {
 			return
 		}
-		if req.Year == 0 {
-			req.Year = 2025
-		}
-		province := strings.TrimSpace(req.Province)
-		if province == "" {
-			province = "黑龙江"
-		}
+		req.Normalize()
 		subject := normalizeLookupSubject(req.Year, req.Subject)
-		items, err := explorerService.GetProvinceScoreLines(c.Request.Context(), province, req.Year, subject)
+		items, err := explorerService.GetProvinceScoreLines(c.Request.Context(), strings.TrimSpace(req.Province), req.Year, subject)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			writeError(c, http.StatusInternalServerError, err.Error())
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{"items": items})
+		writeItems(c, items)
 	})
 
 	r.GET("/api/score-rank", func(c *gin.Context) {
-		year, _ := strconv.Atoi(c.DefaultQuery("year", "2025"))
-		score, _ := strconv.Atoi(c.DefaultQuery("score", "0"))
-		if score <= 0 {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid score"})
+		var req model.ScoreRankRequest
+		if !bindQuery(c, &req) {
 			return
 		}
-		province := c.DefaultQuery("province", "黑龙江")
-		subject := normalizeLookupSubject(year, c.Query("subject"))
+		req.Normalize()
+		if err := req.Validate(); err != nil {
+			writeError(c, http.StatusBadRequest, err.Error())
+			return
+		}
+		subject := normalizeLookupSubject(req.Year, req.Subject)
 		if subject == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid subject"})
+			writeError(c, http.StatusBadRequest, "invalid subject")
 			return
 		}
-		result, err := explorerService.LookupScoreRank(c.Request.Context(), province, year, subject, score)
+		result, err := explorerService.LookupScoreRank(c.Request.Context(), req.Province, req.Year, subject, req.Score)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			writeError(c, http.StatusInternalServerError, err.Error())
 			return
 		}
 		c.JSON(http.StatusOK, result)
 	})
 
 	r.POST("/api/score-rank", func(c *gin.Context) {
-		var req struct {
-			Province string `json:"province"`
-			Year     int    `json:"year"`
-			Subject  string `json:"subject"`
-			Score    int    `json:"score"`
-		}
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		var req model.ScoreRankRequest
+		if !bindJSON(c, &req) {
 			return
 		}
-		if req.Year == 0 {
-			req.Year = 2025
-		}
-		if req.Score <= 0 {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid score"})
+		req.Normalize()
+		if err := req.Validate(); err != nil {
+			writeError(c, http.StatusBadRequest, err.Error())
 			return
-		}
-		province := strings.TrimSpace(req.Province)
-		if province == "" {
-			province = "黑龙江"
 		}
 		subject := normalizeLookupSubject(req.Year, req.Subject)
 		if subject == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid subject"})
+			writeError(c, http.StatusBadRequest, "invalid subject")
 			return
 		}
-		result, err := explorerService.LookupScoreRank(c.Request.Context(), province, req.Year, subject, req.Score)
+		result, err := explorerService.LookupScoreRank(c.Request.Context(), req.Province, req.Year, subject, req.Score)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			writeError(c, http.StatusInternalServerError, err.Error())
 			return
 		}
 		c.JSON(http.StatusOK, result)
 	})
 
 	r.POST("/api/rank-score", func(c *gin.Context) {
-		var req struct {
-			Province string `json:"province"`
-			Year     int    `json:"year"`
-			Subject  string `json:"subject"`
-			Rank     int    `json:"rank"`
-		}
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		var req model.RankScoreRequest
+		if !bindJSON(c, &req) {
 			return
 		}
-		if req.Year == 0 {
-			req.Year = 2025
-		}
-		if req.Rank <= 0 {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid rank"})
+		req.Normalize()
+		if err := req.Validate(); err != nil {
+			writeError(c, http.StatusBadRequest, err.Error())
 			return
-		}
-		province := strings.TrimSpace(req.Province)
-		if province == "" {
-			province = "黑龙江"
 		}
 		subject := normalizeLookupSubject(req.Year, req.Subject)
 		if subject == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid subject"})
+			writeError(c, http.StatusBadRequest, "invalid subject")
 			return
 		}
-		result, err := explorerService.LookupRankScore(c.Request.Context(), province, req.Year, subject, req.Rank)
+		result, err := explorerService.LookupRankScore(c.Request.Context(), req.Province, req.Year, subject, req.Rank)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			writeError(c, http.StatusInternalServerError, err.Error())
 			return
 		}
 		c.JSON(http.StatusOK, result)
 	})
 
 	r.GET("/api/colleges", func(c *gin.Context) {
-		year, _ := strconv.Atoi(c.DefaultQuery("year", "2025"))
-		limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
-		page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-		sortMode := strings.TrimSpace(c.DefaultQuery("sortMode", "tier"))
-		result, err := explorerService.ListColleges(c.Request.Context(), model.CollegeListFilter{
-			Province: c.Query("province"),
-			Year:     year,
-			Subject:  c.Query("subject"),
-			Keyword:  c.Query("keyword"),
-			SortMode: sortMode,
-			Page:     page,
-			Limit:    limit,
-		})
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		var req model.ExplorerCollegeListRequest
+		if !bindQuery(c, &req) {
 			return
 		}
-		c.JSON(http.StatusOK, result)
-	})
-
-	r.POST("/api/colleges", func(c *gin.Context) {
-		var req struct {
-			Province string `json:"province"`
-			Year     int    `json:"year"`
-			Subject  string `json:"subject"`
-			Keyword  string `json:"keyword"`
-			SortMode string `json:"sortMode"`
-			Page     int    `json:"page"`
-			Limit    int    `json:"limit"`
-		}
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-		if req.Year == 0 {
-			req.Year = 2025
-		}
-		if req.Page <= 0 {
-			req.Page = 1
-		}
-		if req.Limit <= 0 {
-			req.Limit = 20
-		}
-		if strings.TrimSpace(req.SortMode) == "" {
-			req.SortMode = "tier"
-		}
+		req.Normalize()
 		result, err := explorerService.ListColleges(c.Request.Context(), model.CollegeListFilter{
 			Province: req.Province,
 			Year:     req.Year,
@@ -630,7 +571,29 @@ func NewRouter(recommendService *service.RecommendService, aiService *service.AI
 			Limit:    req.Limit,
 		})
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			writeError(c, http.StatusInternalServerError, err.Error())
+			return
+		}
+		c.JSON(http.StatusOK, result)
+	})
+
+	r.POST("/api/colleges", func(c *gin.Context) {
+		var req model.ExplorerCollegeListRequest
+		if !bindJSON(c, &req) {
+			return
+		}
+		req.Normalize()
+		result, err := explorerService.ListColleges(c.Request.Context(), model.CollegeListFilter{
+			Province: req.Province,
+			Year:     req.Year,
+			Subject:  req.Subject,
+			Keyword:  req.Keyword,
+			SortMode: strings.TrimSpace(req.SortMode),
+			Page:     req.Page,
+			Limit:    req.Limit,
+		})
+		if err != nil {
+			writeError(c, http.StatusInternalServerError, err.Error())
 			return
 		}
 		c.JSON(http.StatusOK, result)
@@ -639,13 +602,17 @@ func NewRouter(recommendService *service.RecommendService, aiService *service.AI
 	r.GET("/api/colleges/:id", func(c *gin.Context) {
 		collegeID, err := strconv.Atoi(c.Param("id"))
 		if err != nil || collegeID <= 0 {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid college id"})
+			writeError(c, http.StatusBadRequest, "invalid college id")
 			return
 		}
-		year, _ := strconv.Atoi(c.DefaultQuery("year", "2025"))
-		detail, err := explorerService.GetCollegeDetail(c.Request.Context(), collegeID, c.Query("province"), year, c.Query("subject"))
+		var req model.CollegeDetailRequest
+		if !bindQuery(c, &req) {
+			return
+		}
+		req.Normalize()
+		detail, err := explorerService.GetCollegeDetail(c.Request.Context(), collegeID, req.Province, req.Year, req.Subject)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			writeError(c, http.StatusInternalServerError, err.Error())
 			return
 		}
 		c.JSON(http.StatusOK, detail)
@@ -654,24 +621,17 @@ func NewRouter(recommendService *service.RecommendService, aiService *service.AI
 	r.POST("/api/colleges/:id", func(c *gin.Context) {
 		collegeID, err := strconv.Atoi(c.Param("id"))
 		if err != nil || collegeID <= 0 {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid college id"})
+			writeError(c, http.StatusBadRequest, "invalid college id")
 			return
 		}
-		var req struct {
-			Province string `json:"province"`
-			Year     int    `json:"year"`
-			Subject  string `json:"subject"`
-		}
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		var req model.CollegeDetailRequest
+		if !bindJSON(c, &req) {
 			return
 		}
-		if req.Year == 0 {
-			req.Year = 2025
-		}
+		req.Normalize()
 		detail, err := explorerService.GetCollegeDetail(c.Request.Context(), collegeID, req.Province, req.Year, req.Subject)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			writeError(c, http.StatusInternalServerError, err.Error())
 			return
 		}
 		c.JSON(http.StatusOK, detail)

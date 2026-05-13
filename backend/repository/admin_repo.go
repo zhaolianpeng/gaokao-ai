@@ -304,9 +304,9 @@ func (r *AdminRepository) TouchAdminLogin(ctx context.Context, id int) error {
 	return err
 }
 
-func (r *AdminRepository) ListAdminUsers(ctx context.Context, keyword string, page, limit int) ([]model.AdminUser, int, error) {
-	page, limit = normalizePage(page, limit)
-	like := buildLike(keyword)
+func (r *AdminRepository) ListAdminUsers(ctx context.Context, req model.AdminUserListRequest) ([]model.AdminUser, int, error) {
+	page, limit := req.Normalized()
+	like := buildLike(req.Keyword)
 	var total int
 	if err := r.db.QueryRowContext(ctx, `
 		SELECT COUNT(*) FROM mis_admin_user
@@ -369,12 +369,12 @@ func (r *AdminRepository) DeleteAdminUser(ctx context.Context, id int) error {
 	return err
 }
 
-func (r *AdminRepository) ListColleges(ctx context.Context, keyword, name, level, schoolType, ownershipType, province, city, is985, is211, isDoubleFirst string, page, limit int) ([]model.AdminCollege, int, error) {
-	page, limit = normalizePage(page, limit)
+func (r *AdminRepository) ListColleges(ctx context.Context, req model.AdminCollegeListRequest) ([]model.AdminCollege, int, error) {
+	page, limit := req.Normalized()
 	conditions := []string{"1 = 1"}
 	args := make([]any, 0)
-	if strings.TrimSpace(keyword) != "" {
-		like := buildLike(keyword)
+	if strings.TrimSpace(req.Keyword) != "" {
+		like := buildLike(req.Keyword)
 		keywordConditions := []string{
 			`name LIKE ?`,
 			`province LIKE ?`,
@@ -396,7 +396,7 @@ func (r *AdminRepository) ListColleges(ctx context.Context, keyword, name, level
 		for range keywordConditions {
 			args = append(args, like)
 		}
-		normalizedKeyword := strings.ToLower(strings.TrimSpace(keyword))
+		normalizedKeyword := strings.ToLower(strings.TrimSpace(req.Keyword))
 		if strings.Contains(normalizedKeyword, "985") {
 			keywordConditions = append(keywordConditions, `is_985 = 1`)
 		}
@@ -408,43 +408,43 @@ func (r *AdminRepository) ListColleges(ctx context.Context, keyword, name, level
 		}
 		conditions = append(conditions, `(`+strings.Join(keywordConditions, ` OR `)+`)`)
 	}
-	if strings.TrimSpace(name) != "" {
+	if strings.TrimSpace(req.Name) != "" {
 		conditions = append(conditions, `name LIKE ?`)
-		args = append(args, buildLike(name))
+		args = append(args, buildLike(req.Name))
 	}
-	if strings.TrimSpace(level) != "" {
+	if strings.TrimSpace(req.Level) != "" {
 		conditions = append(conditions, `level LIKE ?`)
-		args = append(args, buildLike(level))
+		args = append(args, buildLike(req.Level))
 	}
-	if strings.TrimSpace(schoolType) != "" {
+	if strings.TrimSpace(req.SchoolType) != "" {
 		conditions = append(conditions, `school_type LIKE ?`)
-		args = append(args, buildLike(schoolType))
+		args = append(args, buildLike(req.SchoolType))
 	}
-	if strings.TrimSpace(ownershipType) != "" {
+	if strings.TrimSpace(req.OwnershipType) != "" {
 		conditions = append(conditions, `ownership_type LIKE ?`)
-		args = append(args, buildLike(ownershipType))
+		args = append(args, buildLike(req.OwnershipType))
 	}
-	if strings.TrimSpace(province) != "" {
+	if strings.TrimSpace(req.Province) != "" {
 		conditions = append(conditions, `province LIKE ?`)
-		args = append(args, buildLike(province))
+		args = append(args, buildLike(req.Province))
 	}
-	if strings.TrimSpace(city) != "" {
+	if strings.TrimSpace(req.City) != "" {
 		conditions = append(conditions, `city LIKE ?`)
-		args = append(args, buildLike(city))
+		args = append(args, buildLike(req.City))
 	}
-	switch strings.TrimSpace(is985) {
+	switch strings.TrimSpace(req.Is985) {
 	case "1":
 		conditions = append(conditions, `is_985 = 1`)
 	case "0":
 		conditions = append(conditions, `is_985 = 0`)
 	}
-	switch strings.TrimSpace(is211) {
+	switch strings.TrimSpace(req.Is211) {
 	case "1":
 		conditions = append(conditions, `is_211 = 1`)
 	case "0":
 		conditions = append(conditions, `is_211 = 0`)
 	}
-	switch strings.TrimSpace(isDoubleFirst) {
+	switch strings.TrimSpace(req.IsDoubleFirst) {
 	case "1":
 		conditions = append(conditions, `is_double_first = 1`)
 	case "0":
@@ -501,15 +501,15 @@ func (r *AdminRepository) SaveCollege(ctx context.Context, item model.AdminColle
 	return int(id), nil
 }
 
-func (r *AdminRepository) ListProvinceScoreLines(ctx context.Context, keyword, province string, year int, subject, batch string, page, limit int) ([]model.AdminProvinceScoreLine, int, error) {
-	page, limit = normalizePage(page, limit)
-	like := buildLike(keyword)
+func (r *AdminRepository) ListProvinceScoreLines(ctx context.Context, req model.AdminProvinceScoreLineListRequest) ([]model.AdminProvinceScoreLine, int, error) {
+	page, limit := req.Normalized()
+	like := buildLike(req.Keyword)
 	clauses := []string{"(province LIKE ? OR subject LIKE ? OR batch LIKE ?)"}
 	args := []any{like, like, like}
-	appendAdminTextLikeFilter(&clauses, &args, "province", province)
-	appendAdminIntFilter(&clauses, &args, "year", year)
-	appendAdminTextLikeFilter(&clauses, &args, "subject", subject)
-	appendAdminTextLikeFilter(&clauses, &args, "batch", batch)
+	appendAdminTextLikeFilter(&clauses, &args, "province", req.Province)
+	appendAdminIntFilter(&clauses, &args, "year", req.Year)
+	appendAdminTextLikeFilter(&clauses, &args, "subject", req.Subject)
+	appendAdminTextLikeFilter(&clauses, &args, "batch", req.Batch)
 	whereSQL := strings.Join(clauses, " AND ")
 	var total int
 	countQuery := fmt.Sprintf(`SELECT COUNT(*) FROM province_score_line WHERE %s`, whereSQL)
@@ -562,15 +562,15 @@ func (r *AdminRepository) DeleteProvinceScoreLine(ctx context.Context, id int) e
 	return err
 }
 
-func (r *AdminRepository) ListScoreRanks(ctx context.Context, keyword, province string, year int, subject string, score int, page, limit int) ([]model.AdminScoreRank, int, error) {
-	page, limit = normalizePage(page, limit)
-	like := buildLike(keyword)
+func (r *AdminRepository) ListScoreRanks(ctx context.Context, req model.AdminScoreRankListRequest) ([]model.AdminScoreRank, int, error) {
+	page, limit := req.Normalized()
+	like := buildLike(req.Keyword)
 	clauses := []string{"(province LIKE ? OR subject LIKE ? OR CAST(score AS CHAR) LIKE ? OR CAST(`rank` AS CHAR) LIKE ?)"}
 	args := []any{like, like, like, like}
-	appendAdminTextLikeFilter(&clauses, &args, "province", province)
-	appendAdminIntFilter(&clauses, &args, "year", year)
-	appendAdminTextLikeFilter(&clauses, &args, "subject", subject)
-	appendAdminIntFilter(&clauses, &args, "score", score)
+	appendAdminTextLikeFilter(&clauses, &args, "province", req.Province)
+	appendAdminIntFilter(&clauses, &args, "year", req.Year)
+	appendAdminTextLikeFilter(&clauses, &args, "subject", req.Subject)
+	appendAdminIntFilter(&clauses, &args, "score", req.Score)
 	whereSQL := strings.Join(clauses, " AND ")
 	var total int
 	countQuery := fmt.Sprintf(`SELECT COUNT(*) FROM score_rank WHERE %s`, whereSQL)
@@ -623,9 +623,9 @@ func (r *AdminRepository) DeleteScoreRank(ctx context.Context, id int) error {
 	return err
 }
 
-func (r *AdminRepository) ListStudents(ctx context.Context, keyword string, page, limit int) ([]model.AdminStudent, int, error) {
-	page, limit = normalizePage(page, limit)
-	like := buildLike(keyword)
+func (r *AdminRepository) ListStudents(ctx context.Context, req model.AdminStudentListRequest) ([]model.AdminStudent, int, error) {
+	page, limit := req.Normalized()
+	like := buildLike(req.Keyword)
 	var total int
 	if err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM mini_auth_user WHERE openid LIKE ? OR phone LIKE ? OR nickname LIKE ? OR school_name LIKE ? OR class_name LIKE ? OR student_no LIKE ?`, like, like, like, like, like, like).Scan(&total); err != nil {
 		return nil, 0, err
@@ -660,13 +660,13 @@ func (r *AdminRepository) SaveStudent(ctx context.Context, item model.AdminStude
 	return err
 }
 
-func (r *AdminRepository) ListProfileOptions(ctx context.Context, keyword, optionType string, page, limit int) ([]model.AdminProfileOption, int, error) {
-	page, limit = normalizePage(page, limit)
+func (r *AdminRepository) ListProfileOptions(ctx context.Context, req model.AdminProfileOptionListRequest) ([]model.AdminProfileOption, int, error) {
+	page, limit := req.Normalized()
 	clauses := []string{"1 = 1"}
 	args := make([]any, 0)
-	appendAdminTextLikeFilter(&clauses, &args, "option_type", optionType)
-	if strings.TrimSpace(keyword) != "" {
-		like := buildLike(keyword)
+	appendAdminTextLikeFilter(&clauses, &args, "option_type", req.OptionType)
+	if strings.TrimSpace(req.Keyword) != "" {
+		like := buildLike(req.Keyword)
 		clauses = append(clauses, `(option_label LIKE ? OR option_value LIKE ?)`)
 		args = append(args, like, like)
 	}
@@ -768,22 +768,22 @@ func (r *AdminRepository) ListEnabledProfileOptions(ctx context.Context) (*model
 	return result, rows.Err()
 }
 
-func (r *AdminRepository) ListTasks(ctx context.Context, keyword, taskType, status string, page, limit int) ([]model.AdminTask, int, error) {
-	page, limit = normalizePage(page, limit)
+func (r *AdminRepository) ListTasks(ctx context.Context, req model.AdminTaskListRequest) ([]model.AdminTask, int, error) {
+	page, limit := req.Normalized()
 	conditions := []string{"1 = 1"}
 	args := make([]any, 0)
-	if strings.TrimSpace(keyword) != "" {
-		like := buildLike(keyword)
+	if strings.TrimSpace(req.Keyword) != "" {
+		like := buildLike(req.Keyword)
 		conditions = append(conditions, `(title LIKE ? OR demand LIKE ? OR report LIKE ?)`)
 		args = append(args, like, like, like)
 	}
-	if strings.TrimSpace(taskType) != "" {
+	if strings.TrimSpace(req.TaskType) != "" {
 		conditions = append(conditions, `task_type = ?`)
-		args = append(args, strings.TrimSpace(taskType))
+		args = append(args, strings.TrimSpace(req.TaskType))
 	}
-	if strings.TrimSpace(status) != "" {
+	if strings.TrimSpace(req.Status) != "" {
 		conditions = append(conditions, `status = ?`)
-		args = append(args, strings.TrimSpace(status))
+		args = append(args, strings.TrimSpace(req.Status))
 	}
 	where := strings.Join(conditions, " AND ")
 	countQuery := `SELECT COUNT(*) FROM agent_recommend_task WHERE ` + where
@@ -846,25 +846,25 @@ func (r *AdminRepository) UpsertPaymentOrder(ctx context.Context, item model.Adm
 	return err
 }
 
-func (r *AdminRepository) ListOrders(ctx context.Context, keyword, status, productID string, page, limit int) ([]model.AdminOrder, int, error) {
+func (r *AdminRepository) ListOrders(ctx context.Context, req model.AdminOrderListRequest) ([]model.AdminOrder, int, error) {
 	if err := r.CloseExpiredCreatedOrders(ctx, time.Now()); err != nil {
 		return nil, 0, err
 	}
-	page, limit = normalizePage(page, limit)
+	page, limit := req.Normalized()
 	conditions := []string{"1 = 1"}
 	args := make([]any, 0)
-	if strings.TrimSpace(keyword) != "" {
-		like := buildLike(keyword)
+	if strings.TrimSpace(req.Keyword) != "" {
+		like := buildLike(req.Keyword)
 		conditions = append(conditions, `(o.order_id LIKE ? OR o.product_id LIKE ? OR o.product_name LIKE ? OR o.content LIKE ? OR u.nickname LIKE ? OR u.phone LIKE ?)`)
 		args = append(args, like, like, like, like, like, like)
 	}
-	if strings.TrimSpace(status) != "" {
+	if strings.TrimSpace(req.Status) != "" {
 		conditions = append(conditions, `o.status = ?`)
-		args = append(args, strings.TrimSpace(status))
+		args = append(args, strings.TrimSpace(req.Status))
 	}
-	if strings.TrimSpace(productID) != "" {
+	if strings.TrimSpace(req.ProductID) != "" {
 		conditions = append(conditions, `o.product_id = ?`)
-		args = append(args, strings.TrimSpace(productID))
+		args = append(args, strings.TrimSpace(req.ProductID))
 	}
 	where := strings.Join(conditions, " AND ")
 	countQuery := `
