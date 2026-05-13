@@ -42,7 +42,9 @@ function comparePlanItems(sortMode) {
 function buildGroupedPlanList(list, sortMode) {
   const groups = {
     chong: { key: 'chong', title: '冲刺组', items: [] },
+    jiaochong: { key: 'jiaochong', title: '较冲组', items: [] },
     wen: { key: 'wen', title: '稳妥组', items: [] },
+    jiaobao: { key: 'jiaobao', title: '较保组', items: [] },
     bao: { key: 'bao', title: '保底组', items: [] },
     other: { key: 'other', title: '待定组', items: [] }
   }
@@ -54,7 +56,7 @@ function buildGroupedPlanList(list, sortMode) {
     }
     groups[key].items.push(entry)
   })
-  return ['chong', 'wen', 'bao', 'other']
+  return ['chong', 'jiaochong', 'wen', 'jiaobao', 'bao', 'other']
     .map((key) => ({
       ...groups[key],
       items: groups[key].items.sort(comparePlanItems(sortMode))
@@ -111,6 +113,11 @@ function buildScenarioCompareBoard(scenarios) {
     return null
   }
 
+  function getAggressiveCount(item) {
+    const metrics = (item && item.metrics) || {}
+    return (Number(metrics.chong) || 0) + (Number(metrics.jiaoChong) || 0)
+  }
+
   function getWinnerIds(metricKey) {
     const values = selected.map((item) => Number(item.metrics && item.metrics[metricKey]) || 0)
     const maxValue = Math.max.apply(null, values)
@@ -121,7 +128,9 @@ function buildScenarioCompareBoard(scenarios) {
   }
 
   const stableWinnerIds = getWinnerIds('wen')
-  const aggressiveWinnerIds = getWinnerIds('chong')
+  const aggressiveValues = selected.map((item) => getAggressiveCount(item))
+  const aggressiveMax = Math.max.apply(null, aggressiveValues)
+  const aggressiveWinnerIds = aggressiveMax > 0 ? selected.filter((item) => getAggressiveCount(item) === aggressiveMax).map((item) => item.id) : []
   const targetWinnerIds = getWinnerIds('targetHits')
 
   function getTitles(ids) {
@@ -169,15 +178,15 @@ function buildScenarioCompareBoard(scenarios) {
       },
       {
         label: '更冲',
-        cells: buildCells('aggressive', (item) => `冲刺组 ${(item.metrics && item.metrics.chong) || 0} 个`, aggressiveWinnerIds)
+        cells: buildCells('aggressive', (item) => `冲刺+较冲 ${getAggressiveCount(item)} 个`, aggressiveWinnerIds)
       },
       {
         label: '更贴近目标专业',
         cells: buildCells('target', (item) => `命中目标方向 ${(item.metrics && item.metrics.targetHits) || 0} 组`, targetWinnerIds)
       },
       {
-        label: '冲稳保结构',
-        cells: buildCells('mix', (item) => `冲 ${(item.metrics && item.metrics.chong) || 0} / 稳 ${(item.metrics && item.metrics.wen) || 0} / 保 ${(item.metrics && item.metrics.bao) || 0}`, [])
+        label: '五层结构',
+        cells: buildCells('mix', (item) => `冲 ${(item.metrics && item.metrics.chong) || 0} / 较冲 ${(item.metrics && item.metrics.jiaoChong) || 0} / 稳 ${(item.metrics && item.metrics.wen) || 0} / 较保 ${(item.metrics && item.metrics.jiaoBao) || 0} / 保 ${(item.metrics && item.metrics.bao) || 0}`, [])
       },
       {
         label: '代表院校',
@@ -194,8 +203,8 @@ function buildScenarioCompareBoard(scenarios) {
       targetWinnerIds.length ? `更贴近目标专业：${selected.filter((item) => targetWinnerIds.indexOf(item.id) >= 0).map((item) => item.title).join('、')}` : ''
     ].filter(Boolean),
     conclusions: [
-      buildRecommendationLine('如果家长更看重录取把握', stableWinnerIds, '如果家长更看重录取把握，建议先看稳妥组更多的方案。'),
-      buildRecommendationLine('如果家长更看重学校层次提升', aggressiveWinnerIds, '如果家长更看重学校层次提升，建议先看冲刺组更多的方案。'),
+      buildRecommendationLine('如果家长更看重录取把握', stableWinnerIds, '如果家长更看重录取把握，建议先看稳妥和较保更多的方案。'),
+      buildRecommendationLine('如果家长更看重学校层次提升', aggressiveWinnerIds, '如果家长更看重学校层次提升，建议先看冲刺和较冲更多的方案。'),
       buildRecommendationLine('如果家长更看重专业贴合', targetWinnerIds, '如果家长更看重专业贴合，建议优先看命中目标方向更多的方案。')
     ]
   }

@@ -66,6 +66,27 @@ const LENS_OPTIONS = [
   { key: 'city', title: '保城市', desc: '先守住目标城市或省内偏好，再决定学校和专业取舍。' }
 ]
 
+const BUCKET_CONFIGS = [
+  { key: 'chong', label: '冲刺', schoolTitle: '冲刺区', schoolSubtitle: '这部分是少量前置冲高位，主要承担向上试探更高层次学校的职责。', expanded: true },
+  { key: 'jiaoChong', label: '较冲', schoolTitle: '较冲区', schoolSubtitle: '比冲刺更接近真实机会区，适合放在前段作为第二梯队。', expanded: true },
+  { key: 'wen', label: '稳妥', schoolTitle: '稳妥区', schoolSubtitle: '这部分最适合承担主力志愿，兼顾录取把握和学校层次。', expanded: true },
+  { key: 'jiaoBao', label: '较保', schoolTitle: '较保区', schoolSubtitle: '这部分录取把握更高，适合补强表格中后段的安全系数。', expanded: false },
+  { key: 'bao', label: '保底', schoolTitle: '保底区', schoolSubtitle: '这部分主要负责兜住录取结果，避免整张表整体过冲。', expanded: false }
+]
+
+function getBucketKeys() {
+  return ['chong', 'jiaoChong', 'wen', 'jiaoBao', 'bao']
+}
+
+function flattenBuckets(result, order) {
+  var keys = Array.isArray(order) && order.length ? order : getBucketKeys()
+  var merged = []
+  for (var i = 0; i < keys.length; i += 1) {
+    merged = merged.concat(result[keys[i]] || [])
+  }
+  return merged
+}
+
 function decodeJsonQuery(value, fallback) {
   if (!value) {
     return fallback
@@ -97,6 +118,7 @@ function buildRecentRankText(item) {
 
 function cloneItem(item) {
   var probability = item.probability || 0
+  var hasLineData = item.current_line_score && item.last_year_line_score
   return {
     college_id: item.college_id || 0,
     college_name: item.college_name || '',
@@ -115,6 +137,11 @@ function cloneItem(item) {
     score_last_year: item.score_last_year || 0,
     min_rank: item.min_rank || 0,
     avg_score: item.avg_score || 0,
+    current_line_score: item.current_line_score || 0,
+    last_year_line_score: item.last_year_line_score || 0,
+    current_line_diff: item.current_line_diff || 0,
+    last_year_line_diff: item.last_year_line_diff || 0,
+    line_diff_gap: item.line_diff_gap || 0,
     rank_last_year: item.rank_last_year || 0,
     rank_two_years_ago: item.rank_two_years_ago || 0,
     rank_three_years_ago: item.rank_three_years_ago || 0,
@@ -130,6 +157,7 @@ function cloneItem(item) {
     recentRankText: buildRecentRankText(item),
     weightedRankText: item.weighted_rank ? `加权参考位次 ${item.weighted_rank}` : '',
     lastYearScoreText: item.score_last_year ? `去年最低分 ${item.score_last_year}` : '',
+    lineDiffText: hasLineData ? `线差 ${item.current_line_diff || 0} / 去年线差 ${item.last_year_line_diff || 0}` : '',
     planText: (item.plan_count || 0) + '人 / ' + (item.major_count || 0) + '专业',
     favoriteActive: false,
     favoriteClass: '',
@@ -156,7 +184,9 @@ function normalizePayload(payload) {
     student: safePayload.student || {},
     result: {
       chong: normalizeBucket(safePayload.result && safePayload.result.chong, 'chong'),
+      jiaoChong: normalizeBucket(safePayload.result && safePayload.result.jiaoChong, 'jiaochong'),
       wen: normalizeBucket(safePayload.result && safePayload.result.wen, 'wen'),
+      jiaoBao: normalizeBucket(safePayload.result && safePayload.result.jiaoBao, 'jiaobao'),
       bao: normalizeBucket(safePayload.result && safePayload.result.bao, 'bao')
     }
   }
@@ -174,7 +204,9 @@ function buildScenarioItems(strategyKey, result) {
   var items = []
   var seen = {}
   var chong = result.chong || []
+  var jiaoChong = result.jiaoChong || []
   var wen = result.wen || []
+  var jiaoBao = result.jiaoBao || []
   var bao = result.bao || []
   var i
 
@@ -182,14 +214,20 @@ function buildScenarioItems(strategyKey, result) {
     for (i = 0; i < 1 && i < chong.length; i += 1) {
       pushUniqueScenarioItem(items, chong[i], seen)
     }
-    for (i = 0; i < 3 && i < wen.length; i += 1) {
+    for (i = 0; i < 1 && i < jiaoChong.length; i += 1) {
+      pushUniqueScenarioItem(items, jiaoChong[i], seen)
+    }
+    for (i = 0; i < 2 && i < wen.length; i += 1) {
       pushUniqueScenarioItem(items, wen[i], seen)
+    }
+    for (i = 0; i < 1 && i < jiaoBao.length; i += 1) {
+      pushUniqueScenarioItem(items, jiaoBao[i], seen)
     }
     for (i = 0; i < 2 && i < bao.length; i += 1) {
       pushUniqueScenarioItem(items, bao[i], seen)
     }
   } else if (strategyKey === 'major') {
-    var source = [].concat(wen, chong, bao)
+    var source = flattenBuckets(result, ['wen', 'jiaoChong', 'chong', 'jiaoBao', 'bao'])
     for (i = 0; i < source.length; i += 1) {
       if (source[i].matched_major || source[i].target_hit) {
         pushUniqueScenarioItem(items, source[i], seen)
@@ -201,22 +239,28 @@ function buildScenarioItems(strategyKey, result) {
     for (i = 0; i < 2 && i < wen.length; i += 1) {
       pushUniqueScenarioItem(items, wen[i], seen)
     }
+    for (i = 0; i < 1 && i < jiaoBao.length; i += 1) {
+      pushUniqueScenarioItem(items, jiaoBao[i], seen)
+    }
     for (i = 0; i < 2 && i < bao.length; i += 1) {
       pushUniqueScenarioItem(items, bao[i], seen)
     }
   } else {
-    for (i = 0; i < 3 && i < chong.length; i += 1) {
+    for (i = 0; i < 2 && i < chong.length; i += 1) {
       pushUniqueScenarioItem(items, chong[i], seen)
     }
-    for (i = 0; i < 2 && i < wen.length; i += 1) {
+    for (i = 0; i < 2 && i < jiaoChong.length; i += 1) {
+      pushUniqueScenarioItem(items, jiaoChong[i], seen)
+    }
+    for (i = 0; i < 1 && i < wen.length; i += 1) {
       pushUniqueScenarioItem(items, wen[i], seen)
     }
-    for (i = 0; i < 1 && i < bao.length; i += 1) {
-      pushUniqueScenarioItem(items, bao[i], seen)
+    for (i = 0; i < 1 && i < jiaoBao.length; i += 1) {
+      pushUniqueScenarioItem(items, jiaoBao[i], seen)
     }
   }
 
-  var fallback = [].concat(wen, chong, bao)
+  var fallback = flattenBuckets(result, ['wen', 'jiaoBao', 'jiaoChong', 'bao', 'chong'])
   for (i = 0; i < fallback.length && items.length < 6; i += 1) {
     pushUniqueScenarioItem(items, fallback[i], seen)
   }
@@ -347,10 +391,12 @@ function getMajorCandidates(student, result) {
 
 function buildStrategyCards(student, result) {
   var chongTop = getTopItem(result.chong)
+  var jiaoChongTop = getTopItem(result.jiaoChong)
   var wenTop = getTopItem(result.wen)
+  var jiaoBaoTop = getTopItem(result.jiaoBao)
   var baoTop = getTopItem(result.bao)
   var majorMatches = []
-  var source = [].concat(result.chong || [], result.wen || [], result.bao || [])
+  var source = flattenBuckets(result, ['chong', 'jiaoChong', 'wen', 'jiaoBao', 'bao'])
   for (var i = 0; i < source.length; i += 1) {
     if (source[i].matched_major || source[i].target_hit) {
       majorMatches.push(source[i])
@@ -373,9 +419,9 @@ function buildStrategyCards(student, result) {
     {
       key: 'balanced',
       title: '稳妥优先',
-      desc: '先把大部分志愿放在录取把握更高的学校，再留少量位置冲更好的层次。',
+      desc: '先把主体志愿放在稳妥和较保区，再留少量位置给冲刺与较冲。',
       focus: wenTop ? `${wenTop.college_name} ${wenTop.groupLabel}` : '先从稳妥组前 3 所里定主力志愿',
-      note: '适合家长希望先稳住录取结果、再少量冲高的填法。'
+      note: jiaoBaoTop ? `适合先稳住录取结果，再用 ${jiaoBaoTop.college_name} 这一类学校补安全垫。` : '适合家长希望先稳住录取结果、再少量冲高的填法。'
     },
     {
       key: 'major',
@@ -387,9 +433,9 @@ function buildStrategyCards(student, result) {
     {
       key: 'tier',
       title: '冲层次优先',
-      desc: '把冲刺组当成提升学校层次的机会，但不要让整张表都偏冒险。',
-      focus: chongTop ? `${chongTop.college_name} ${chongTop.groupLabel}` : '当前冲刺组较少，建议先把主力和保底补齐',
-      note: baoTop ? `家长沟通时，建议至少保留 ${baoTop.college_name} 这一类能兜住结果的学校。` : '保底组仍需补足。'
+      desc: '把冲刺和较冲当成提升学校层次的机会，但不要让整张表都偏冒险。',
+      focus: chongTop ? `${chongTop.college_name} ${chongTop.groupLabel}` : jiaoChongTop ? `${jiaoChongTop.college_name} ${jiaoChongTop.groupLabel}` : '当前前段冲高位较少，建议先把主力和保底补齐',
+      note: baoTop ? `家长沟通时，建议至少保留 ${baoTop.college_name} 这一类能兜住结果的学校。` : '较保和保底仍需补足。'
     }
   ]
 }
@@ -418,7 +464,7 @@ function findPreferredCity(student) {
 function mergeUniqueItems(result) {
   var merged = []
   var seen = {}
-  var buckets = ['wen', 'chong', 'bao']
+  var buckets = ['wen', 'jiaoBao', 'jiaoChong', 'bao', 'chong']
   for (var i = 0; i < buckets.length; i += 1) {
     var list = result[buckets[i]] || []
     for (var j = 0; j < list.length; j += 1) {
@@ -480,14 +526,14 @@ function createLensSection(config, items, favoriteMap) {
 }
 
 function buildSchoolLensSections(result, favoriteMap) {
-  var configs = [
-    { key: 'school-chong', title: '可少量冲高', subtitle: '这部分学校层次更高，但要控制数量，只放在志愿前段少量尝试。', expanded: true, items: result.chong || [] },
-    { key: 'school-wen', title: '主力稳妥区', subtitle: '这部分最适合承担主力志愿，兼顾录取把握和学校层次。', expanded: true, items: result.wen || [] },
-    { key: 'school-bao', title: '安心保底区', subtitle: '这部分主要负责兜录取结果，避免整张表整体过冲。', expanded: false, items: result.bao || [] }
-  ]
   var sections = []
-  for (var i = 0; i < configs.length; i += 1) {
-    sections.push(createLensSection(configs[i], configs[i].items, favoriteMap))
+  for (var i = 0; i < BUCKET_CONFIGS.length; i += 1) {
+    sections.push(createLensSection({
+      key: 'school-' + BUCKET_CONFIGS[i].key,
+      title: BUCKET_CONFIGS[i].schoolTitle,
+      subtitle: BUCKET_CONFIGS[i].schoolSubtitle,
+      expanded: BUCKET_CONFIGS[i].expanded
+    }, result[BUCKET_CONFIGS[i].key] || [], favoriteMap))
   }
   return sections
 }
@@ -501,7 +547,7 @@ function buildMajorLensSections(result, favoriteMap) {
     var item = all[i]
     if (item.matched_major || item.target_hit) {
       matched.push(item)
-    } else if (item.tag === 'bao') {
+    } else if (item.tag === 'jiaobao' || item.tag === 'bao') {
       backup.push(item)
     } else {
       related.push(item)
@@ -510,7 +556,7 @@ function buildMajorLensSections(result, favoriteMap) {
   return [
     createLensSection({ key: 'major-match', title: '优先保专业', subtitle: '优先保住意向专业或相近方向。', expanded: true }, sortByMajorPriority(matched), favoriteMap),
     createLensSection({ key: 'major-related', title: '相近专业备选', subtitle: '专业方向相近，但需要你进一步核查组内专业结构。', expanded: true }, sortByMajorPriority(related), favoriteMap),
-    createLensSection({ key: 'major-backup', title: '保录取兜底', subtitle: '当专业命中不足时，用保底组先兜住录取。', expanded: false }, sortByMajorPriority(backup), favoriteMap)
+    createLensSection({ key: 'major-backup', title: '保录取兜底', subtitle: '当专业命中不足时，用较保和保底区先兜住录取。', expanded: false }, sortByMajorPriority(backup), favoriteMap)
   ]
 }
 
@@ -581,7 +627,7 @@ function buildLensDecisionSteps(activeLens, student, sections) {
     return [
       { title: '先锁定命中专业', desc: `先从“优先保专业”里找能真正覆盖 ${majorText} 的专业组。` },
       { title: '再看相近方向', desc: '如果完全命中的组不多，再看名称接近、培养方向相近的专业组。' },
-      { title: '最后补保底', desc: '保底组只负责兜录取，不要用它来承担主要专业诉求。' },
+      { title: '最后补较保和保底', desc: '较保和保底主要负责兜录取，不要用它们来承担主要专业诉求。' },
       { title: '明确调剂边界', desc: '和家长先讲清楚哪些专业可以接受，哪些方向坚决不接受。' }
     ]
   }
@@ -594,9 +640,9 @@ function buildLensDecisionSteps(activeLens, student, sections) {
     ]
   }
   return [
-    { title: '先定主力稳妥区', desc: sections.length > 1 && sections[1].itemCount ? `先从“${sections[1].title}”里挑 4-6 个主力学校，稳住录取结果。` : '先从主力稳妥区里定好核心学校。' },
+    { title: '先定主力稳妥区', desc: sections.length > 2 && sections[2].itemCount ? `先从“${sections[2].title}”里挑 4-6 个主力学校，稳住录取结果。` : '先从主力稳妥区里定好核心学校。' },
     { title: '再看专业会不会跑偏', desc: `围绕 ${majorText} 逐一核查组内专业，避免学校合适但专业方向偏掉。` },
-    { title: '最后留足安心保底', desc: '保底区至少保留 2-3 个家庭也能接受的学校，不要把全部希望都压在冲刺上。' },
+    { title: '最后留足较保和保底', desc: '较保和保底区至少保留 2-3 个家庭也能接受的学校，不要把全部希望都压在冲刺上。' },
     { title: '统一家庭排序', desc: '家长和考生先说清楚，到底是先保学校、先保专业，还是先保城市，再排正式志愿。' }
   ]
 }
@@ -635,7 +681,7 @@ Page({
     analyzingText: ANALYZE_IDLE_TEXT,
     analyzeButtonText: '生成黑龙江 AI 报考报告',
     student: {},
-    result: { chong: [], wen: [], bao: [] },
+    result: { chong: [], jiaoChong: [], wen: [], jiaoBao: [], bao: [] },
     summary: [],
     sections: [],
     favoriteMap: {},
@@ -674,7 +720,7 @@ Page({
     } catch (error) {
       this.setData({
         loadError: '推荐结果加载失败，请返回首页重新生成',
-        result: { chong: [], wen: [], bao: [] },
+        result: { chong: [], jiaoChong: [], wen: [], jiaoBao: [], bao: [] },
         summary: [],
         sections: [],
         topSummary: []
@@ -733,11 +779,11 @@ Page({
   },
 
   buildSummary(result) {
-    return [
-      { label: '可少量冲高', value: (result.chong || []).length, type: 'chong' },
-      { label: '主力稳妥区', value: (result.wen || []).length, type: 'wen' },
-      { label: '安心保底区', value: (result.bao || []).length, type: 'bao' }
-    ]
+    var summary = []
+    for (var i = 0; i < BUCKET_CONFIGS.length; i += 1) {
+      summary.push({ label: BUCKET_CONFIGS[i].label, value: (result[BUCKET_CONFIGS[i].key] || []).length, type: BUCKET_CONFIGS[i].key })
+    }
+    return summary
   },
 
   buildTopSummary(result) {
@@ -750,15 +796,15 @@ Page({
       return names.join('、') || '当前暂无推荐'
     }
 
-    return [
-      { label: '可少量冲高', text: makeText(result.chong) },
-      { label: '主力稳妥', text: makeText(result.wen) },
-      { label: '安心保底', text: makeText(result.bao) }
-    ]
+    var summary = []
+    for (var i = 0; i < BUCKET_CONFIGS.length; i += 1) {
+      summary.push({ label: BUCKET_CONFIGS[i].label, text: makeText(result[BUCKET_CONFIGS[i].key]) })
+    }
+    return summary
   },
 
   applyViewModel() {
-    var result = this.data.result || { chong: [], wen: [], bao: [] }
+    var result = this.data.result || { chong: [], jiaoChong: [], wen: [], jiaoBao: [], bao: [] }
     var favoriteMap = this.data.favoriteMap || {}
     var student = this.data.student || {}
     var activeLens = this.data.activeLens || 'school'
@@ -937,7 +983,7 @@ Page({
 
   getItemByDataset(e) {
     var itemKey = e.currentTarget.dataset.itemKey
-    var buckets = ['chong', 'wen', 'bao']
+    var buckets = getBucketKeys()
     var result = this.data.result || {}
     var i
     var j

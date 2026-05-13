@@ -3,7 +3,7 @@
     <view class="card vip-hero-card">
       <view class="vip-badge">VIP 中心</view>
       <view class="vip-title">按竞品主流价带，把套餐边界讲清楚</view>
-      <view class="vip-desc">基础查询和冲稳保推荐继续免费开放。真正适合付费的，是需要深度 AI 解释、长期保存多套方案、反复和家长老师讨论的高频决策场景。购买前需要先完成手机号快捷登录，这样服务端才能绑定账号并创建支付订单。</view>
+      <view class="vip-desc">基础查询和 5 层推荐继续免费开放。真正适合付费的，是需要深度 AI 解释、长期保存多套方案、反复和家长老师讨论的高频决策场景。购买前需要先完成手机号快捷登录，这样服务端才能绑定账号并创建支付订单。</view>
       <button wx:if="{{!user}}" class="primary-btn vip-login-btn" bindtap="goLogin">先去登录</button>
       <view wx:if="{{user}}" class="vip-user">当前账号：{{user.nickname}}{{user.phone ? '（' + user.phone + '）' : ''}}</view>
       <view class="vip-status {{canPay ? 'vip-status-ok' : 'vip-status-warn'}}">{{loginHint}}</view>

@@ -47,7 +47,7 @@ function buildChecklist(student, suggestions) {
   const targetMajor = student && student.targetMajor ? student.targetMajor : '目标专业'
   const checklist = [
     `先确认 ${targetMajor} 是否真的出现在目标专业组里，而不是只看学校名称。`,
-    '把冲稳保每组至少各保留 2-3 个能接受的选择。',
+    '把冲刺、较冲、稳妥、较保、保底这 5 层里都留出家庭能接受的选择，至少保证较保和保底有兜底。',
     '和家长先统一优先级：保学校、保专业、保城市到底谁排第一。',
     '正式提交前再核查招生计划、选科要求、学费和是否接受调剂。'
   ]

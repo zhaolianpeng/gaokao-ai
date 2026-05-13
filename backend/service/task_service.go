@@ -65,7 +65,7 @@ func (s *TaskService) SubmitAnalyzeTask(ctx context.Context, req model.AIAnalyze
 	if err != nil {
 		return "", "", err
 	}
-	logging.LogEvent("task_submit", map[string]any{"taskId": taskID, "taskType": "analyze", "student": student, "extraNotesPreview": logging.PreviewString(req.ExtraNotes, 512), "chongCount": len(req.Recommend.Chong), "wenCount": len(req.Recommend.Wen), "baoCount": len(req.Recommend.Bao)})
+	logging.LogEvent("task_submit", map[string]any{"taskId": taskID, "taskType": "analyze", "student": student, "extraNotesPreview": logging.PreviewString(req.ExtraNotes, 512), "chongCount": len(req.Recommend.Chong), "jiaoChongCount": len(req.Recommend.JiaoChong), "wenCount": len(req.Recommend.Wen), "jiaoBaoCount": len(req.Recommend.JiaoBao), "baoCount": len(req.Recommend.Bao)})
 	go s.runAnalyzeTask(taskID, req)
 	return strconv.Itoa(taskID), "pending", nil
 }
@@ -205,7 +205,7 @@ func buildAgentPrompt(student model.TaskStudent, demand string, templates []stri
 			templateText = strings.Join(lines, "\n")
 		}
 	}
-	return "你现在要作为黑龙江高考志愿智能体，为考生输出一份“需求驱动”的报考分析。\n\n以下是用户当前已经填写的信息，请全部纳入分析，不要忽略：\n" + strings.Join(filledInfo, "\n") + "\n\n用户本次选择/使用的常用需求模板：\n" + templateText + "\n\n本次用户输入的核心需求：\n" + demand + "\n\n请直接输出一份可执行建议，必须包含：\n1. 先用 2-4 句话总结这位考生当前最适合的报考方向\n2. 从城市、学校层次、专业方向、调剂接受度四个维度拆解用户需求\n3. 给出“优先级排序建议”，说明哪些条件必须优先，哪些条件需要妥协\n4. 给出冲稳保三档策略，但用自然语言描述，不要求列具体学校名单\n5. 给出后续操作建议，明确下一步应该去院校库重点查什么，最好点出 3-5 个可检索关键词\n6. 如果用户需求本身互相冲突，要明确指出冲突点和取舍方式\n\n请用中文输出，结构清晰，避免空话套话。"
+	return "你现在要作为黑龙江高考志愿智能体，为考生输出一份“需求驱动”的报考分析。\n\n以下是用户当前已经填写的信息，请全部纳入分析，不要忽略：\n" + strings.Join(filledInfo, "\n") + "\n\n用户本次选择/使用的常用需求模板：\n" + templateText + "\n\n本次用户输入的核心需求：\n" + demand + "\n\n请直接输出一份可执行建议，必须包含：\n1. 先用 2-4 句话总结这位考生当前最适合的报考方向\n2. 从城市、学校层次、专业方向、调剂接受度四个维度拆解用户需求\n3. 给出“优先级排序建议”，说明哪些条件必须优先，哪些条件需要妥协\n4. 给出冲刺、较冲、稳妥、较保、保底五层策略，但用自然语言描述，不要求列具体学校名单\n5. 给出后续操作建议，明确下一步应该去院校库重点查什么，最好点出 3-5 个可检索关键词\n6. 如果用户需求本身互相冲突，要明确指出冲突点和取舍方式\n\n请用中文输出，结构清晰，避免空话套话。"
 }
 
 func buildLocalAgentAdvice(student model.TaskStudent, demand string, templates []string, fallbackReason string) string {
@@ -291,9 +291,11 @@ func buildLocalAgentAdvice(student model.TaskStudent, demand string, templates [
 		fmt.Sprintf("第三优先级：%s", ternary(acceptsAdjustment, "组内专业结构是否可接受", "是否需要为了保专业而牺牲城市或层次")),
 		"建议不要把所有条件都设成硬门槛，否则结果会过窄。",
 		"",
-		"## 四、冲稳保策略",
+		"## 四、五层策略",
 		"冲刺：把城市、层次、专业三者中最看重的两项锁死，第三项允许有限妥协，用来尝试更高层次目标。",
+		"较冲：比冲刺更接近真实机会区，适合放在前段作为第二梯队。",
 		"稳妥：优先保住最核心需求，例如哈尔滨 + 公办，或者公办 + 计算机方向，再在这个范围里找匹配度更高的组。",
+		"较保：在核心需求基本不变的前提下，提高录取把握，用来补强整体安全系数。",
 		"保底：城市、层次、专业三项里至少放松一项，重点保可录取性和可接受的组内专业结构。",
 		"",
 		"## 五、下一步怎么查",

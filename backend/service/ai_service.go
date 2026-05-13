@@ -37,7 +37,7 @@ func NewAIService(apiKey, baseURL string, timeout time.Duration) *AIService {
 
 func (s *AIService) Analyze(ctx context.Context, req model.AIAnalyzeRequest) (string, error) {
 	prompt := buildPrompt(req)
-	logging.LogEvent("ai_analyze", map[string]any{"hasAPIKey": s.HasAPIKey(), "student": req.Student, "promptLength": len(prompt), "promptPreview": logging.PreviewString(prompt, 512), "chongCount": len(req.Recommend.Chong), "wenCount": len(req.Recommend.Wen), "baoCount": len(req.Recommend.Bao)})
+	logging.LogEvent("ai_analyze", map[string]any{"hasAPIKey": s.HasAPIKey(), "student": req.Student, "promptLength": len(prompt), "promptPreview": logging.PreviewString(prompt, 512), "chongCount": len(req.Recommend.Chong), "jiaoChongCount": len(req.Recommend.JiaoChong), "wenCount": len(req.Recommend.Wen), "jiaoBaoCount": len(req.Recommend.JiaoBao), "baoCount": len(req.Recommend.Bao)})
 	if !s.HasAPIKey() {
 		return "当前智能分析服务尚未完成配置，先返回本地模板报告。\n\n" + prompt, nil
 	}
@@ -192,7 +192,13 @@ func buildPrompt(req model.AIAnalyzeRequest) string {
 冲刺组：
 %s
 
+较冲组：
+%s
+
 稳妥组：
+%s
+
+较保组：
 %s
 
 保底组：
@@ -200,8 +206,8 @@ func buildPrompt(req model.AIAnalyzeRequest) string {
 
 请输出一份黑龙江专版志愿报告，必须包含：
 1. 黑龙江当前分数/位次在所选科类中的总体判断
-2. 冲稳保三档专业组怎么排，为什么这样排
-3. 对意向专业的匹配度分析，哪些组最贴近目标专业
+2. 冲刺、较冲、稳妥、较保、保底五层专业组怎么排，为什么这样排
+3. 对意向专业的匹配度分析，哪些层最贴近目标专业
 4. 需要警惕的风险：位次倒挂、计划过少、是否接受调剂、组内专业跨度
 5. 一个可执行的正式填报策略，直接给出志愿梯度建议`,
 		req.Student.Province,
@@ -215,7 +221,9 @@ func buildPrompt(req model.AIAnalyzeRequest) string {
 		req.Student.ClassName,
 		map[bool]string{true: "是", false: "否"}[req.Student.FromRecommend],
 		formatList(req.Recommend.Chong),
+		formatList(req.Recommend.JiaoChong),
 		formatList(req.Recommend.Wen),
+		formatList(req.Recommend.JiaoBao),
 		formatList(req.Recommend.Bao),
 	)
 }

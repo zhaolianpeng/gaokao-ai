@@ -314,7 +314,9 @@ function buildScenarioMetrics(items) {
   const metrics = {
     total: list.length,
     chong: 0,
+    jiaoChong: 0,
     wen: 0,
+    jiaoBao: 0,
     bao: 0,
     targetHits: 0,
     topColleges: []
@@ -323,8 +325,12 @@ function buildScenarioMetrics(items) {
   list.forEach((item) => {
     if (item.tag === 'chong') {
       metrics.chong += 1
+    } else if (item.tag === 'jiaochong') {
+      metrics.jiaoChong += 1
     } else if (item.tag === 'wen') {
       metrics.wen += 1
+    } else if (item.tag === 'jiaobao') {
+      metrics.jiaoBao += 1
     } else if (item.tag === 'bao') {
       metrics.bao += 1
     }

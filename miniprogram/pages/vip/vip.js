@@ -2,7 +2,7 @@ const { request } = require('../../utils/request')
 const { getAuthUser } = require('../../utils/storage')
 
 const PRICE_BANDS = [
-  { label: '免费层', price: '￥0', desc: '先把查询、一分一段、冲稳保推荐和家长摘要用起来。' },
+  { label: '免费层', price: '￥0', desc: '先把查询、一分一段、5 层推荐和家长摘要用起来。' },
   { label: '轻量体验', price: '低于 ￥100', desc: '适合只在关键节点确认 1-2 次深度解释。' },
   { label: '主流会员', price: '￥98-198', desc: '竞品最常见的标准决策价带，适合集中填报。' },
   { label: '全周期', price: '￥199-399', desc: '适合完整志愿期反复比较、复盘和长期保存。' }
@@ -83,7 +83,7 @@ function buildDisplayProducts(configuredProducts) {
 
 const ACCESS_MATRIX = [
   { feature: '院校/专业组/批次线/位次查询', free: '全部可用', lite: '可用', core: '可用', full: '可用' },
-  { feature: '冲稳保推荐与家长摘要', free: '可用', lite: '可用', core: '可用', full: '可用' },
+  { feature: '5 层推荐与家长摘要', free: '可用', lite: '可用', core: '可用', full: '可用' },
   { feature: '深度 AI 报告', free: '少量体验', lite: '单次确认', core: '集中使用', full: '全程高频' },
   { feature: '多套方案长期保存', free: '少量', lite: '1-2 套', core: '多套对比', full: '长期留存' },
   { feature: '反复和家长老师复盘', free: '基础', lite: '可做', core: '更省时间', full: '最适合' },

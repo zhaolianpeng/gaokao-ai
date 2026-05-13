@@ -22,7 +22,7 @@ func NewRecommendService(repo *repository.CollegeRepository, cache *ResultCache)
 }
 
 func (s *RecommendService) Recommend(ctx context.Context, req model.RecommendRequest) (model.RecommendResponse, error) {
-	cacheKey := fmt.Sprintf("recommend:v3:%s:%d:%d:%s:%d:%s", strings.TrimSpace(req.Province), req.Score, req.Rank, strings.TrimSpace(req.Subject), req.Year, strings.TrimSpace(req.TargetMajor))
+	cacheKey := fmt.Sprintf("recommend:v4:%s:%d:%d:%s:%d:%s", strings.TrimSpace(req.Province), req.Score, req.Rank, strings.TrimSpace(req.Subject), req.Year, strings.TrimSpace(req.TargetMajor))
 	return rememberJSON(ctx, s.cache, cacheKey, func() (model.RecommendResponse, error) {
 		logging.LogEvent("recommend_start", map[string]any{"province": req.Province, "subject": req.Subject, "year": req.Year, "score": req.Score, "rank": req.Rank, "targetMajor": req.TargetMajor})
 		if req.Province == "" {
@@ -35,37 +35,59 @@ func (s *RecommendService) Recommend(ctx context.Context, req model.RecommendReq
 		if err != nil {
 			return model.RecommendResponse{}, err
 		}
+		provinceLines, err := s.repo.GetProvinceScoreLines(ctx, req.Province, []int{req.Year, req.Year - 1}, normalizeRecommendLookupSubject(req.Year, req.Subject))
+		if err != nil {
+			return model.RecommendResponse{}, err
+		}
+		lineMap := buildProvinceLineMap(provinceLines)
 
 		chong := make([]model.RecommendItem, 0)
+		jiaoChong := make([]model.RecommendItem, 0)
 		wen := make([]model.RecommendItem, 0)
+		jiaoBao := make([]model.RecommendItem, 0)
 		bao := make([]model.RecommendItem, 0)
 		bands := buildRecommendBands(req.Rank)
-		logging.LogEvent("recommend_bands", map[string]any{"rank": req.Rank, "chongLowerRatio": bands.ChongLowerRatio, "wenLowerRatio": bands.WenLowerRatio, "wenUpperRatio": bands.WenUpperRatio, "baoUpperRatio": bands.BaoUpperRatio, "candidateCount": len(items)})
+		logging.LogEvent("recommend_bands", map[string]any{"rank": req.Rank, "maxChongRatio": bands.MaxChongRatio, "candidateCount": len(items)})
 
 		for _, item := range items {
-			if item.MinRank == 0 {
-				continue
-			}
 			benchmarkRank := buildBenchmarkRank(item)
 			if benchmarkRank == 0 {
 				continue
 			}
+			item.WeightedRank = benchmarkRank
+			item.CurrentLineScore = lookupProvinceLineScore(lineMap, req.Year, item.Batch)
+			item.LastYearLineScore = lookupProvinceLineScore(lineMap, req.Year-1, item.Batch)
+			if req.Score > 0 && item.CurrentLineScore > 0 {
+				item.CurrentLineDiff = req.Score - item.CurrentLineScore
+			}
+			if item.ScoreLastYear > 0 && item.LastYearLineScore > 0 {
+				item.LastYearLineDiff = item.ScoreLastYear - item.LastYearLineScore
+			}
+			if item.CurrentLineScore > 0 && item.LastYearLineScore > 0 && req.Score > 0 && item.ScoreLastYear > 0 {
+				item.LineDiffGap = item.CurrentLineDiff - item.LastYearLineDiff
+			}
 			diff := benchmarkRank - req.Rank
-			tag, ok := classifyByRankDiff(diff, benchmarkRank, bands)
-			if !ok {
+			if !shouldKeepCandidate(item, req, diff, bands) {
 				continue
 			}
 			item.Probability = estimateProbability(req, item, diff)
 			item.ProbabilityLabel = buildProbabilityLabel(item.Probability)
+			tag := classifyByProbability(item.Probability)
 			item.RecommendationReason = buildReason(req, item, diff)
 
 			switch tag {
 			case "chong":
 				item.Tag = tag
 				chong = append(chong, item)
+			case "jiaochong":
+				item.Tag = tag
+				jiaoChong = append(jiaoChong, item)
 			case "wen":
 				item.Tag = tag
 				wen = append(wen, item)
+			case "jiaobao":
+				item.Tag = tag
+				jiaoBao = append(jiaoBao, item)
 			case "bao":
 				item.Tag = tag
 				bao = append(bao, item)
@@ -75,17 +97,25 @@ func (s *RecommendService) Recommend(ctx context.Context, req model.RecommendReq
 		sort.Slice(chong, func(i, j int) bool {
 			return compareBucketItems(chong[i], chong[j], req.Rank, req.Score, "chong")
 		})
+		sort.Slice(jiaoChong, func(i, j int) bool {
+			return compareBucketItems(jiaoChong[i], jiaoChong[j], req.Rank, req.Score, "jiaochong")
+		})
 		sort.Slice(wen, func(i, j int) bool {
 			return compareBucketItems(wen[i], wen[j], req.Rank, req.Score, "wen")
+		})
+		sort.Slice(jiaoBao, func(i, j int) bool {
+			return compareBucketItems(jiaoBao[i], jiaoBao[j], req.Rank, req.Score, "jiaobao")
 		})
 		sort.Slice(bao, func(i, j int) bool {
 			return compareBucketItems(bao[i], bao[j], req.Rank, req.Score, "bao")
 		})
 
 		return model.RecommendResponse{
-			Chong: trim(chong, 10),
-			Wen:   trim(wen, 20),
-			Bao:   trim(bao, 10),
+			Chong:     trim(chong, 8),
+			JiaoChong: trim(jiaoChong, 12),
+			Wen:       trim(wen, 18),
+			JiaoBao:   trim(jiaoBao, 12),
+			Bao:       trim(bao, 8),
 		}, nil
 	})
 }
@@ -98,22 +128,15 @@ func buildReason(req model.RecommendRequest, item model.RecommendItem, rankDiff 
 	}
 	if item.WeightedRank > 0 && req.Rank > 0 {
 		if rankDiff < 0 {
-			parts = append(parts, fmt.Sprintf("你当前位次 %d，略高于该组近年主流录取位次 %d，适合作为冲刺尝试。", req.Rank, item.WeightedRank))
-		} else if normalizedRankGap(item.WeightedRank, req.Rank) <= 0.08 {
-			parts = append(parts, fmt.Sprintf("你当前位次 %d，与该组近年主流录取位次 %d 接近，家长一般会把这类学校放进主力稳妥区。", req.Rank, item.WeightedRank))
+			parts = append(parts, fmt.Sprintf("你当前位次 %d，略高于该组近年主流录取位次 %d，位次层面偏冲。", req.Rank, item.WeightedRank))
+		} else if normalizedRankGap(item.WeightedRank, req.Rank) <= 0.05 {
+			parts = append(parts, fmt.Sprintf("你当前位次 %d，与该组近年主流录取位次 %d 比较接近，位次层面偏稳。", req.Rank, item.WeightedRank))
 		} else {
-			parts = append(parts, fmt.Sprintf("你当前位次 %d，明显优于该组近年主流录取位次 %d，这类学校更适合承担保底职责。", req.Rank, item.WeightedRank))
+			parts = append(parts, fmt.Sprintf("你当前位次 %d，明显优于该组近年主流录取位次 %d，位次层面更偏保。", req.Rank, item.WeightedRank))
 		}
 	}
-	if req.Score > 0 && item.ScoreLastYear > 0 {
-		scoreDiff := req.Score - item.ScoreLastYear
-		if scoreDiff >= 8 {
-			parts = append(parts, fmt.Sprintf("按去年最低分看，你高出约 %d 分，分数层面相对更稳。", scoreDiff))
-		} else if scoreDiff >= -3 {
-			parts = append(parts, fmt.Sprintf("按去年最低分看，你和该组只差 %d 分以内，属于可以重点比较的区间。", absInt(scoreDiff)))
-		} else {
-			parts = append(parts, fmt.Sprintf("按去年最低分看，你还低约 %d 分，更适合少量前置冲刺。", -scoreDiff))
-		}
+	if item.CurrentLineScore > 0 && item.LastYearLineScore > 0 && req.Score > 0 && item.ScoreLastYear > 0 {
+		parts = append(parts, fmt.Sprintf("按线差法看，你今年高出省控线 %d 分；该组去年最低分高出省控线 %d 分，线差差值为 %d 分。", item.CurrentLineDiff, item.LastYearLineDiff, item.LineDiffGap))
 	}
 	if req.TargetMajor != "" && item.MatchedMajor != "" {
 		parts = append(parts, "该组已直接命中你的意向专业："+item.MatchedMajor+"。")
@@ -125,21 +148,14 @@ func buildReason(req model.RecommendRequest, item model.RecommendItem, rankDiff 
 }
 
 type recommendBands struct {
-	ChongLowerRatio float64
-	WenLowerRatio   float64
-	WenUpperRatio   float64
-	BaoUpperRatio   float64
-	ChongLowerAbs   int
+	MaxChongRatio float64
+	MaxScoreGap   int
 }
 
 func buildRecommendBands(rank int) recommendBands {
-	chongLowerAbs := int(math.Max(800, math.Min(6000, float64(rank)*0.18)))
 	return recommendBands{
-		ChongLowerRatio: -0.18,
-		WenLowerRatio:   -0.05,
-		WenUpperRatio:   0.08,
-		BaoUpperRatio:   0.30,
-		ChongLowerAbs:   chongLowerAbs,
+		MaxChongRatio: -0.30,
+		MaxScoreGap:   -18,
 	}
 }
 
@@ -174,20 +190,15 @@ func buildBenchmarkRank(item model.RecommendItem) int {
 	return item.MinRank
 }
 
-func classifyByRankDiff(rankDiff int, minRank int, bands recommendBands) (string, bool) {
-	ratio := normalizedRankGap(minRank, minRank-rankDiff)
-	switch {
-	case ratio < bands.ChongLowerRatio && rankDiff < -bands.ChongLowerAbs:
-		return "", false
-	case ratio < bands.WenLowerRatio:
-		return "chong", true
-	case ratio <= bands.WenUpperRatio:
-		return "wen", true
-	case ratio <= bands.BaoUpperRatio:
-		return "bao", true
-	default:
-		return "", false
+func shouldKeepCandidate(item model.RecommendItem, req model.RecommendRequest, rankDiff int, bands recommendBands) bool {
+	ratio := normalizedRankGap(item.WeightedRank, req.Rank)
+	if ratio < bands.MaxChongRatio {
+		return false
 	}
+	if item.CurrentLineScore > 0 && item.LastYearLineScore > 0 && item.LineDiffGap < bands.MaxScoreGap {
+		return false
+	}
+	return true
 }
 
 func absRankDiff(minRank, userRank int) int {
@@ -208,9 +219,13 @@ func trim(items []model.RecommendItem, size int) []model.RecommendItem {
 func bucketTargetGap(bucket string) float64 {
 	switch bucket {
 	case "chong":
-		return -0.08
+		return -0.14
+	case "jiaochong":
+		return -0.06
+	case "jiaobao":
+		return 0.10
 	case "bao":
-		return 0.16
+		return 0.20
 	default:
 		return 0.02
 	}
@@ -219,24 +234,50 @@ func bucketTargetGap(bucket string) float64 {
 func bucketTargetScoreGap(bucket string) int {
 	switch bucket {
 	case "chong":
+		return -8
+	case "jiaochong":
 		return -2
+	case "jiaobao":
+		return 10
 	case "bao":
-		return 12
+		return 18
 	default:
 		return 3
 	}
 }
 
+func bucketTargetProbability(bucket string) float64 {
+	switch bucket {
+	case "chong":
+		return 0.22
+	case "jiaochong":
+		return 0.40
+	case "jiaobao":
+		return 0.79
+	case "bao":
+		return 0.92
+	default:
+		return 0.60
+	}
+}
+
 func compareBucketItems(left, right model.RecommendItem, userRank int, userScore int, bucket string) bool {
-	leftFit := math.Abs(normalizedRankGap(buildBenchmarkRank(left), userRank) - bucketTargetGap(bucket))
-	rightFit := math.Abs(normalizedRankGap(buildBenchmarkRank(right), userRank) - bucketTargetGap(bucket))
+	leftRankFit := math.Abs(normalizedRankGap(buildBenchmarkRank(left), userRank) - bucketTargetGap(bucket))
+	rightRankFit := math.Abs(normalizedRankGap(buildBenchmarkRank(right), userRank) - bucketTargetGap(bucket))
+	leftScoreFit := 999.0
+	if left.CurrentLineScore > 0 && left.LastYearLineScore > 0 {
+		leftScoreFit = scoreFitDistance(left.LineDiffGap, bucket)
+	}
+	rightScoreFit := 999.0
+	if right.CurrentLineScore > 0 && right.LastYearLineScore > 0 {
+		rightScoreFit = scoreFitDistance(right.LineDiffGap, bucket)
+	}
+	leftProbFit := math.Abs(left.Probability - bucketTargetProbability(bucket))
+	rightProbFit := math.Abs(right.Probability - bucketTargetProbability(bucket))
+	leftFit := leftRankFit*0.55 + leftScoreFit*0.03 + leftProbFit*0.42
+	rightFit := rightRankFit*0.55 + rightScoreFit*0.03 + rightProbFit*0.42
 	if leftFit != rightFit {
 		return leftFit < rightFit
-	}
-	leftScoreFit := scoreFitDistance(left.ScoreLastYear, userScore, bucket)
-	rightScoreFit := scoreFitDistance(right.ScoreLastYear, userScore, bucket)
-	if leftScoreFit != rightScoreFit {
-		return leftScoreFit < rightScoreFit
 	}
 	if left.Probability != right.Probability {
 		return left.Probability > right.Probability
@@ -247,64 +288,70 @@ func compareBucketItems(left, right model.RecommendItem, userRank int, userScore
 	if left.PlanCount != right.PlanCount {
 		return left.PlanCount > right.PlanCount
 	}
-	return absRankDiff(left.MinRank, userRank) < absRankDiff(right.MinRank, userRank)
+	return absRankDiff(buildBenchmarkRank(left), userRank) < absRankDiff(buildBenchmarkRank(right), userRank)
 }
 
-func scoreFitDistance(lastYearScore int, userScore int, bucket string) int {
-	if lastYearScore <= 0 || userScore <= 0 {
-		return 999
-	}
-	return absInt((userScore - lastYearScore) - bucketTargetScoreGap(bucket))
+func scoreFitDistance(lineDiffGap int, bucket string) float64 {
+	return math.Abs(float64(lineDiffGap - bucketTargetScoreGap(bucket)))
 }
 
 func estimateProbability(req model.RecommendRequest, item model.RecommendItem, rankDiff int) float64 {
 	benchmarkRank := buildBenchmarkRank(item)
 	ratio := normalizedRankGap(benchmarkRank, benchmarkRank-rankDiff)
-	probability := 0.5
+	rankProbability := 0.5
 	switch {
 	case ratio >= 0.20:
-		probability = 0.92
+		rankProbability = 0.92
 	case ratio >= 0.12:
-		probability = 0.85
+		rankProbability = 0.84
 	case ratio >= 0.05:
-		probability = 0.76
+		rankProbability = 0.72
 	case ratio >= -0.02:
-		probability = 0.64
+		rankProbability = 0.58
 	case ratio >= -0.08:
-		probability = 0.48
+		rankProbability = 0.42
 	case ratio >= -0.15:
-		probability = 0.34
+		rankProbability = 0.26
 	default:
-		probability = 0.22
+		rankProbability = 0.12
 	}
-	if item.MatchedMajor != "" {
-		probability += 0.03
-	}
-	if req.Score > 0 && item.ScoreLastYear > 0 {
-		scoreDiff := req.Score - item.ScoreLastYear
+	lineProbability := 0.5
+	hasLineProbability := item.CurrentLineScore > 0 && item.LastYearLineScore > 0
+	if hasLineProbability {
 		switch {
-		case scoreDiff >= 12:
-			probability += 0.06
-		case scoreDiff >= 6:
-			probability += 0.04
-		case scoreDiff >= 0:
-			probability += 0.02
-		case scoreDiff >= -5:
-			probability -= 0.01
+		case item.LineDiffGap >= 15:
+			lineProbability = 0.92
+		case item.LineDiffGap >= 8:
+			lineProbability = 0.82
+		case item.LineDiffGap >= 3:
+			lineProbability = 0.70
+		case item.LineDiffGap >= -2:
+			lineProbability = 0.56
+		case item.LineDiffGap >= -8:
+			lineProbability = 0.40
+		case item.LineDiffGap >= -15:
+			lineProbability = 0.24
 		default:
-			probability -= 0.04
+			lineProbability = 0.10
 		}
 	}
+	extraProbability := 0.52
+	if item.MatchedMajor != "" {
+		extraProbability += 0.08
+	}
 	if item.RankLastYear > 0 && item.RankTwoYearsAgo > 0 && item.RankThreeYearsAgo > 0 {
-		probability += 0.02
+		extraProbability += 0.04
 	}
 	if item.PlanCount >= 5 {
-		probability += 0.02
+		extraProbability += 0.04
 	}
 	if item.MajorCount <= 1 {
-		probability -= 0.02
+		extraProbability -= 0.03
 	}
-	return math.Max(0.05, math.Min(0.97, probability))
+	if hasLineProbability {
+		return math.Max(0.05, math.Min(0.97, rankProbability*0.65+lineProbability*0.25+extraProbability*0.10))
+	}
+	return math.Max(0.05, math.Min(0.97, rankProbability*0.82+extraProbability*0.18))
 }
 
 func absInt(value int) int {
@@ -318,12 +365,116 @@ func buildProbabilityLabel(probability float64) string {
 	switch {
 	case probability >= 0.85:
 		return "保底把握较高，适合承担兜底角色"
+	case probability >= 0.70:
+		return "较保区间，录取把握较高"
 	case probability >= 0.68:
 		return "稳妥把握较强，适合作为主力志愿"
 	case probability >= 0.45:
-		return "有一定机会录取，适合作为冲稳之间的过渡"
+		return "较冲区间，有一定机会录取"
 	default:
 		return "冲刺性质更强，建议少量放在前面尝试"
+	}
+}
+
+func classifyByProbability(probability float64) string {
+	switch {
+	case probability < 0.30:
+		return "chong"
+	case probability < 0.50:
+		return "jiaochong"
+	case probability < 0.70:
+		return "wen"
+	case probability < 0.85:
+		return "jiaobao"
+	default:
+		return "bao"
+	}
+}
+
+func buildProvinceLineMap(items []model.ProvinceScoreLineItem) map[string]int {
+	result := make(map[string]int, len(items))
+	for _, item := range items {
+		for _, key := range provinceLineKeys(item.Year, item.Batch) {
+			result[key] = item.Score
+		}
+	}
+	return result
+}
+
+func provinceLineKey(year int, batch string) string {
+	return fmt.Sprintf("%d::%s", year, strings.TrimSpace(batch))
+}
+
+func provinceLineKeys(year int, batch string) []string {
+	normalizedBatch := strings.TrimSpace(batch)
+	if year <= 0 || normalizedBatch == "" {
+		return nil
+	}
+	seen := map[string]struct{}{}
+	keys := make([]string, 0, 4)
+	appendKey := func(value string) {
+		value = strings.TrimSpace(value)
+		if value == "" {
+			return
+		}
+		key := provinceLineKey(year, value)
+		if _, ok := seen[key]; ok {
+			return
+		}
+		seen[key] = struct{}{}
+		keys = append(keys, key)
+	}
+	appendKey(normalizedBatch)
+	compact := strings.NewReplacer("普通", "", "本科", "本科", "高职（专科）", "专科", "（", "", "）", "").Replace(normalizedBatch)
+	if strings.Contains(normalizedBatch, "本科") {
+		appendKey("本科批")
+		appendKey("普通本科批")
+		appendKey("本科普通批")
+	}
+	if strings.Contains(normalizedBatch, "特殊类型") {
+		appendKey("特殊类型招生资格线")
+		appendKey("普通特殊类型招生资格线")
+	}
+	if strings.Contains(normalizedBatch, "专科") || strings.Contains(normalizedBatch, "高职") {
+		appendKey("高职（专科）批")
+		appendKey("普通高职（专科）批")
+		appendKey("专科批")
+	}
+	if compact != normalizedBatch {
+		appendKey(compact)
+	}
+	return keys
+}
+
+func lookupProvinceLineScore(lineMap map[string]int, year int, batch string) int {
+	if year <= 0 || strings.TrimSpace(batch) == "" {
+		return 0
+	}
+	for _, key := range provinceLineKeys(year, batch) {
+		if score, ok := lineMap[key]; ok {
+			return score
+		}
+	}
+	return 0
+}
+
+func normalizeRecommendLookupSubject(year int, subject string) string {
+	subject = strings.TrimSpace(subject)
+	if year > 0 && year <= 2023 {
+		switch subject {
+		case "历史", "文科", "历史类":
+			return "文科"
+		case "物理", "理科", "物理类":
+			return "理科"
+		}
+	}
+	switch subject {
+	case "历史", "文科":
+		return "历史类"
+	case "物理", "理科":
+		return "物理类"
+	default:
+		return subject
 	}
 }
 

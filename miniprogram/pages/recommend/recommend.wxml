@@ -32,7 +32,7 @@
 
   <view class="card" wx:if="{{!loadError && strategyCards.length}}">
     <view class="section-title">多策略看法</view>
-    <view class="meta">同一批推荐结果，可以按保结果、保专业、冲层次三种方式来排表。</view>
+    <view class="meta">同一批 5 层推荐结果，可以按保结果、保专业、冲层次三种方式来排表。</view>
     <view class="strategy-grid">
       <block wx:for="{{strategyCards}}" wx:key="key">
         <view class="strategy-card">
@@ -68,7 +68,7 @@
     <view class="compare-row vip-compare-row">
       <view class="compare-tag">免费可看</view>
       <view class="compare-main">
-        <view class="compare-sub">冲稳保推荐、梯度对比、家长沟通摘要、正式志愿表基础整理。</view>
+        <view class="compare-sub">5 层推荐、梯度对比、家长沟通摘要、正式志愿表基础整理。</view>
       </view>
     </view>
     <view class="compare-row vip-compare-row">
@@ -138,6 +138,7 @@
               <view class="item-sub">组内专业：{{school.majorPreview}}</view>
               <view class="item-sub">计划：{{school.planText}}</view>
               <view class="item-sub">{{school.weightedRankText || ('最低位次 ' + school.min_rank)}} · {{school.lastYearScoreText || ('最低分 ' + school.min_score)}} · {{school.probabilityLabel || ('录取概率 ' + school.probabilityText)}}</view>
+              <view class="item-sub" wx:if="{{school.lineDiffText}}">{{school.lineDiffText}}</view>
               <view class="item-sub" wx:if="{{school.recentRankText}}">近3年最低位次：{{school.recentRankText}}</view>
               <view class="item-reason">{{school.recommendation_reason}}</view>
               <view class="item-actions">
@@ -166,7 +167,7 @@
   <view class="share-modal-mask" wx:if="{{!shareUnlocked}}"></view>
   <view class="share-modal-card" wx:if="{{!shareUnlocked}}">
     <view class="section-title">分享后查看智能推荐结果</view>
-    <view class="share-lock-desc">推荐结果已经生成，当前先做模糊展示。分享当前小程序成功后，立即展示冲稳保结果、三种决策视角和 AI 报告入口。</view>
+    <view class="share-lock-desc">推荐结果已经生成，当前先做模糊展示。分享当前小程序成功后，立即展示 5 层推荐结果、三种决策视角和 AI 报告入口。</view>
     <button class="primary-btn" open-type="share" bindtap="requestShareUnlock">分享成功后查看完整结果</button>
   </view>
   </view>

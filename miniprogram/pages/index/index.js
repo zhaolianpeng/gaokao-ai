@@ -250,7 +250,7 @@ const HOME_DECISION_FLOW = [
     key: 'recommend',
     title: '再出方案',
     eta: '通常 1-2 秒',
-    desc: '智能推荐先给出冲稳保梯度，方便你和家长快速比学校、比专业、比城市。'
+    desc: '智能推荐先给出冲刺、较冲、稳妥、较保、保底 5 层梯度，方便你和家长快速比学校、比专业、比城市。'
   },
   {
     key: 'ai',
@@ -264,7 +264,7 @@ const HOME_SERVICE_LAYERS = [
   {
     label: '免费先用',
     badge: '零门槛',
-    desc: '院校查询、专业组浏览、批次线、一分一段、冲稳保推荐、家长沟通摘要。'
+    desc: '院校查询、专业组浏览、批次线、一分一段、5 层推荐、家长沟通摘要。'
   },
   {
     label: 'AI 深度分析',
@@ -304,7 +304,7 @@ Page({
       { key: 'explore', title: '院校库', desc: '查学校、专业组、招生计划', action: 'openExplorePage' },
       { key: 'province-lines', title: '黑龙江批次线', desc: '查看 2025-2022 批次线', action: 'openProvinceLinesPage' },
       { key: 'score-rank', title: '一分一段', desc: '按分数查询全省位次', action: 'openScoreRankPage' },
-      { key: 'recommend', title: '智能推荐', desc: '按位次生成冲稳保方案', action: 'onRecommend' },
+      { key: 'recommend', title: '智能推荐', desc: '按位次与线差生成 5 层方案', action: 'onRecommend' },
       { key: 'agent', title: 'AI 智能体', desc: '输入需求生成报考分析', action: 'openAiAgentPage' },
       { key: 'plan-list', title: '正式志愿表', desc: '查看已生成的填报清单', action: 'openPlanListPage' },
       { key: 'materials', title: '资料库', desc: '特殊类型与政策资料', action: 'openMaterialsPage' }

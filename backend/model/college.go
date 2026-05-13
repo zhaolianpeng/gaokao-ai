@@ -183,6 +183,11 @@ type RecommendItem struct {
 	ScoreLastYear        int     `json:"score_last_year"`
 	MinRank              int     `json:"min_rank"`
 	AvgScore             int     `json:"avg_score"`
+	CurrentLineScore     int     `json:"current_line_score"`
+	LastYearLineScore    int     `json:"last_year_line_score"`
+	CurrentLineDiff      int     `json:"current_line_diff"`
+	LastYearLineDiff     int     `json:"last_year_line_diff"`
+	LineDiffGap          int     `json:"line_diff_gap"`
 	RankLastYear         int     `json:"rank_last_year"`
 	RankTwoYearsAgo      int     `json:"rank_two_years_ago"`
 	RankThreeYearsAgo    int     `json:"rank_three_years_ago"`
@@ -207,9 +212,11 @@ type RecommendRequest struct {
 }
 
 type RecommendResponse struct {
-	Chong []RecommendItem `json:"chong"`
-	Wen   []RecommendItem `json:"wen"`
-	Bao   []RecommendItem `json:"bao"`
+	Chong     []RecommendItem `json:"chong"`
+	JiaoChong []RecommendItem `json:"jiaoChong"`
+	Wen       []RecommendItem `json:"wen"`
+	JiaoBao   []RecommendItem `json:"jiaoBao"`
+	Bao       []RecommendItem `json:"bao"`
 }
 
 type AIAnalyzeRequest struct {

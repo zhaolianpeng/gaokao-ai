@@ -63,7 +63,7 @@
           <view class="filter-pill scenario-pill">{{item.metrics.total}} 组</view>
         </view>
         <view class="plan-sub">{{item.desc}}</view>
-        <view class="plan-sub">冲/稳/保：{{item.metrics.chong}} / {{item.metrics.wen}} / {{item.metrics.bao}}，命中目标方向 {{item.metrics.targetHits}} 组</view>
+        <view class="plan-sub">冲/较冲/稳/较保/保：{{item.metrics.chong}} / {{item.metrics.jiaoChong}} / {{item.metrics.wen}} / {{item.metrics.jiaoBao}} / {{item.metrics.bao}}，命中目标方向 {{item.metrics.targetHits}} 组</view>
         <view class="plan-sub">代表院校：{{item.collegeText}}</view>
         <view class="plan-foot">
           <text>{{item.timeText}}</text>
@@ -106,7 +106,7 @@
           <view class="plan-item">
             <view class="row-between top-row">
               <view class="plan-title">{{plan.item.college_name}}</view>
-              <view class="tag tag-{{plan.item.tag || 'other'}}">{{plan.item.tag === 'chong' ? '冲' : plan.item.tag === 'wen' ? '稳' : plan.item.tag === 'bao' ? '保' : '待定'}}</view>
+              <view class="tag tag-{{plan.item.tag || 'other'}}">{{plan.item.tag === 'chong' ? '冲刺' : plan.item.tag === 'jiaochong' ? '较冲' : plan.item.tag === 'wen' ? '稳妥' : plan.item.tag === 'jiaobao' ? '较保' : plan.item.tag === 'bao' ? '保底' : '待定'}}</view>
             </view>
             <view class="plan-sub">{{plan.item.group_code}} {{plan.item.group_name}} · {{plan.item.batch}}</view>
             <view class="plan-sub">选科 {{plan.item.subject_requirement}} · 最低位次 {{plan.item.min_rank}} · 最低分 {{plan.item.min_score}}</view>

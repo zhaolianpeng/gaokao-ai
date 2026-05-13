@@ -17,6 +17,45 @@ func NewCollegeRepository(db *sql.DB) *CollegeRepository {
 	return &CollegeRepository{db: observeDB(db)}
 }
 
+func (r *CollegeRepository) GetProvinceScoreLines(ctx context.Context, province string, years []int, subject string) ([]model.ProvinceScoreLineItem, error) {
+	if len(years) == 0 {
+		return nil, nil
+	}
+	placeholders := make([]string, 0, len(years))
+	args := make([]any, 0, len(years)+2)
+	args = append(args, province, subject)
+	for _, year := range years {
+		placeholders = append(placeholders, "?")
+		args = append(args, year)
+	}
+	query := fmt.Sprintf(`
+SELECT province, year, subject, batch, score, source_name, source_url
+FROM province_score_line
+WHERE province = ?
+  AND subject = ?
+  AND year IN (%s)
+ORDER BY year DESC, batch ASC, score DESC`, strings.Join(placeholders, ","))
+
+	rows, err := r.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	items := make([]model.ProvinceScoreLineItem, 0)
+	for rows.Next() {
+		var item model.ProvinceScoreLineItem
+		if err := rows.Scan(&item.Province, &item.Year, &item.Subject, &item.Batch, &item.Score, &item.SourceName, &item.SourceURL); err != nil {
+			return nil, err
+		}
+		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 func buildTargetMajorKeywords(targetMajor string) []string {
 	trimmed := strings.TrimSpace(targetMajor)
 	if trimmed == "" {

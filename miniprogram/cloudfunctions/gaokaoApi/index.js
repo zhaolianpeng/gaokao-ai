@@ -1344,7 +1344,7 @@ function buildPrompt(student, recommendResult) {
     )).join('\n')
   }
 
-  return `你现在要为黑龙江考生生成 2025 年专业组口径的志愿填报建议。\n\n学生信息：\n省份：${student.province || '黑龙江'}\n分数：${student.score || 0}\n排名：${student.rank || 0}\n科类：${student.subject || ''}\n意向专业：${student.targetMajor || ''}\n补充偏好：${student.notes || ''}\n\n推荐专业组：\n\n冲刺组：\n${formatList(recommendResult.chong)}\n\n稳妥组：\n${formatList(recommendResult.wen)}\n\n保底组：\n${formatList(recommendResult.bao)}\n\n请输出一份黑龙江专版志愿报告，必须包含：\n1. 黑龙江当前分数/位次在所选科类中的总体判断\n2. 冲稳保三档专业组怎么排，为什么这样排\n3. 对意向专业的匹配度分析，哪些组最贴近目标专业\n4. 需要警惕的风险：位次倒挂、计划过少、是否接受调剂、组内专业跨度\n5. 一个可执行的正式填报策略，直接给出志愿梯度建议`
+  return `你现在要为黑龙江考生生成 2025 年专业组口径的志愿填报建议。\n\n学生信息：\n省份：${student.province || '黑龙江'}\n分数：${student.score || 0}\n排名：${student.rank || 0}\n科类：${student.subject || ''}\n意向专业：${student.targetMajor || ''}\n补充偏好：${student.notes || ''}\n\n推荐专业组：\n\n冲刺组：\n${formatList(recommendResult.chong)}\n\n较冲组：\n${formatList(recommendResult.jiaoChong)}\n\n稳妥组：\n${formatList(recommendResult.wen)}\n\n较保组：\n${formatList(recommendResult.jiaoBao)}\n\n保底组：\n${formatList(recommendResult.bao)}\n\n请输出一份黑龙江专版志愿报告，必须包含：\n1. 黑龙江当前分数/位次在所选科类中的总体判断\n2. 冲刺、较冲、稳妥、较保、保底五层专业组怎么排，为什么这样排\n3. 对意向专业的匹配度分析，哪些组最贴近目标专业\n4. 需要警惕的风险：位次倒挂、计划过少、是否接受调剂、组内专业跨度\n5. 一个可执行的正式填报策略，直接给出志愿梯度建议`
 }
 
 function buildAgentPrompt(student, demand, templates) {
@@ -1359,7 +1359,7 @@ function buildAgentPrompt(student, demand, templates) {
   ].join('\n')
   const templateText = templates.length ? templates.map((item) => `- ${item}`).join('\n') : '无'
 
-  return `你现在要作为黑龙江高考志愿智能体，为考生输出一份“需求驱动”的报考分析。\n\n以下是用户当前已经填写的信息，请全部纳入分析，不要忽略：\n${filledInfo}\n\n用户本次选择/使用的常用需求模板：\n${templateText}\n\n本次用户输入的核心需求：\n${demand}\n\n请直接输出一份可执行建议，必须包含：\n1. 先用 2-4 句话总结这位考生当前最适合的报考方向\n2. 从城市、学校层次、专业方向、调剂接受度四个维度拆解用户需求\n3. 给出“优先级排序建议”，说明哪些条件必须优先，哪些条件需要妥协\n4. 给出冲稳保三档策略，但用自然语言描述，不要求列具体学校名单\n5. 给出后续操作建议，明确下一步应该去院校库重点查什么，最好点出 3-5 个可检索关键词\n6. 如果用户需求本身互相冲突，要明确指出冲突点和取舍方式\n\n请用中文输出，结构清晰，避免空话套话。`
+  return `你现在要作为黑龙江高考志愿智能体，为考生输出一份“需求驱动”的报考分析。\n\n以下是用户当前已经填写的信息，请全部纳入分析，不要忽略：\n${filledInfo}\n\n用户本次选择/使用的常用需求模板：\n${templateText}\n\n本次用户输入的核心需求：\n${demand}\n\n请直接输出一份可执行建议，必须包含：\n1. 先用 2-4 句话总结这位考生当前最适合的报考方向\n2. 从城市、学校层次、专业方向、调剂接受度四个维度拆解用户需求\n3. 给出“优先级排序建议”，说明哪些条件必须优先，哪些条件需要妥协\n4. 给出冲刺、较冲、稳妥、较保、保底五层策略，但用自然语言描述，不要求列具体学校名单\n5. 给出后续操作建议，明确下一步应该去院校库重点查什么，最好点出 3-5 个可检索关键词\n6. 如果用户需求本身互相冲突，要明确指出冲突点和取舍方式\n\n请用中文输出，结构清晰，避免空话套话。`
 }
 
 function buildLocalAgentAdvice(student, demand, templates, fallbackReason) {
@@ -1425,9 +1425,11 @@ function buildLocalAgentAdvice(student, demand, templates, fallbackReason) {
     `第三优先级：${acceptsAdjustment ? '组内专业结构是否可接受' : '是否需要为了保专业而牺牲城市或层次'}`,
     '建议不要把所有条件都设成硬门槛，否则结果会过窄。',
     '',
-    '## 四、冲稳保策略',
+    '## 四、五层策略',
     '冲刺：把城市、层次、专业三者中最看重的两项锁死，第三项允许有限妥协，用来尝试更高层次目标。',
+    '较冲：比冲刺更接近真实机会区，适合放在前段作为第二梯队。',
     '稳妥：优先保住最核心需求，例如哈尔滨 + 公办，或者公办 + 计算机方向，再在这个范围里找匹配度更高的组。',
+    '较保：在核心需求基本不变的前提下，提高录取把握，用来补强整体安全系数。',
     '保底：城市、层次、专业三项里至少放松一项，重点保可录取性和可接受的组内专业结构。',
     '',
     '## 五、下一步怎么查',
