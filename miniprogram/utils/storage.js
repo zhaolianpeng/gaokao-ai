@@ -76,7 +76,9 @@ function compactRecommendResult(result) {
   const payload = result || {}
   return {
     chong: compactRecommendBucket(payload.chong),
+    jiaoChong: compactRecommendBucket(payload.jiaoChong),
     wen: compactRecommendBucket(payload.wen),
+    jiaoBao: compactRecommendBucket(payload.jiaoBao),
     bao: compactRecommendBucket(payload.bao)
   }
 }
