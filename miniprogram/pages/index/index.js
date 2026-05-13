@@ -1,6 +1,27 @@
 const { request } = require('../../utils/request')
-const { getRecommendHistory, getFavoriteProgramGroups, getApplicationPlan, getUserProfile, getAuthUser, saveUserProfile, savePendingRecommendPayload, savePendingExploreSubject } = require('../../utils/storage')
+const { getRecommendHistory, getFavoriteProgramGroups, getApplicationPlan, getUserProfile, getAuthUser, saveUserProfile, savePendingRecommendPayload, savePendingExploreSubject, saveHomeFormDraft, getHomeFormDraft } = require('../../utils/storage')
 const { getVIPEntryVisibility } = require('../../utils/vip-entry')
+
+function mergeFormWithDraft(form, draft) {
+  if (!draft) {
+    return form
+  }
+  return {
+    ...form,
+    province: draft.province || form.province,
+    subject: draft.subject || form.subject,
+    analysisYear: draft.analysisYear || form.analysisYear,
+    year: draft.year || form.year,
+    score: draft.score || form.score,
+    rank: draft.rank || form.rank,
+    targetMajor: draft.targetMajor || form.targetMajor,
+    notes: draft.notes || form.notes,
+    schoolName: draft.schoolName || form.schoolName,
+    schoolYear: draft.schoolYear || form.schoolYear,
+    className: draft.className || form.className,
+    fromRecommend: typeof draft.fromRecommend === 'boolean' ? draft.fromRecommend : form.fromRecommend
+  }
+}
 
 function buildFormFromProfile(form, profile) {
   if (!profile) {
@@ -205,6 +226,11 @@ function buildHomeShareTitle(form) {
   return '黑龙江高考志愿填报助手：查位次、看专业组、出方案'
 }
 
+function shouldAutoLoadRemoteInsights(form) {
+  var safeForm = form || {}
+  return !!((safeForm.score && Number(safeForm.score) > 0) || (safeForm.rank && Number(safeForm.rank) > 0))
+}
+
 const CLOUD_DATASET_OVERVIEW = {
   college_count: 1520,
   program_group_count: 6174,
@@ -288,9 +314,9 @@ Page({
       subject: '历史',
       analysisYear: '2025',
       year: '2025',
-      score: '580',
-      rank: '7500',
-      targetMajor: '计算机类',
+      score: '',
+      rank: '',
+      targetMajor: '',
       notes: '',
       schoolName: '',
       schoolYear: '',
@@ -329,7 +355,7 @@ Page({
 
   onShow() {
     enableShareMenus()
-    this.syncVIPEntryVisibility(true)
+    this.syncVIPEntryVisibility(false)
     const history = getRecommendHistory().slice(0, 3).map((item) => ({
       ...item,
       archiveText: buildArchiveText(item.student),
@@ -337,7 +363,9 @@ Page({
     }))
     const authUser = getAuthUser()
     const profile = getUserProfile()
-    const nextForm = authUser ? buildFormFromProfile(this.data.form, profile) : this.data.form
+    const homeDraft = getHomeFormDraft()
+    const draftForm = mergeFormWithDraft(this.data.form, homeDraft)
+    const nextForm = authUser ? buildFormFromProfile(draftForm, profile) : draftForm
     this.setData({
       historyPreview: history,
       favoriteCount: getFavoriteProgramGroups().length,
@@ -345,7 +373,28 @@ Page({
       form: nextForm,
       analysisContext: buildYearContext(nextForm.analysisYear, nextForm.subject)
     })
-    this.loadInsightData()
+    this.loadDashboard()
+    this.loadBatchLines()
+    if (nextForm.score && Number(nextForm.score) > 0) {
+      this.lookupScoreRank()
+      return
+    }
+    if (nextForm.rank && Number(nextForm.rank) > 0) {
+      this.lookupRankScore()
+      return
+    }
+    this.setData({
+      scoreRankPreview: null,
+      scoreRankDashboard: null,
+      suggestedScore: 0,
+      suggestedRank: 0,
+      lineLoading: false,
+      rankLoading: false
+    })
+  },
+
+  persistHomeDraft(nextForm) {
+    saveHomeFormDraft(nextForm)
   },
 
   syncVIPEntryVisibility(forceRefresh) {
@@ -353,29 +402,44 @@ Page({
 		if (this.data.showVipEntry !== showVipEntry) {
 			this.setData({ showVipEntry })
 		}
-	})
+  }).catch(() => false)
   },
 
   onSubjectChange(e) {
     const value = this.data.subjectOptions[e.detail.value]
+    const nextForm = {
+      ...this.data.form,
+      subject: value
+    }
     this.setData({
-      'form.subject': value,
-      analysisContext: buildYearContext(this.data.form.analysisYear, value)
+      form: nextForm,
+      analysisContext: buildYearContext(nextForm.analysisYear, value)
     })
+    this.persistHomeDraft(nextForm)
     this.loadInsightData()
   },
 
   onAnalysisYearChange(e) {
     const value = this.data.yearOptions[e.detail.value]
+    const nextForm = {
+      ...this.data.form,
+      analysisYear: value
+    }
     this.setData({
-      'form.analysisYear': value,
-      analysisContext: buildYearContext(value, this.data.form.subject)
+      form: nextForm,
+      analysisContext: buildYearContext(value, nextForm.subject)
     })
+    this.persistHomeDraft(nextForm)
     this.loadInsightData()
   },
 
   onScoreInput(e) {
-    this.setData({ 'form.score': e.detail.value })
+    const nextForm = {
+      ...this.data.form,
+      score: e.detail.value
+    }
+    this.setData({ form: nextForm })
+    this.persistHomeDraft(nextForm)
     this.scheduleScoreRankLookup()
   },
 
@@ -387,7 +451,12 @@ Page({
   },
 
   onRankInput(e) {
-    this.setData({ 'form.rank': e.detail.value })
+    const nextForm = {
+      ...this.data.form,
+      rank: e.detail.value
+    }
+    this.setData({ form: nextForm })
+    this.persistHomeDraft(nextForm)
     this.scheduleRankScoreLookup()
   },
 
@@ -399,11 +468,21 @@ Page({
   },
 
   onTargetMajorInput(e) {
-    this.setData({ 'form.targetMajor': e.detail.value })
+    const nextForm = {
+      ...this.data.form,
+      targetMajor: e.detail.value
+    }
+    this.setData({ form: nextForm })
+    this.persistHomeDraft(nextForm)
   },
 
   onNotesInput(e) {
-    this.setData({ 'form.notes': e.detail.value })
+    const nextForm = {
+      ...this.data.form,
+      notes: e.detail.value
+    }
+    this.setData({ form: nextForm })
+    this.persistHomeDraft(nextForm)
   },
 
   openHistoryPage() {

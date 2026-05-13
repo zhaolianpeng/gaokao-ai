@@ -89,6 +89,14 @@ func (r *AdminRepository) EnsureBootstrap(ctx context.Context, defaultPasswordHa
 			show_vip_entry TINYINT(1) NOT NULL DEFAULT 1,
 			updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+		`CREATE TABLE IF NOT EXISTS share_gate_control_config (
+			id TINYINT NOT NULL PRIMARY KEY,
+			require_share_for_ai_report TINYINT(1) NOT NULL DEFAULT 0,
+			require_share_for_college_major TINYINT(1) NOT NULL DEFAULT 0,
+			require_share_for_recommend_result TINYINT(1) NOT NULL DEFAULT 0,
+			require_share_for_plan_compare TINYINT(1) NOT NULL DEFAULT 0,
+			updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
 		`CREATE TABLE IF NOT EXISTS vip_payment_order (
 			id INT AUTO_INCREMENT PRIMARY KEY,
 			order_id VARCHAR(64) NOT NULL,
@@ -157,6 +165,8 @@ func (r *AdminRepository) EnsureBootstrap(ctx context.Context, defaultPasswordHa
 		{tableName: "score_rank", column: "source_name", statement: `ALTER TABLE score_rank ADD COLUMN source_name VARCHAR(100) NOT NULL DEFAULT '' AFTER ` + "`count`" + ``},
 		{tableName: "score_rank", column: "source_url", statement: `ALTER TABLE score_rank ADD COLUMN source_url TEXT NULL AFTER source_name`},
 		{tableName: "score_rank", column: "updated_at", statement: `ALTER TABLE score_rank ADD COLUMN updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP AFTER source_url`},
+		{tableName: "share_gate_control_config", column: "require_share_for_recommend_result", statement: `ALTER TABLE share_gate_control_config ADD COLUMN require_share_for_recommend_result TINYINT(1) NOT NULL DEFAULT 0 AFTER require_share_for_college_major`},
+		{tableName: "share_gate_control_config", column: "require_share_for_plan_compare", statement: `ALTER TABLE share_gate_control_config ADD COLUMN require_share_for_plan_compare TINYINT(1) NOT NULL DEFAULT 0 AFTER require_share_for_recommend_result`},
 	}
 	for _, item := range alterStatements {
 		exists, err := r.columnExists(ctx, item.tableName, item.column)
@@ -187,6 +197,19 @@ func (r *AdminRepository) EnsureBootstrap(ctx context.Context, defaultPasswordHa
 	if _, err := r.db.ExecContext(ctx, `
 		INSERT INTO vip_entry_control_config (id, show_vip_entry)
 		VALUES (1, 1)
+		ON DUPLICATE KEY UPDATE id = id
+	`); err != nil {
+		return err
+	}
+	if _, err := r.db.ExecContext(ctx, `
+		INSERT INTO share_gate_control_config (
+			id,
+			require_share_for_ai_report,
+			require_share_for_college_major,
+			require_share_for_recommend_result,
+			require_share_for_plan_compare
+		)
+		VALUES (1, 0, 0, 0, 0)
 		ON DUPLICATE KEY UPDATE id = id
 	`); err != nil {
 		return err
@@ -1229,6 +1252,52 @@ func (r *AdminRepository) ShouldShowVIPEntry(ctx context.Context) (bool, error) 
 		return false, err
 	}
 	return item.ShowVIPEntry, nil
+}
+
+func (r *AdminRepository) GetShareGateControlConfig(ctx context.Context) (*model.ShareGateControlConfig, error) {
+	var item model.ShareGateControlConfig
+	if err := r.db.QueryRowContext(ctx, `
+		SELECT require_share_for_ai_report, require_share_for_college_major, require_share_for_recommend_result, require_share_for_plan_compare, updated_at
+		FROM share_gate_control_config
+		WHERE id = 1
+	`).Scan(&item.RequireShareForAIReport, &item.RequireShareForCollegeMajor, &item.RequireShareForRecommendResult, &item.RequireShareForPlanCompare, &item.UpdatedAt); err != nil {
+		return nil, err
+	}
+	return &item, nil
+}
+
+func (r *AdminRepository) SaveShareGateControlConfig(ctx context.Context, requireShareForAIReport, requireShareForCollegeMajor, requireShareForRecommendResult, requireShareForPlanCompare bool) error {
+	_, err := r.db.ExecContext(ctx, `
+		INSERT INTO share_gate_control_config (
+			id,
+			require_share_for_ai_report,
+			require_share_for_college_major,
+			require_share_for_recommend_result,
+			require_share_for_plan_compare,
+			updated_at
+		)
+		VALUES (1, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+		ON DUPLICATE KEY UPDATE
+			require_share_for_ai_report = VALUES(require_share_for_ai_report),
+			require_share_for_college_major = VALUES(require_share_for_college_major),
+			require_share_for_recommend_result = VALUES(require_share_for_recommend_result),
+			require_share_for_plan_compare = VALUES(require_share_for_plan_compare),
+			updated_at = CURRENT_TIMESTAMP
+	`, requireShareForAIReport, requireShareForCollegeMajor, requireShareForRecommendResult, requireShareForPlanCompare)
+	return err
+}
+
+func (r *AdminRepository) GetShareGateConfig(ctx context.Context) (*model.ShareGateConfigResponse, error) {
+	item, err := r.GetShareGateControlConfig(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &model.ShareGateConfigResponse{
+		RequireShareForAIReport:        item.RequireShareForAIReport,
+		RequireShareForCollegeMajor:    item.RequireShareForCollegeMajor,
+		RequireShareForRecommendResult: item.RequireShareForRecommendResult,
+		RequireShareForPlanCompare:     item.RequireShareForPlanCompare,
+	}, nil
 }
 
 func (r *AdminRepository) SetVIPProductEnabled(ctx context.Context, id int, enabled bool) error {

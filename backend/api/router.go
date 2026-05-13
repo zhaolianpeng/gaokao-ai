@@ -313,6 +313,32 @@ func NewRouter(recommendService *service.RecommendService, aiService *service.AI
 		c.JSON(http.StatusOK, model.VIPEntryConfigResponse{ShowVIPEntry: showVIPEntry})
 	})
 
+	r.GET("/api/share-gate-config", func(c *gin.Context) {
+		if adminService == nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "admin service unavailable"})
+			return
+		}
+		config, err := adminService.ShareGateConfig(c.Request.Context())
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, config)
+	})
+
+	r.POST("/api/share-gate-config", func(c *gin.Context) {
+		if adminService == nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "admin service unavailable"})
+			return
+		}
+		config, err := adminService.ShareGateConfig(c.Request.Context())
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, config)
+	})
+
 	r.POST("/api/vip/pay/confirm", func(c *gin.Context) {
 		var req model.WechatPayConfirmRequest
 		if err := c.ShouldBindJSON(&req); err != nil {

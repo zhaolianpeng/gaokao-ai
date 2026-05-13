@@ -1,16 +1,16 @@
 <view class="container">
   <view class="hero-card">
-    <view class="hero-badge">DeepSeek 智能体</view>
+    <view class="hero-badge">AI 智能体</view>
     <view class="hero-title">AI 需求分析</view>
-    <view class="hero-sub">输入你对城市、学校层次、专业方向、调剂接受度等要求，AI 会给出可执行的报考策略。</view>
+    <view class="hero-sub">把你和家长老师关心的问题说清楚，系统会整理出一份更适合沟通和决策的报考建议。</view>
     <view class="hero-action-row">
-      <button class="hero-share-btn" open-type="share">转发给家长或同学</button>
+      <button class="hero-share-btn" open-type="share">转发给家长或老师</button>
     </view>
   </view>
 
   <view class="card workflow-card">
-    <view class="section-title">为什么这里做成异步任务</view>
-    <view class="tip">竞品里真正依赖大模型的深度分析，普遍不会和秒级推荐放在同一条链路里。这里把体验拆开，先保证查询和推荐快，再让 AI 做深挖。</view>
+    <view class="section-title">这份分析怎么生成</view>
+    <view class="tip">这类深度分析需要一点时间整理，所以系统会先接收需求，再生成一份更完整的建议结果。</view>
     <block wx:for="{{workflow}}" wx:key="key">
       <view class="workflow-row">
         <view class="workflow-main">
@@ -23,7 +23,7 @@
   </view>
 
   <view class="card deliverable-card">
-    <view class="section-title">这次 AI 会重点给你什么</view>
+    <view class="section-title">这份结果会重点告诉你什么</view>
     <block wx:for="{{deliverables}}" wx:key="index">
       <view class="deliverable-row">
         <view class="deliverable-dot"></view>
@@ -44,26 +44,26 @@
     <input class="input" type="number" placeholder="高考分数，可选" value="{{form.score}}" data-field="score" bindinput="onInput" />
     <input class="input" type="number" placeholder="全省排名，可选" value="{{form.rank}}" data-field="rank" bindinput="onInput" />
     <input class="input" placeholder="意向专业，可选" value="{{form.targetMajor}}" data-field="targetMajor" bindinput="onInput" />
-    <textarea class="textarea" placeholder="已有补充偏好，可选" value="{{form.notes}}" data-field="notes" bindinput="onInput"></textarea>
+    <textarea class="textarea" placeholder="还有哪些补充想法，可选" value="{{form.notes}}" data-field="notes" bindinput="onInput"></textarea>
   </view>
 
   <view class="card">
     <view class="section-title">你的需求</view>
-    <view class="tip">建议尽量写清楚：城市、学校层次、公办/民办、专业偏好、是否接受调剂、预算等。</view>
+    <view class="tip">建议尽量写清楚：想去哪里、想读什么、能接受什么、不接受什么，方便系统给出更贴近实际的建议。</view>
     <view class="template-row">
       <block wx:for="{{templates}}" wx:key="id">
         <view class="template-chip {{selectedTemplateIds.indexOf(item.id) >= 0 ? 'template-chip-active' : ''}}" data-id="{{item.id}}" bindtap="applyTemplate">{{item.label}}</view>
       </block>
     </view>
-    <textarea class="textarea textarea-lg" placeholder="例如：我想留在哈尔滨，优先公办本科，专业偏计算机和电子信息，不想去太偏远城市，能接受组内调剂。" value="{{form.demand}}" data-field="demand" bindinput="onInput"></textarea>
-    <button class="primary-btn" loading="{{loading}}" bindtap="onSubmit">生成 AI 智能体建议</button>
+    <textarea class="textarea textarea-lg" placeholder="例如：我想留在哈尔滨，优先公办本科，专业想看计算机和电子信息，不想去太远的城市，可以接受组内调剂。" value="{{form.demand}}" data-field="demand" bindinput="onInput"></textarea>
+    <button class="primary-btn" loading="{{loading}}" bindtap="onSubmit">生成 AI 分析建议</button>
   </view>
 
   <view class="card" wx:if="{{taskId}}">
     <view class="section-title">任务状态</view>
     <view class="task-status {{taskStatus}}">{{taskStatusText}}</view>
-    <view class="tip" wx:if="{{polling}}">页面已开始自动轮询，你可以停留在本页等待结果。</view>
+    <view class="tip" wx:if="{{polling}}">你可以留在本页等待，也可以稍后再回来查看结果。</view>
     <view class="task-error" wx:if="{{taskError}}">{{taskError}}</view>
-    <button class="result-btn" wx:if="{{taskReady}}" bindtap="viewResult">查看智能体推荐结果</button>
+    <button class="result-btn" wx:if="{{taskReady}}" bindtap="viewResult">查看 AI 分析结果</button>
   </view>
 </view>

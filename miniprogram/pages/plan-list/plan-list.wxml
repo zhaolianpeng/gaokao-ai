@@ -1,4 +1,6 @@
 <view class="container">
+  <view class="share-result-shell" wx:if="{{shareGateReady}}">
+  <view class="share-result-layer {{!shareUnlocked ? 'share-result-layer-blurred' : ''}}">
   <view class="card" wx:if="{{compareBoard}}">
     <view class="row-between">
       <view class="section-title">方案并排比较</view>
@@ -133,5 +135,14 @@
       </view>
     </block>
     <view class="empty-tip" wx:if="{{!favorites.length}}">还没有收藏的专业组。</view>
+  </view>
+  </view>
+
+  <view class="share-modal-mask" wx:if="{{!shareUnlocked}}"></view>
+  <view class="share-modal-card" wx:if="{{!shareUnlocked}}">
+    <view class="section-title">分享后查看志愿表与方案对比</view>
+    <view class="share-lock-desc">方案对比和正式志愿表已经生成，当前先做模糊展示。分享当前小程序成功后，立即展示完整结果。</view>
+    <button class="primary-btn" open-type="share" bindtap="requestShareUnlock">分享成功后查看完整结果</button>
+  </view>
   </view>
 </view>

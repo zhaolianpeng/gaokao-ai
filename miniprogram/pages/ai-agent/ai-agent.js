@@ -1,5 +1,5 @@
 const { request } = require('../../utils/request')
-const { getUserProfile } = require('../../utils/storage')
+const { getUserProfile, savePendingReportPayload } = require('../../utils/storage')
 
 const DEMAND_TEMPLATES = [
   { id: 'local', label: '留省内', prompt: '我想优先留在黑龙江省内读书，尽量不要去外省。', keyword: '黑龙江' },
@@ -13,28 +13,28 @@ const DEMAND_TEMPLATES = [
 const AGENT_WORKFLOW = [
   {
     key: 'submit',
-    title: '先提交需求',
-    eta: '10-20 秒内入队',
-    desc: '这里主要收集你的城市、学校层次、专业偏好和调剂接受度。'
+    title: '先说清你的想法',
+    eta: '10-20 秒进入分析',
+    desc: '把你对城市、学校、专业和是否接受调剂的想法告诉 AI。'
   },
   {
     key: 'task',
-    title: '异步生成分析',
+    title: '系统整理可选路径',
     eta: '通常 60-120 秒',
-    desc: 'AI 智能体会单独跑任务，不占住首页查询和推荐链路。'
+    desc: '系统会结合你的分数、位次和需求，整理出更适合讨论的报考思路。'
   },
   {
     key: 'report',
-    title: '输出可执行结论',
+    title: '生成一份可讨论的建议',
     eta: '完成后可直接查看',
-    desc: '最终会给出报考策略、解释文本和可继续查院校的建议入口。'
+    desc: '结果会给出重点建议、原因说明，以及下一步可以继续查看的院校方向。'
   }
 ]
 
 const AGENT_DELIVERABLES = [
-  '先讲结论，再解释为什么这么排。',
-  '重点说明学校层次、专业命中和调剂风险。',
-  '输出给家长也能直接看懂的报考建议。'
+  '先给出重点结论，再说明为什么这么建议。',
+  '把学校层次、专业匹配和调剂风险讲清楚。',
+  '形成一份学生、家长、老师都能一起讨论的建议。'
 ]
 
 function unique(values) {
@@ -82,16 +82,16 @@ function buildExploreSuggestions(form, selectedTemplates) {
 
 function getTaskStatusText(status) {
   if (status === 'succeeded') {
-    return '智能体推荐结果已生成，可以点击下方按钮查看。'
+    return '分析已经完成，可以直接查看结果。'
   }
   if (status === 'failed') {
-    return '智能体生成失败，请重新提交。'
+    return '这次分析没有成功生成，请重新提交一次。'
   }
   if (status === 'processing') {
-    return '智能体正在分析需求，页面会自动刷新结果状态。'
+    return '系统正在整理你的报考建议，页面会自动刷新结果状态。'
   }
   if (status === 'pending') {
-    return '请求已入库保存，等待智能体开始处理。'
+    return '需求已提交，正在排队进入分析。'
   }
   return ''
 }
@@ -135,35 +135,8 @@ function decodeBooleanQueryValue(value, fallback) {
   return fallback
 }
 
-function buildAgentShareTitle(form) {
-  var safeForm = form || {}
-  if (safeForm.targetMajor && safeForm.score) {
-    return `我在做黑龙江${safeForm.targetMajor}AI 志愿分析，当前 ${safeForm.score} 分`
-  }
-  if (safeForm.demand) {
-    return '我在用 AI 生成黑龙江志愿填报策略，帮我一起看看'
-  }
-  return '黑龙江高报 AI 智能体：输入需求，生成可执行报考策略'
-}
-
-function buildAgentShareQuery(form) {
-  var safeForm = form || {}
-  var pairs = []
-  var fields = ['subject', 'analysisYear', 'score', 'rank', 'targetMajor', 'notes', 'schoolName', 'schoolYear', 'className']
-
-  for (var i = 0; i < fields.length; i += 1) {
-    var key = fields[i]
-    var value = safeForm[key]
-    if (value || value === 0) {
-      pairs.push(`${key}=${encodeURIComponent(String(value))}`)
-    }
-  }
-
-  if (safeForm.fromRecommend) {
-    pairs.push('fromRecommend=true')
-  }
-
-  return pairs.join('&')
+function buildAgentShareTitle() {
+  return '黑龙江高报 AI 需求分析：把想法说清楚，生成可讨论的报考建议'
 }
 
 Page({
@@ -368,8 +341,15 @@ Page({
       ? result.suggestions
       : buildExploreSuggestions(this.data.form, this.getSelectedTemplates())
 
+    savePendingReportPayload({
+      report: result.report || '',
+      title: result.title || 'AI 智能体报考建议',
+      student: result.student || payload.student,
+      suggestions
+    })
+
     wx.navigateTo({
-      url: '/pages/report/report?title=' + encodeURIComponent(result.title || 'AI 智能体报考建议') + '&report=' + encodeURIComponent(result.report || '') + '&student=' + encodeURIComponent(JSON.stringify(result.student || payload.student)) + '&suggestions=' + encodeURIComponent(JSON.stringify(suggestions))
+      url: '/pages/report/report?source=ai-agent'
     })
   },
 
@@ -412,18 +392,17 @@ Page({
   },
 
   onShareAppMessage() {
-    var query = buildAgentShareQuery(this.data.form)
     return {
-      title: buildAgentShareTitle(this.data.form),
-      path: '/pages/ai-agent/ai-agent' + (query ? `?${query}` : ''),
+      title: buildAgentShareTitle(),
+      path: '/pages/ai-agent/ai-agent',
       imageUrl: ''
     }
   },
 
   onShareTimeline() {
     return {
-      title: buildAgentShareTitle(this.data.form),
-      query: buildAgentShareQuery(this.data.form),
+      title: buildAgentShareTitle(),
+      query: '',
       imageUrl: ''
     }
   }

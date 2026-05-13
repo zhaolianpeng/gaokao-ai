@@ -39,7 +39,7 @@ func (s *AIService) Analyze(ctx context.Context, req model.AIAnalyzeRequest) (st
 	prompt := buildPrompt(req)
 	logging.LogEvent("ai_analyze", map[string]any{"hasAPIKey": s.HasAPIKey(), "student": req.Student, "promptLength": len(prompt), "promptPreview": logging.PreviewString(prompt, 512), "chongCount": len(req.Recommend.Chong), "wenCount": len(req.Recommend.Wen), "baoCount": len(req.Recommend.Bao)})
 	if !s.HasAPIKey() {
-		return "当前服务未配置 DEEPSEEK_API_KEY，先返回本地模板报告。\n\n" + prompt, nil
+		return "当前智能分析服务尚未完成配置，先返回本地模板报告。\n\n" + prompt, nil
 	}
 	return s.GenerateText(ctx, "你是中国高考志愿填报专家。", prompt, 0.3)
 }

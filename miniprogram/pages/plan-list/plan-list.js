@@ -9,6 +9,13 @@ const {
   clearApplicationPlan
 } = require('../../utils/storage')
 const { getVIPEntryVisibility } = require('../../utils/vip-entry')
+const { shouldRequireShareGate, markShareGateUnlocked, createShareGateToken } = require('../../utils/share-gate')
+
+function enableShareMenus() {
+  if (wx.showShareMenu) {
+    wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] })
+  }
+}
 
 function formatTime(timestamp) {
   const date = new Date(timestamp)
@@ -231,12 +238,33 @@ Page({
       { value: 'collegeAsc', label: '按院校名称' }
     ],
     currentSortLabel: '按加入时间',
-    showVipEntry: false
+    showVipEntry: false,
+    shareGateReady: false,
+    shareUnlocked: false,
+    shareUnlockPending: false
+  },
+
+  onLoad(query) {
+    this.shareToken = (query && query.shareToken) || ''
   },
 
   onShow() {
+    enableShareMenus()
     this.syncVIPEntryVisibility(true)
     this.refreshData()
+    if (this.data.shareUnlocked) {
+      this.setData({ shareGateReady: true })
+      wx.setNavigationBarTitle({ title: '正式志愿表与方案对比' })
+      return
+    }
+    shouldRequireShareGate('planCompare', true, this.shareToken || '').then((required) => {
+      if (required) {
+        this.setData({ shareGateReady: true })
+        wx.setNavigationBarTitle({ title: '分享后查看志愿表与方案对比' })
+        return
+      }
+      this.unlockPlanCompare()
+    })
   },
 
   syncVIPEntryVisibility(forceRefresh) {
@@ -281,6 +309,16 @@ Page({
       studentSummary: buildStudentSummary(primaryStudent),
       currentSortLabel: (this.data.sortOptions.find((option) => option.value === this.data.sortMode) || this.data.sortOptions[0]).label
     })
+  },
+
+  requestShareUnlock() {
+    this.setData({ shareUnlockPending: true })
+  },
+
+  unlockPlanCompare() {
+    this.setData({ shareUnlocked: true, shareUnlockPending: false, shareGateReady: true })
+    wx.setNavigationBarTitle({ title: '正式志愿表与方案对比' })
+    this.refreshData()
   },
 
   onSortChange(e) {
@@ -386,5 +424,34 @@ Page({
     wx.navigateTo({
       url: '/pages/family-share/family-share?payload=' + encodeURIComponent(JSON.stringify(payload))
     })
+  },
+
+  onShareAppMessage() {
+    const self = this
+    const shareToken = createShareGateToken('planCompare')
+    return {
+      title: '黑龙江高报助手：查看正式志愿表与方案对比',
+      path: `/pages/plan-list/plan-list?shareToken=${encodeURIComponent(shareToken)}`,
+      success() {
+        if (self.data.shareUnlockPending && !self.data.shareUnlocked) {
+          markShareGateUnlocked('planCompare')
+          self.unlockPlanCompare()
+        }
+      },
+      fail() {
+        if (self.data.shareUnlockPending && !self.data.shareUnlocked) {
+          self.setData({ shareUnlockPending: false })
+        }
+      }
+    }
+  },
+
+  onShareTimeline() {
+    const shareToken = createShareGateToken('planCompare')
+    return {
+      title: '黑龙江高报助手：查看正式志愿表与方案对比',
+      query: `shareToken=${encodeURIComponent(shareToken)}`,
+      imageUrl: ''
+    }
   }
 })

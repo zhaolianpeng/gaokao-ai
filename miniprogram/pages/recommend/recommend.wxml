@@ -1,4 +1,6 @@
 <view class="container">
+  <view class="share-result-shell" wx:if="{{shareGateReady}}">
+  <view class="share-result-layer {{!shareUnlocked ? 'share-result-layer-blurred' : ''}}">
   <view class="card" wx:if="{{loadError}}">
     <view class="section-title">结果暂时不可用</view>
     <view class="meta">{{loadError}}</view>
@@ -91,7 +93,7 @@
           <view class="compare-title">{{item.college}} {{item.groupLabel}}</view>
           <view class="compare-sub">{{item.city}}</view>
           <view class="compare-sub">{{item.majorPreview}}</view>
-          <view class="compare-sub">{{item.rankText}} · 概率 {{item.probabilityText}}</view>
+          <view class="compare-sub">{{item.rankText}} · {{item.probabilityText}}</view>
         </view>
       </view>
     </block>
@@ -135,7 +137,8 @@
               <view class="item-sub">{{school.city || school.province}} · {{school.groupLabel}} · {{school.batch}} · 选科 {{school.subject_requirement}}</view>
               <view class="item-sub">组内专业：{{school.majorPreview}}</view>
               <view class="item-sub">计划：{{school.planText}}</view>
-              <view class="item-sub">最低位次 {{school.min_rank}} · 最低分 {{school.min_score}} · 概率 {{school.probabilityText}}</view>
+              <view class="item-sub">{{school.weightedRankText || ('最低位次 ' + school.min_rank)}} · 最低分 {{school.min_score}} · {{school.probabilityLabel || ('录取概率 ' + school.probabilityText)}}</view>
+              <view class="item-sub" wx:if="{{school.recentRankText}}">近3年最低位次：{{school.recentRankText}}</view>
               <view class="item-reason">{{school.recommendation_reason}}</view>
               <view class="item-actions">
                 <view class="item-action {{school.favoriteClass}}" data-item-key="{{school.itemKey}}" bindtap="onToggleFavorite">{{school.favoriteText}}</view>
@@ -158,4 +161,13 @@
       <button class="primary-btn" loading="{{loading}}" bindtap="onAnalyze">{{analyzeButtonText}}</button>
     </view>
   </block>
+  </view>
+
+  <view class="share-modal-mask" wx:if="{{!shareUnlocked}}"></view>
+  <view class="share-modal-card" wx:if="{{!shareUnlocked}}">
+    <view class="section-title">分享后查看智能推荐结果</view>
+    <view class="share-lock-desc">推荐结果已经生成，当前先做模糊展示。分享当前小程序成功后，立即展示冲稳保结果、三种决策视角和 AI 报告入口。</view>
+    <button class="primary-btn" open-type="share" bindtap="requestShareUnlock">分享成功后查看完整结果</button>
+  </view>
+  </view>
 </view>

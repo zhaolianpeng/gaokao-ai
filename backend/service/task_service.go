@@ -266,7 +266,7 @@ func buildLocalAgentAdvice(student model.TaskStudent, demand string, templates [
 	}
 	fallbackIntro := "以下内容为本地模板建议。当前先返回一份结构化可执行分析。"
 	if fallbackReason == "missing_key" {
-		fallbackIntro = "以下内容为本地模板建议。当前服务未配置 DEEPSEEK_API_KEY，所以先返回一份结构化可执行分析。"
+		fallbackIntro = "以下内容为本地模板建议。当前智能分析服务尚未完成配置，所以先返回一份结构化可执行分析。"
 	} else if fallbackReason == "timeout" {
 		fallbackIntro = "以下内容为本地模板建议。当前智能体生成时间较长，先返回一份可执行分析；你也可以稍后继续重试获取更细化结果。"
 	}
@@ -309,7 +309,7 @@ func buildLocalAgentAdvice(student model.TaskStudent, demand string, templates [
 		"",
 		"## 六、需求冲突与取舍",
 		conflict,
-		"如果后续配置好 DeepSeek Key，这一页会返回更细化、更贴近你输入语义的分析结果。",
+		"如果后续智能分析服务配置完成，这一页会返回更细化、更贴近你输入语义的分析结果。",
 	)
 	return strings.Join(lines, "\n")
 }

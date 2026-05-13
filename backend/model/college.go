@@ -182,7 +182,12 @@ type RecommendItem struct {
 	MinScore             int     `json:"min_score"`
 	MinRank              int     `json:"min_rank"`
 	AvgScore             int     `json:"avg_score"`
+	RankLastYear         int     `json:"rank_last_year"`
+	RankTwoYearsAgo      int     `json:"rank_two_years_ago"`
+	RankThreeYearsAgo    int     `json:"rank_three_years_ago"`
+	WeightedRank         int     `json:"weighted_rank"`
 	Probability          float64 `json:"probability"`
+	ProbabilityLabel     string  `json:"probability_label"`
 	Tag                  string  `json:"tag"`
 }
 

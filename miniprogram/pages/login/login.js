@@ -1,4 +1,4 @@
-const { getAuthUser, saveAuthUser, getUserProfile, saveUserProfile, hasPrivacyConsent, savePrivacyConsent, clearPrivacyConsent } = require('../../utils/storage')
+const { getAuthUser, saveAuthUser, getUserProfile, saveUserProfile, getHomeFormDraft, hasPrivacyConsent, savePrivacyConsent, clearPrivacyConsent } = require('../../utils/storage')
 const { request } = require('../../utils/request')
 
 function openPolicyPage(url) {
@@ -44,14 +44,23 @@ function normalizePersistedNickname(nickname) {
 
 function syncProfileFromUser(user) {
   const current = getUserProfile() || {}
+  const draft = getHomeFormDraft() || {}
   return saveUserProfile({
     ...current,
+    province: current.province || draft.province || '黑龙江',
+    subject: current.subject || draft.subject || '历史',
+    analysisYear: current.analysisYear || draft.analysisYear || '2025',
+    year: current.year || draft.year || '2025',
+    score: current.score || draft.score || '',
+    rank: current.rank || draft.rank || '',
+    targetMajor: current.targetMajor || draft.targetMajor || '',
+    notes: current.notes || draft.notes || '',
     idCard: (user && user.idCard) || current.idCard || '',
-    schoolName: (user && user.schoolName) || current.schoolName || '',
-    schoolYear: (user && user.schoolYear) || current.schoolYear || '',
-    className: (user && user.className) || current.className || '',
+    schoolName: (user && user.schoolName) || current.schoolName || draft.schoolName || '',
+    schoolYear: (user && user.schoolYear) || current.schoolYear || draft.schoolYear || '',
+    className: (user && user.className) || current.className || draft.className || '',
     studentNo: (user && user.studentNo) || current.studentNo || '',
-    fromRecommend: !!((user && user.fromRecommend) || current.fromRecommend)
+    fromRecommend: !!((user && user.fromRecommend) || current.fromRecommend || draft.fromRecommend)
   })
 }
 

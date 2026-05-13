@@ -1,4 +1,6 @@
 <view class="container">
+  <view class="share-result-shell" wx:if="{{shareGateReady}}">
+  <view class="share-result-layer {{(!shareUnlocked || gateChecking) ? 'share-result-layer-blurred' : ''}}">
   <view class="card">
     <view class="section-title">{{title}}</view>
     <view class="student-meta" wx:if="{{student}}">黑龙江 {{student.subject}} · {{student.score}}分 / {{student.rank}}名</view>
@@ -60,5 +62,19 @@
       <button class="ghost-btn" bindtap="backHome">返回首页</button>
       <button class="primary-btn action-btn" bindtap="copyReport">复制报告</button>
     </view>
+  </view>
+  </view>
+
+  <view class="share-modal-mask" wx:if="{{gateChecking}}"></view>
+  <view class="share-modal-card" wx:if="{{gateChecking}}">
+    <view class="section-title">正在加载分析结果</view>
+    <view class="share-lock-desc">正在确认分享权限与会员状态，请稍候。</view>
+  </view>
+  <view class="share-modal-mask" wx:if="{{!gateChecking && !shareUnlocked}}"></view>
+  <view class="share-modal-card" wx:if="{{!gateChecking && !shareUnlocked}}">
+    <view class="section-title">分享后查看 AI 报考分析</view>
+    <view class="share-lock-desc">结果已经生成，当前先做模糊展示。分享当前小程序成功后，立即展示完整分析内容；分享文案不会带你的个人信息。</view>
+    <button class="primary-btn" open-type="share" bindtap="requestShareUnlock">分享成功后查看完整结果</button>
+  </view>
   </view>
 </view>

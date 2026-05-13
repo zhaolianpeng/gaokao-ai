@@ -1,4 +1,6 @@
-<view class="container" wx:if="{{detail}}">
+<view class="container">
+  <view class="share-result-shell" wx:if="{{shareGateReady && detail}}">
+  <view class="share-result-layer {{!shareUnlocked ? 'share-result-layer-blurred' : ''}}">
   <view class="card hero-card">
     <view class="title">{{detail.name}}</view>
     <view class="meta">黑龙江 {{subject}} 2025 口径 · {{detail.city || detail.province}} · {{detail.level}} · {{detail.school_type}} · {{detail.ownership_type}}</view>
@@ -57,5 +59,14 @@
         </view>
       </view>
     </block>
+  </view>
+  </view>
+
+  <view class="share-modal-mask" wx:if="{{!shareUnlocked}}"></view>
+  <view class="share-modal-card" wx:if="{{!shareUnlocked}}">
+    <view class="section-title">分享后查看大学专业信息</view>
+    <view class="share-lock-desc">结果已经查到，当前先做模糊展示。分享当前小程序成功后，立即展示该院校的专业组画像、组内专业和录取信息。</view>
+    <button class="primary-btn" open-type="share" bindtap="requestShareUnlock">分享成功后查看完整结果</button>
+  </view>
   </view>
 </view>

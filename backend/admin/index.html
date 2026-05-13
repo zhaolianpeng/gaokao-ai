@@ -684,6 +684,12 @@
         endpoint: '/api/admin/vip-entry-config',
         type: 'vip-entry'
       },
+      shareGateControl: {
+        label: '分享解锁控制',
+        desc: '配置哪些页面内容需要分享成功后才能查看。',
+        endpoint: '/api/admin/share-gate-config',
+        type: 'share-gate'
+      },
       paymentItems: {
         label: '付费项目管理',
         desc: '统一维护金额、上下架、有效次数和有效期范围。',
@@ -693,7 +699,7 @@
       }
     }
 
-    const navOrder = ['dashboard', 'colleges', 'provinceLines', 'scoreRanks', 'students', 'profileOptions', 'orders', 'staff', 'volunteers', 'aiTasks', 'vipEntryControl', 'paymentItems']
+    const navOrder = ['dashboard', 'colleges', 'provinceLines', 'scoreRanks', 'students', 'profileOptions', 'orders', 'staff', 'volunteers', 'aiTasks', 'vipEntryControl', 'shareGateControl', 'paymentItems']
     const SECTION_PATHS = {
       dashboard: '/mis/dashboard',
       colleges: '/mis/colleges',
@@ -706,6 +712,7 @@
       volunteers: '/mis/volunteers',
       aiTasks: '/mis/ai-tasks',
       vipEntryControl: '/mis/vip-entry',
+      shareGateControl: '/mis/share-gate',
       paymentItems: '/mis/payment-items'
     }
     const PATH_SECTION_MAP = {
@@ -720,6 +727,7 @@
       'volunteers': 'volunteers',
       'ai-tasks': 'aiTasks',
       'vip-entry': 'vipEntryControl',
+      'share-gate': 'shareGateControl',
       'payment-items': 'paymentItems'
     }
     const DEFAULT_PAGE_LIMIT = 20
@@ -1772,6 +1780,70 @@
       })
     }
 
+    async function renderShareGateControl() {
+      const section = SECTION_DEFS.shareGateControl
+      const data = await api('/api/admin/share-gate-config', { method: 'GET' })
+      document.getElementById('contentPanel').innerHTML = `
+        ${buildToolbar(section, `<span class="badge">按页面配置</span>`)}
+        <div class="stack">
+          <div class="tip">这里控制的是小程序中哪些内容需要“分享成功后才可查看”。关闭后，页面会直接展示。当前账号如果 VIP 仍在有效期内，将直接放行，不再额外要求分享。</div>
+          <div class="vip-entry-card">
+            <div class="vip-entry-toggle-row">
+              <div class="vip-entry-toggle-copy">
+                <strong>AI 报考分析结果</strong>
+                <span>开启后，用户查看完整 AI 报告时，需要先分享当前小程序。</span>
+              </div>
+              <label class="vip-entry-checkbox"><input id="shareGateAiReportToggle" type="checkbox" ${data.requireShareForAiReport ? 'checked' : ''} /> 分享后可查看</label>
+            </div>
+            <div class="vip-entry-toggle-row" style="margin-top: 18px;">
+              <div class="vip-entry-toggle-copy">
+                <strong>大学具体专业信息</strong>
+                <span>开启后，用户查看院校专业组、组内专业和历年录取信息时，需要先分享小程序。</span>
+              </div>
+              <label class="vip-entry-checkbox"><input id="shareGateCollegeMajorToggle" type="checkbox" ${data.requireShareForCollegeMajor ? 'checked' : ''} /> 分享后可查看</label>
+            </div>
+            <div class="vip-entry-toggle-row" style="margin-top: 18px;">
+              <div class="vip-entry-toggle-copy">
+                <strong>智能推荐结果页</strong>
+                <span>开启后，用户查看冲稳保推荐结果时，需要先分享当前小程序。</span>
+              </div>
+              <label class="vip-entry-checkbox"><input id="shareGateRecommendResultToggle" type="checkbox" ${data.requireShareForRecommendResult ? 'checked' : ''} /> 分享后可查看</label>
+            </div>
+            <div class="vip-entry-toggle-row" style="margin-top: 18px;">
+              <div class="vip-entry-toggle-copy">
+                <strong>正式志愿表与方案对比</strong>
+                <span>开启后，用户查看已保存的方案对比库和正式志愿表时，需要先分享当前小程序。</span>
+              </div>
+              <label class="vip-entry-checkbox"><input id="shareGatePlanCompareToggle" type="checkbox" ${data.requireShareForPlanCompare ? 'checked' : ''} /> 分享后可查看</label>
+            </div>
+            <div class="vip-entry-meta">最近更新时间：${fmtDate(data.updatedAt)}</div>
+            <div class="toolbar-actions" style="justify-content:flex-end; margin-top: 18px;">
+              <button id="saveShareGateBtn" class="btn btn-primary">保存</button>
+            </div>
+            <div id="shareGateError" class="error"></div>
+          </div>
+        </div>
+      `
+      bindToolbar('shareGateControl', section, () => renderShareGateControl(), null)
+      document.getElementById('saveShareGateBtn')?.addEventListener('click', async () => {
+        try {
+          await api('/api/admin/share-gate-config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              requireShareForAiReport: !!document.getElementById('shareGateAiReportToggle')?.checked,
+			  requireShareForCollegeMajor: !!document.getElementById('shareGateCollegeMajorToggle')?.checked,
+			  requireShareForRecommendResult: !!document.getElementById('shareGateRecommendResultToggle')?.checked,
+			  requireShareForPlanCompare: !!document.getElementById('shareGatePlanCompareToggle')?.checked
+            })
+          })
+          renderShareGateControl()
+        } catch (error) {
+          document.getElementById('shareGateError').textContent = error.message
+        }
+      })
+    }
+
     function renderCell(key, value) {
       if (key === 'updatedAt' || key === 'createdAt' || key === 'lastLoginAt' || key === 'paidAt') return fmtDate(value)
       if (typeof value === 'boolean') return value ? renderStatus('enabled') : renderStatus('disabled')
@@ -2026,6 +2098,7 @@
       if (state.active === 'orders') return renderOrders()
       if (state.active === 'volunteers' || state.active === 'aiTasks') return renderTasks(state.active)
       if (state.active === 'vipEntryControl') return renderVIPEntryControl()
+      if (state.active === 'shareGateControl') return renderShareGateControl()
       if (state.active === 'vipProducts' || state.active === 'paymentItems') return renderVIP('paymentItems')
       return renderCRUD(state.active)
     }

@@ -180,6 +180,21 @@ type VIPEntryConfigResponse struct {
 	ShowVIPEntry bool `json:"showVipEntry"`
 }
 
+type ShareGateControlConfig struct {
+	RequireShareForAIReport        bool      `json:"requireShareForAiReport"`
+	RequireShareForCollegeMajor    bool      `json:"requireShareForCollegeMajor"`
+	RequireShareForRecommendResult bool      `json:"requireShareForRecommendResult"`
+	RequireShareForPlanCompare     bool      `json:"requireShareForPlanCompare"`
+	UpdatedAt                      time.Time `json:"updatedAt"`
+}
+
+type ShareGateConfigResponse struct {
+	RequireShareForAIReport        bool `json:"requireShareForAiReport"`
+	RequireShareForCollegeMajor    bool `json:"requireShareForCollegeMajor"`
+	RequireShareForRecommendResult bool `json:"requireShareForRecommendResult"`
+	RequireShareForPlanCompare     bool `json:"requireShareForPlanCompare"`
+}
+
 type AdminListResponse[T any] struct {
 	Items []T `json:"items"`
 	Total int `json:"total"`

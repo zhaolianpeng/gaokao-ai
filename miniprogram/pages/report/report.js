@@ -1,5 +1,12 @@
-const { saveReportHistory, savePendingExploreFilters } = require('../../utils/storage')
+const { saveReportHistory, savePendingExploreFilters, savePendingReportPayload, getPendingReportPayload } = require('../../utils/storage')
 const { getVIPEntryVisibility } = require('../../utils/vip-entry')
+const { shouldRequireShareGate, markShareGateUnlocked, createShareGateToken } = require('../../utils/share-gate')
+
+function enableShareMenus() {
+  if (wx.showShareMenu) {
+    wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] })
+  }
+}
 
 function buildReportBlocks(report) {
   return (report || '')
@@ -89,9 +96,34 @@ function buildFamilySharePayload(title, student, familyBrief, checklist, suggest
   }
 }
 
+function safeDecodeURIComponent(value, fallback) {
+  if (value === undefined || value === null || value === '') {
+    return fallback
+  }
+  try {
+    return decodeURIComponent(value)
+  } catch (err) {
+    return value
+  }
+}
+
+function safeParseJSON(value, fallback) {
+  if (value === undefined || value === null || value === '') {
+    return fallback
+  }
+  try {
+    return JSON.parse(value)
+  } catch (err) {
+    return fallback
+  }
+}
+
 Page({
   data: {
-    report: '',
+    shareGateReady: false,
+    shareUnlocked: false,
+    shareUnlockPending: false,
+    gateChecking: true,
     title: '黑龙江 AI 报考报告',
     student: null,
     suggestions: [],
@@ -105,13 +137,46 @@ Page({
   },
 
   onLoad(query) {
-    const report = decodeURIComponent(query.report || '暂无报告内容')
-    const title = decodeURIComponent(query.title || '黑龙江 AI 报考报告')
-    const student = JSON.parse(decodeURIComponent(query.student || 'null'))
-    const suggestions = JSON.parse(decodeURIComponent(query.suggestions || '[]'))
+    enableShareMenus()
+    const fallbackPayload = getPendingReportPayload() || {}
+    const studentValue = safeDecodeURIComponent(query.student, '')
+    const suggestionsValue = safeDecodeURIComponent(query.suggestions, '')
+    this.pendingQuery = {
+      report: safeDecodeURIComponent(query.report, fallbackPayload.report || '暂无报告内容'),
+      title: safeDecodeURIComponent(query.title, fallbackPayload.title || '黑龙江 AI 报考报告'),
+      student: studentValue ? safeParseJSON(studentValue, fallbackPayload.student || null) : (fallbackPayload.student || null),
+      suggestions: suggestionsValue ? safeParseJSON(suggestionsValue, fallbackPayload.suggestions || []) : (fallbackPayload.suggestions || [])
+    }
+    this.hydrateReport()
+    this.setData({ shareGateReady: true, gateChecking: true })
+    wx.setNavigationBarTitle({ title: this.data.title || 'AI 报考报告' })
+    shouldRequireShareGate('aiReport', false, query.shareToken || '').then((required) => {
+      if (required) {
+        this.setData({ gateChecking: false })
+        wx.setNavigationBarTitle({ title: '分享后查看 AI 报告' })
+        return
+      }
+      this.unlockReport()
+    }).catch(() => {
+      this.unlockReport()
+    })
+  },
+
+  onShow() {
+    enableShareMenus()
+  },
+
+  hydrateReport() {
+    if (!this.pendingQuery) {
+      return
+    }
+    const report = this.pendingQuery.report
+    const title = this.pendingQuery.title
+    const student = this.pendingQuery.student
+    const suggestions = this.pendingQuery.suggestions
     const reportBlocks = buildReportBlocks(report)
+    this.fullReport = report
     this.setData({
-      report,
       title,
       student,
       suggestions,
@@ -135,9 +200,26 @@ Page({
       archiveText: buildArchiveText(student),
       fromRecommendText: student && student.fromRecommend ? '推荐来源：是' : ''
     })
-    wx.setNavigationBarTitle({ title })
-    saveReportHistory({ report, student })
+  },
+
+  unlockReport() {
+    if (!this.pendingQuery || this.data.shareUnlocked) {
+      return
+    }
+    this.hydrateReport()
+    this.setData({
+      shareUnlocked: true,
+      shareUnlockPending: false,
+      gateChecking: false,
+      shareGateReady: true
+    })
+    wx.setNavigationBarTitle({ title: this.data.title || '黑龙江 AI 报考报告' })
+    saveReportHistory({ report: this.fullReport || '', student: this.data.student })
     this.syncVIPEntryVisibility(true)
+  },
+
+  requestShareUnlock() {
+    this.setData({ shareUnlockPending: true })
   },
 
   syncVIPEntryVisibility(forceRefresh) {
@@ -145,12 +227,12 @@ Page({
 		if (this.data.showVipEntry !== showVipEntry) {
 			this.setData({ showVipEntry })
 		}
-	})
+  }).catch(() => false)
   },
 
   copyReport() {
     wx.setClipboardData({
-      data: this.data.report,
+      data: this.fullReport || '',
       success: () => wx.showToast({ title: '报告已复制', icon: 'success' })
     })
   },
@@ -195,9 +277,43 @@ Page({
   },
 
   onShareAppMessage() {
+    const self = this
+    const shareToken = createShareGateToken('aiReport')
+    savePendingReportPayload({
+      report: this.fullReport || (this.pendingQuery && this.pendingQuery.report) || '',
+      title: this.data.title || (this.pendingQuery && this.pendingQuery.title) || '黑龙江 AI 报考报告',
+      student: this.data.student || (this.pendingQuery && this.pendingQuery.student) || null,
+      suggestions: this.data.suggestions || (this.pendingQuery && this.pendingQuery.suggestions) || []
+    })
     return {
-      title: this.data.title || '黑龙江 AI 报考报告',
-      path: '/pages/index/index'
+      title: '黑龙江高报助手：查院校、看推荐、做 AI 报考分析',
+      path: `/pages/report/report?shareToken=${encodeURIComponent(shareToken)}`,
+      success() {
+        if (self.data.shareUnlockPending && !self.data.shareUnlocked) {
+          markShareGateUnlocked('aiReport')
+          self.unlockReport()
+        }
+      },
+      fail() {
+        if (self.data.shareUnlockPending && !self.data.shareUnlocked) {
+          self.setData({ shareUnlockPending: false })
+        }
+      }
+    }
+  },
+
+  onShareTimeline() {
+    const shareToken = createShareGateToken('aiReport')
+    savePendingReportPayload({
+      report: this.fullReport || (this.pendingQuery && this.pendingQuery.report) || '',
+      title: this.data.title || (this.pendingQuery && this.pendingQuery.title) || '黑龙江 AI 报考报告',
+      student: this.data.student || (this.pendingQuery && this.pendingQuery.student) || null,
+      suggestions: this.data.suggestions || (this.pendingQuery && this.pendingQuery.suggestions) || []
+    })
+    return {
+      title: '黑龙江高报助手：查院校、看推荐、做 AI 报考分析',
+      query: `shareToken=${encodeURIComponent(shareToken)}`,
+      imageUrl: ''
     }
   }
 })

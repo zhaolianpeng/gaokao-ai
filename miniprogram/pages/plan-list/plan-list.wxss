@@ -22,6 +22,50 @@
   line-height: 1.7;
 }
 
+.share-result-shell {
+  position: relative;
+}
+
+.share-result-layer {
+  transition: filter 0.2s ease, transform 0.2s ease;
+}
+
+.share-result-layer-blurred {
+  filter: blur(18rpx);
+  transform: scale(0.992);
+  pointer-events: none;
+  user-select: none;
+}
+
+.share-modal-mask {
+  position: absolute;
+  inset: 0;
+  background: rgba(245, 241, 232, 0.3);
+}
+
+.share-modal-card {
+  position: absolute;
+  left: 24rpx;
+  right: 24rpx;
+  top: 180rpx;
+  z-index: 2;
+  padding: 28rpx;
+  border-radius: 24rpx;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 18rpx 48rpx rgba(22, 53, 91, 0.18);
+}
+
+.share-lock-card {
+  text-align: left;
+}
+
+.share-lock-desc {
+  margin-top: 14rpx;
+  color: #60748d;
+  font-size: 24rpx;
+  line-height: 1.8;
+}
+
 .link-btn {
   color: #175cd3;
   font-size: 24rpx;

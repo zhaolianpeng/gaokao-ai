@@ -28,7 +28,7 @@
     <view class="row-between">
       <view>
         <view class="section-title section-title-small">数据看板</view>
-        <view class="knowledge-sub">当前直接展示院校、专业组、招生计划和录取统计核心规模，首页优先看数据，不先讲概念。</view>
+        <view class="knowledge-sub">先看黑龙江报考常用数据，快速了解查分年份、科类和当前可参考的信息范围。</view>
       </view>
       <view class="tip" wx:if="{{dashboardLoading}}">加载中...</view>
     </view>
@@ -152,7 +152,6 @@
     <view class="row-between playbook-header">
       <view>
         <view class="section-title section-title-small">怎么用最省时间</view>
-        <view class="knowledge-sub">竞品大多也是先做秒级数据匹配，再把深度 AI 放到后面。这里直接把链路拆开给你看。</view>
       </view>
     </view>
     <view class="playbook-grid">
@@ -172,7 +171,6 @@
     <view class="row-between knowledge-header">
       <view class="knowledge-copy">
         <view class="section-title section-title-small">能力分层</view>
-        <view class="knowledge-sub">先免费把核心决策做起来，真的需要长时间比较和深度解释，再进入 AI 和 VIP。</view>
       </view>
       <view wx:if="{{showVipEntry}}" class="link-btn knowledge-link" bindtap="openVipPage">看 VIP</view>
     </view>
@@ -191,7 +189,7 @@
     <view class="row-between knowledge-header">
       <view class="knowledge-copy">
         <view class="section-title section-title-small">报考资料库</view>
-        <view class="knowledge-sub">黑龙江专版保留政策资料入口，同时把专家版院校、专业组和录取数据作为主数据层。</view>
+        <view class="knowledge-sub">汇总黑龙江报考常用资料，涵盖提前批路径、特殊招生、政策机会和填报方法，方便你快速查看。</view>
       </view>
       <view class="link-btn knowledge-link" bindtap="openMaterialsPage">去查看</view>
     </view>

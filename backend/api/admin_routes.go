@@ -27,6 +27,7 @@ var misPageRoutes = map[string]struct{}{
 	"volunteers":      {},
 	"ai-tasks":        {},
 	"vip-entry":       {},
+	"share-gate":      {},
 	"payment-items":   {},
 }
 
@@ -558,6 +559,34 @@ func registerAdminRoutes(r *gin.Engine, adminService *service.AdminService, payS
 				return
 			}
 			if err := adminService.Repo().SaveVIPEntryControlConfig(c.Request.Context(), req.ShowVIPEntry); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"ok": true})
+		})
+
+		adminGroup.GET("/share-gate-config", func(c *gin.Context) {
+			item, err := adminService.Repo().GetShareGateControlConfig(c.Request.Context())
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusOK, item)
+		})
+
+		adminGroup.POST("/share-gate-config", func(c *gin.Context) {
+			var req model.ShareGateControlConfig
+			if err := c.ShouldBindJSON(&req); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				return
+			}
+			if err := adminService.Repo().SaveShareGateControlConfig(
+				c.Request.Context(),
+				req.RequireShareForAIReport,
+				req.RequireShareForCollegeMajor,
+				req.RequireShareForRecommendResult,
+				req.RequireShareForPlanCompare,
+			); err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 				return
 			}

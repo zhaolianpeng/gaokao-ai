@@ -8,8 +8,10 @@ const USER_PROFILE_KEY = 'userProfile'
 const PRIVACY_CONSENT_KEY = 'privacyConsent'
 const NETWORK_DIAGNOSTIC_KEY = 'networkDiagnostics'
 const PENDING_RECOMMEND_KEY = 'pendingRecommendPayload'
+const PENDING_REPORT_KEY = 'pendingReportPayload'
 const PENDING_EXPLORE_SUBJECT_KEY = 'pendingExploreSubject'
 const PENDING_EXPLORE_FILTERS_KEY = 'pendingExploreFilters'
+const HOME_FORM_DRAFT_KEY = 'homeFormDraft'
 const POLICY_VERSION = '2026-05-11'
 
 function getScopedProfileKey(user) {
@@ -195,6 +197,68 @@ function saveReportHistory(payload) {
 
 function getReportHistory() {
   return getList(REPORT_KEY)
+}
+
+function savePendingReportPayload(payload) {
+  const value = {
+    report: payload && payload.report ? payload.report : '',
+    title: payload && payload.title ? payload.title : '黑龙江 AI 报考报告',
+    student: payload && payload.student ? payload.student : null,
+    suggestions: Array.isArray(payload && payload.suggestions) ? payload.suggestions : [],
+    updatedAt: Date.now()
+  }
+  try {
+    const app = typeof getApp === 'function' ? getApp() : null
+    if (app && app.globalData) {
+      app.globalData.pendingReportPayload = value
+    }
+  } catch (err) {
+  }
+  try {
+    wx.setStorageSync(PENDING_REPORT_KEY, value)
+  } catch (err) {
+  }
+  return value
+}
+
+function getPendingReportPayload() {
+  try {
+    const app = typeof getApp === 'function' ? getApp() : null
+    if (app && app.globalData && app.globalData.pendingReportPayload) {
+      return app.globalData.pendingReportPayload
+    }
+  } catch (err) {
+  }
+  return wx.getStorageSync(PENDING_REPORT_KEY) || null
+}
+
+function normalizeHomeFormDraft(payload) {
+  const form = payload || {}
+  return {
+    province: form.province || '黑龙江',
+    subject: form.subject || '历史',
+    analysisYear: form.analysisYear || '2025',
+    year: form.year || '2025',
+    score: form.score ? String(form.score) : '',
+    rank: form.rank ? String(form.rank) : '',
+    targetMajor: form.targetMajor || '',
+    notes: form.notes || '',
+    schoolName: form.schoolName || '',
+    schoolYear: form.schoolYear || '',
+    className: form.className || '',
+    fromRecommend: !!form.fromRecommend,
+    updatedAt: Date.now()
+  }
+}
+
+function saveHomeFormDraft(payload) {
+  const next = normalizeHomeFormDraft(payload)
+  wx.setStorageSync(HOME_FORM_DRAFT_KEY, next)
+  return next
+}
+
+function getHomeFormDraft() {
+  return wx.getStorageSync(HOME_FORM_DRAFT_KEY) || null
 }
 
 function buildGroupKey(item) {
@@ -502,12 +566,16 @@ module.exports = {
   savePendingRecommendPayload,
   getPendingRecommendPayload,
   clearPendingRecommendPayload,
+  saveHomeFormDraft,
+  getHomeFormDraft,
   savePendingExploreSubject,
   consumePendingExploreSubject,
   savePendingExploreFilters,
   consumePendingExploreFilters,
   getReportHistory,
   saveReportHistory,
+  savePendingReportPayload,
+  getPendingReportPayload,
   toggleFavoriteProgramGroup,
   getFavoriteProgramGroups,
   addApplicationPlanItem,

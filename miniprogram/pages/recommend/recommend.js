@@ -1,5 +1,6 @@
 const { request } = require('../../utils/request')
 const { getVIPEntryVisibility } = require('../../utils/vip-entry')
+const { shouldRequireShareGate, markShareGateUnlocked, createShareGateToken } = require('../../utils/share-gate')
 const {
   saveRecommendHistory,
   getPendingRecommendPayload,
@@ -80,7 +81,22 @@ function hasKeys(obj) {
   return !!obj && Object.keys(obj).length > 0
 }
 
+function buildRecentRankText(item) {
+  var parts = []
+  if (item.rank_last_year) {
+    parts.push(`去年 ${item.rank_last_year}`)
+  }
+  if (item.rank_two_years_ago) {
+    parts.push(`前年 ${item.rank_two_years_ago}`)
+  }
+  if (item.rank_three_years_ago) {
+    parts.push(`三年前 ${item.rank_three_years_ago}`)
+  }
+  return parts.join(' / ')
+}
+
 function cloneItem(item) {
+  var probability = item.probability || 0
   return {
     college_id: item.college_id || 0,
     college_name: item.college_name || '',
@@ -98,13 +114,20 @@ function cloneItem(item) {
     min_score: item.min_score || 0,
     min_rank: item.min_rank || 0,
     avg_score: item.avg_score || 0,
-    probability: item.probability || 0,
+    rank_last_year: item.rank_last_year || 0,
+    rank_two_years_ago: item.rank_two_years_ago || 0,
+    rank_three_years_ago: item.rank_three_years_ago || 0,
+    weighted_rank: item.weighted_rank || 0,
+    probability: probability,
+    probabilityLabel: item.probability_label || '',
     tag: item.tag || '',
     target_hit: item.target_hit || 0,
     itemKey: [item.college_id || 0, item.group_code || '', item.batch || '', item.subject_requirement || '', item.min_rank || 0].join('::'),
-    probabilityText: Math.round((item.probability || 0) * 100) + '%',
+    probabilityText: Math.round(probability * 100) + '%',
     groupLabel: ((item.group_code || '') + ' ' + (item.group_name || '')).trim(),
     majorPreview: item.matched_major || item.major || '未提供组内专业',
+    recentRankText: buildRecentRankText(item),
+    weightedRankText: item.weighted_rank ? `加权参考位次 ${item.weighted_rank}` : '',
     planText: (item.plan_count || 0) + '人 / ' + (item.major_count || 0) + '专业',
     favoriteActive: false,
     favoriteClass: '',
@@ -240,6 +263,86 @@ function getTopItem(list) {
   return items.length ? items[0] : null
 }
 
+function buildTargetMajorKeywords(text) {
+  var value = String(text || '').trim()
+  if (!value) {
+    return []
+  }
+  var normalized = value
+    .replace(/[，、；;|/（）()]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+  var parts = normalized ? normalized.split(' ') : []
+  var seen = {}
+  var result = []
+
+  function pushKeyword(keyword) {
+    var next = String(keyword || '').trim()
+    if (!next || seen[next]) {
+      return
+    }
+    seen[next] = true
+    result.push(next)
+  }
+
+  for (var i = 0; i < parts.length; i += 1) {
+    var part = parts[i]
+    pushKeyword(part)
+    var suffixes = ['专业', '类', '方向']
+    for (var j = 0; j < suffixes.length; j += 1) {
+      if (part.length > suffixes[j].length && part.indexOf(suffixes[j], part.length - suffixes[j].length) >= 0) {
+        pushKeyword(part.slice(0, part.length - suffixes[j].length))
+      }
+    }
+  }
+
+  if (!result.length) {
+    pushKeyword(value)
+  }
+  return result
+}
+
+function getMajorRelationScore(item, targetMajor) {
+  if (!item) {
+    return 0
+  }
+  var score = (item.matched_major ? 100 : 0) + (item.target_hit ? 40 : 0)
+  var keywords = buildTargetMajorKeywords(targetMajor)
+  if (!keywords.length) {
+    return score
+  }
+  var text = `${item.majorPreview || ''}\n${item.major || ''}`
+  for (var i = 0; i < keywords.length; i += 1) {
+    if (text.indexOf(keywords[i]) >= 0) {
+      score += Math.max(12, keywords[i].length * 4)
+    }
+  }
+  return score
+}
+
+function getMajorCandidates(student, result) {
+  var source = mergeUniqueItems(result)
+  var targetMajor = student && student.targetMajor ? student.targetMajor : ''
+  var candidates = []
+  for (var i = 0; i < source.length; i += 1) {
+    var item = source[i]
+    var relationScore = getMajorRelationScore(item, targetMajor)
+    if (relationScore > 0) {
+      item.majorRelationScore = relationScore
+      candidates.push(item)
+    }
+  }
+  return candidates.sort(function(a, b) {
+    if ((b.majorRelationScore || 0) !== (a.majorRelationScore || 0)) {
+      return (b.majorRelationScore || 0) - (a.majorRelationScore || 0)
+    }
+    if ((b.probability || 0) !== (a.probability || 0)) {
+      return (b.probability || 0) - (a.probability || 0)
+    }
+    return (a.min_rank || 0) - (b.min_rank || 0)
+  })
+}
+
 function buildStrategyCards(student, result) {
   var chongTop = getTopItem(result.chong)
   var wenTop = getTopItem(result.wen)
@@ -251,27 +354,40 @@ function buildStrategyCards(student, result) {
       majorMatches.push(source[i])
     }
   }
+  var majorCandidates = getMajorCandidates(student, result)
+  var majorFocusItem = majorMatches[0] || majorCandidates[0] || wenTop || chongTop || baoTop || null
+  var majorFocusText = '当前没有可优先排查的专业组，建议先补充意向专业。'
+  var majorNoteText = `当前命中意向专业/相近方向 ${majorMatches.length} 组。`
+  if (majorMatches.length) {
+    majorFocusText = `${majorMatches[0].college_name} ${majorMatches[0].majorPreview}`
+  } else if (majorCandidates.length) {
+    majorFocusText = `先排查 ${majorCandidates[0].college_name} ${majorCandidates[0].majorPreview}`
+    majorNoteText = `当前严格命中 0 组，按专业名称接近度补出 ${majorCandidates.length} 组。`
+  } else if (majorFocusItem) {
+    majorFocusText = `先核查 ${majorFocusItem.college_name} ${majorFocusItem.majorPreview}`
+    majorNoteText = '当前没有直接命中专业，先从当前结果里逐组核查组内专业。'
+  }
   return [
     {
       key: 'balanced',
       title: '稳妥优先',
-      desc: '先把主力志愿落在稳妥组，再用少量冲刺组抬上限。',
-      focus: wenTop ? `${wenTop.college_name} ${wenTop.groupLabel}` : '优先从稳妥组前 3 所开始排表',
-      note: '适合希望先保结果、再看层次提升的考生。'
+      desc: '先把大部分志愿放在录取把握更高的学校，再留少量位置冲更好的层次。',
+      focus: wenTop ? `${wenTop.college_name} ${wenTop.groupLabel}` : '先从稳妥组前 3 所里定主力志愿',
+      note: '适合家长希望先稳住录取结果、再少量冲高的填法。'
     },
     {
       key: 'major',
       title: '专业优先',
-      desc: '优先审查命中意向专业或相近方向的专业组，再决定是否接受组内调剂。',
-      focus: majorMatches.length ? `${majorMatches[0].college_name} ${majorMatches[0].majorPreview}` : '当前推荐里没有明显命中专业，需要扩大相近方向搜索',
-      note: `当前命中意向专业/相近方向 ${majorMatches.length} 组。`
+      desc: '先确认学校组里有没有目标专业或相近方向，再决定是否接受调剂。',
+      focus: majorFocusText,
+      note: majorNoteText
     },
     {
       key: 'tier',
       title: '冲层次优先',
-      desc: '把冲刺组当成抬学校层次的窗口，但要留出足够稳妥和保底仓位。',
-      focus: chongTop ? `${chongTop.college_name} ${chongTop.groupLabel}` : '当前冲刺组较少，建议先稳住志愿梯度',
-      note: baoTop ? `保底兜底建议至少保留 ${baoTop.college_name} 这一类选择。` : '保底组仍需补足。'
+      desc: '把冲刺组当成提升学校层次的机会，但不要让整张表都偏冒险。',
+      focus: chongTop ? `${chongTop.college_name} ${chongTop.groupLabel}` : '当前冲刺组较少，建议先把主力和保底补齐',
+      note: baoTop ? `家长沟通时，建议至少保留 ${baoTop.college_name} 这一类能兜住结果的学校。` : '保底组仍需补足。'
     }
   ]
 }
@@ -363,9 +479,9 @@ function createLensSection(config, items, favoriteMap) {
 
 function buildSchoolLensSections(result, favoriteMap) {
   var configs = [
-    { key: 'school-chong', title: '可冲学校层次', subtitle: '优先看有机会抬层次的学校和专业组。', expanded: true, items: result.chong || [] },
-    { key: 'school-wen', title: '主力学校池', subtitle: '作为主力填报区间，兼顾把握和学校层次。', expanded: true, items: result.wen || [] },
-    { key: 'school-bao', title: '保底录取池', subtitle: '兜住录取结果，避免整张表整体过冲。', expanded: false, items: result.bao || [] }
+    { key: 'school-chong', title: '可少量冲高', subtitle: '这部分学校层次更高，但要控制数量，只放在志愿前段少量尝试。', expanded: true, items: result.chong || [] },
+    { key: 'school-wen', title: '主力稳妥区', subtitle: '这部分最适合承担主力志愿，兼顾录取把握和学校层次。', expanded: true, items: result.wen || [] },
+    { key: 'school-bao', title: '安心保底区', subtitle: '这部分主要负责兜录取结果，避免整张表整体过冲。', expanded: false, items: result.bao || [] }
   ]
   var sections = []
   for (var i = 0; i < configs.length; i += 1) {
@@ -450,8 +566,8 @@ function buildLensComparisonRows(sections) {
       city: item.city || item.province || '城市待补充',
       groupLabel: item.groupLabel,
       majorPreview: item.majorPreview,
-      probabilityText: item.probabilityText,
-      rankText: item.min_rank ? `最低位次 ${item.min_rank}` : '最低位次待补充'
+      probabilityText: item.probabilityLabel || `录取概率 ${item.probabilityText}`,
+      rankText: item.weighted_rank ? `近3年加权位次 ${item.weighted_rank}` : item.min_rank ? `最低位次 ${item.min_rank}` : '最低位次待补充'
     })
   }
   return rows
@@ -476,15 +592,15 @@ function buildLensDecisionSteps(activeLens, student, sections) {
     ]
   }
   return [
-    { title: '先定学校梯度', desc: sections.length > 1 && sections[1].itemCount ? `先从“${sections[1].title}”里挑主力学校，稳住录取把握。` : '先从主力学校池里定好稳妥学校。' },
-    { title: '再保专业不跑偏', desc: `围绕 ${majorText} 逐一核查组内专业，避免学校合适但专业读偏。` },
-    { title: '最后留足保底', desc: '保底池至少保留 2-3 个接受度高的学校，避免整张表过冲。' },
-    { title: '统一家庭决策口径', desc: '先把保学校、保专业、保城市的排序讲清楚，再排正式志愿表。' }
+    { title: '先定主力稳妥区', desc: sections.length > 1 && sections[1].itemCount ? `先从“${sections[1].title}”里挑 4-6 个主力学校，稳住录取结果。` : '先从主力稳妥区里定好核心学校。' },
+    { title: '再看专业会不会跑偏', desc: `围绕 ${majorText} 逐一核查组内专业，避免学校合适但专业方向偏掉。` },
+    { title: '最后留足安心保底', desc: '保底区至少保留 2-3 个家庭也能接受的学校，不要把全部希望都压在冲刺上。' },
+    { title: '统一家庭排序', desc: '家长和考生先说清楚，到底是先保学校、先保专业，还是先保城市，再排正式志愿。' }
   ]
 }
 
 function buildLensFamilySummary(student, activeLens, sections) {
-  var focusText = activeLens === 'major' ? '当前这版方案优先保专业。' : activeLens === 'city' ? '当前这版方案优先保城市。' : '当前这版方案优先保学校层次和录取结果。'
+  var focusText = activeLens === 'major' ? '当前这版方案优先保专业。' : activeLens === 'city' ? '当前这版方案优先保城市。' : '当前这版方案优先稳住学校层次和录取结果。'
   var top = sections.length ? getTopItem(sections[0].items) : null
   var archiveText = [student.schoolName, student.schoolYear, student.className].filter(Boolean).join(' / ')
   var lines = [
@@ -499,7 +615,10 @@ function buildLensFamilySummary(student, activeLens, sections) {
     lines.splice(archiveText ? 2 : 1, 0, '当前考生已标记为通过推荐链路进入。')
   }
   if (top) {
-    lines.push(`当前优先讨论的专业组：${top.college_name}${top.city ? '（' + top.city + '）' : ''} ${top.groupLabel}。`)
+    lines.push(`当前优先讨论的专业组：${top.college_name}${top.city ? '（' + top.city + '）' : ''} ${top.groupLabel}，${top.probabilityLabel || ('录取概率约 ' + top.probabilityText)}。`)
+    if (top.weightedRankText) {
+      lines.push(`${top.weightedRankText}，近 3 年参考：${top.recentRankText || '暂无完整历史位次'}。`)
+    }
   }
   return lines.join('\n')
 }
@@ -508,6 +627,9 @@ Page({
   data: {
     loading: false,
     loadError: '',
+    shareGateReady: false,
+    shareUnlocked: false,
+    shareUnlockPending: false,
     analyzingText: ANALYZE_IDLE_TEXT,
     analyzeButtonText: '生成黑龙江 AI 报考报告',
     student: {},
@@ -537,6 +659,7 @@ Page({
   onLoad(query) {
     enableShareMenus()
     this.syncVIPEntryVisibility(true)
+    wx.setNavigationBarTitle({ title: '黑龙江专业组方案' })
     var safeQuery = query || {}
     this.bindEventChannelPayload()
     try {
@@ -555,6 +678,14 @@ Page({
         topSummary: []
       })
     }
+    shouldRequireShareGate('recommendResult', true, safeQuery.shareToken || '').then((required) => {
+      if (required) {
+        this.setData({ shareGateReady: true })
+        wx.setNavigationBarTitle({ title: '分享后查看智能推荐结果' })
+        return
+      }
+      this.unlockRecommendResult()
+    })
   },
 
   onShow() {
@@ -578,6 +709,19 @@ Page({
     this.stopAnalyzePolling()
   },
 
+  requestShareUnlock() {
+    this.setData({ shareUnlockPending: true })
+  },
+
+  unlockRecommendResult() {
+    if (this.data.shareUnlocked) {
+      this.setData({ shareGateReady: true })
+      return
+    }
+    this.setData({ shareUnlocked: true, shareUnlockPending: false, shareGateReady: true })
+    wx.setNavigationBarTitle({ title: '黑龙江专业组方案' })
+  },
+
   syncVIPEntryVisibility(forceRefresh) {
   return getVIPEntryVisibility(forceRefresh).then((showVipEntry) => {
 		if (this.data.showVipEntry !== showVipEntry) {
@@ -588,9 +732,9 @@ Page({
 
   buildSummary(result) {
     return [
-      { label: '冲刺组', value: (result.chong || []).length, type: 'chong' },
-      { label: '稳妥组', value: (result.wen || []).length, type: 'wen' },
-      { label: '保底组', value: (result.bao || []).length, type: 'bao' }
+      { label: '可少量冲高', value: (result.chong || []).length, type: 'chong' },
+      { label: '主力稳妥区', value: (result.wen || []).length, type: 'wen' },
+      { label: '安心保底区', value: (result.bao || []).length, type: 'bao' }
     ]
   },
 
@@ -605,9 +749,9 @@ Page({
     }
 
     return [
-      { label: '优先看冲刺', text: makeText(result.chong) },
-      { label: '主力填报', text: makeText(result.wen) },
-      { label: '保底兜底', text: makeText(result.bao) }
+      { label: '可少量冲高', text: makeText(result.chong) },
+      { label: '主力稳妥', text: makeText(result.wen) },
+      { label: '安心保底', text: makeText(result.bao) }
     ]
   },
 
@@ -991,18 +1135,31 @@ Page({
 
   onShareAppMessage() {
     var student = this.data.student || {}
+    var self = this
+    var shareToken = createShareGateToken('recommendResult')
     return {
       title: buildRecommendShareTitle(student),
-      path: '/pages/index/index?' + buildRecommendShareQuery(student),
-      imageUrl: ''
+      path: '/pages/recommend/recommend?shareToken=' + encodeURIComponent(shareToken),
+      imageUrl: '',
+      success() {
+        if (self.data.shareUnlockPending && !self.data.shareUnlocked) {
+          markShareGateUnlocked('recommendResult')
+          self.unlockRecommendResult()
+        }
+      },
+      fail() {
+        if (self.data.shareUnlockPending && !self.data.shareUnlocked) {
+          self.setData({ shareUnlockPending: false })
+        }
+      }
     }
   },
 
   onShareTimeline() {
-    var student = this.data.student || {}
+    var shareToken = createShareGateToken('recommendResult')
     return {
-      title: buildRecommendShareTitle(student),
-      query: buildRecommendShareQuery(student),
+      title: '黑龙江高报助手：查看智能推荐结果',
+      query: 'shareToken=' + encodeURIComponent(shareToken),
       imageUrl: ''
     }
   }

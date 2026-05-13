@@ -22,7 +22,7 @@ func NewRecommendService(repo *repository.CollegeRepository, cache *ResultCache)
 }
 
 func (s *RecommendService) Recommend(ctx context.Context, req model.RecommendRequest) (model.RecommendResponse, error) {
-	cacheKey := fmt.Sprintf("recommend:%s:%d:%d:%s:%d:%s", strings.TrimSpace(req.Province), req.Score, req.Rank, strings.TrimSpace(req.Subject), req.Year, strings.TrimSpace(req.TargetMajor))
+	cacheKey := fmt.Sprintf("recommend:v3:%s:%d:%d:%s:%d:%s", strings.TrimSpace(req.Province), req.Score, req.Rank, strings.TrimSpace(req.Subject), req.Year, strings.TrimSpace(req.TargetMajor))
 	return rememberJSON(ctx, s.cache, cacheKey, func() (model.RecommendResponse, error) {
 		logging.LogEvent("recommend_start", map[string]any{"province": req.Province, "subject": req.Subject, "year": req.Year, "score": req.Score, "rank": req.Rank, "targetMajor": req.TargetMajor})
 		if req.Province == "" {
@@ -31,7 +31,7 @@ func (s *RecommendService) Recommend(ctx context.Context, req model.RecommendReq
 		if req.Year == 0 {
 			req.Year = 2025
 		}
-		items, err := s.repo.ListAdmissionLines(ctx, req.Province, req.Subject, req.Year, req.TargetMajor, 1000)
+		items, err := s.repo.ListAdmissionLines(ctx, req.Province, req.Subject, req.Year, req.TargetMajor, req.Rank, 1000)
 		if err != nil {
 			return model.RecommendResponse{}, err
 		}
@@ -40,18 +40,23 @@ func (s *RecommendService) Recommend(ctx context.Context, req model.RecommendReq
 		wen := make([]model.RecommendItem, 0)
 		bao := make([]model.RecommendItem, 0)
 		bands := buildRecommendBands(req.Rank)
-		logging.LogEvent("recommend_bands", map[string]any{"rank": req.Rank, "chongLower": bands.ChongLower, "wenUpper": bands.WenUpper, "baoUpper": bands.BaoUpper, "candidateCount": len(items)})
+		logging.LogEvent("recommend_bands", map[string]any{"rank": req.Rank, "chongLowerRatio": bands.ChongLowerRatio, "wenLowerRatio": bands.WenLowerRatio, "wenUpperRatio": bands.WenUpperRatio, "baoUpperRatio": bands.BaoUpperRatio, "candidateCount": len(items)})
 
 		for _, item := range items {
 			if item.MinRank == 0 {
 				continue
 			}
-			diff := item.MinRank - req.Rank
-			tag, ok := classifyByRankDiff(diff, bands)
+			benchmarkRank := buildBenchmarkRank(item)
+			if benchmarkRank == 0 {
+				continue
+			}
+			diff := benchmarkRank - req.Rank
+			tag, ok := classifyByRankDiff(diff, benchmarkRank, bands)
 			if !ok {
 				continue
 			}
-			item.Probability = estimateProbability(diff)
+			item.Probability = estimateProbability(item, diff)
+			item.ProbabilityLabel = buildProbabilityLabel(item.Probability)
 			item.RecommendationReason = buildReason(req, item, diff)
 
 			switch tag {
@@ -68,67 +73,107 @@ func (s *RecommendService) Recommend(ctx context.Context, req model.RecommendReq
 		}
 
 		sort.Slice(chong, func(i, j int) bool {
-			return absRankDiff(chong[i].MinRank, req.Rank) < absRankDiff(chong[j].MinRank, req.Rank)
+			return compareBucketItems(chong[i], chong[j], req.Rank, "chong")
 		})
 		sort.Slice(wen, func(i, j int) bool {
-			return absRankDiff(wen[i].MinRank, req.Rank) < absRankDiff(wen[j].MinRank, req.Rank)
+			return compareBucketItems(wen[i], wen[j], req.Rank, "wen")
 		})
 		sort.Slice(bao, func(i, j int) bool {
-			return absRankDiff(bao[i].MinRank, req.Rank) < absRankDiff(bao[j].MinRank, req.Rank)
+			return compareBucketItems(bao[i], bao[j], req.Rank, "bao")
 		})
 
 		return model.RecommendResponse{
 			Chong: trim(chong, 10),
 			Wen:   trim(wen, 20),
-			Bao:   trim(bao, 20),
+			Bao:   trim(bao, 10),
 		}, nil
 	})
 }
 
 func buildReason(req model.RecommendRequest, item model.RecommendItem, rankDiff int) string {
-	reason := item.RecommendationReason
-	if reason == "" {
-		reason = "按黑龙江专业组最低位次匹配"
+	parts := make([]string, 0, 4)
+	historyText := buildHistoryRankSummary(item)
+	if historyText != "" {
+		parts = append(parts, historyText)
+	}
+	if item.WeightedRank > 0 && req.Rank > 0 {
+		if rankDiff < 0 {
+			parts = append(parts, fmt.Sprintf("你当前位次 %d，略高于该组近年主流录取位次 %d，适合作为冲刺尝试。", req.Rank, item.WeightedRank))
+		} else if normalizedRankGap(item.WeightedRank, req.Rank) <= 0.08 {
+			parts = append(parts, fmt.Sprintf("你当前位次 %d，与该组近年主流录取位次 %d 接近，家长一般会把这类学校放进主力稳妥区。", req.Rank, item.WeightedRank))
+		} else {
+			parts = append(parts, fmt.Sprintf("你当前位次 %d，明显优于该组近年主流录取位次 %d，这类学校更适合承担保底职责。", req.Rank, item.WeightedRank))
+		}
 	}
 	if req.TargetMajor != "" && item.MatchedMajor != "" {
-		reason += "；命中意向专业：" + item.MatchedMajor
+		parts = append(parts, "该组已直接命中你的意向专业："+item.MatchedMajor+"。")
+	} else if req.TargetMajor != "" {
+		parts = append(parts, "学校层次可以参考，但正式填报前还要逐一核查组内专业是否覆盖你的意向方向。")
 	}
-	if rankDiff < 0 {
-		reason += "；当前定位偏冲刺"
-	} else if rankDiff <= buildRecommendBands(req.Rank).WenUpper {
-		reason += "；当前定位偏稳妥"
-	} else {
-		reason += "；当前定位偏保底"
-	}
-	return reason
+	parts = append(parts, "综合判断："+item.ProbabilityLabel+"。")
+	return strings.Join(parts, "")
 }
 
 type recommendBands struct {
-	ChongLower int
-	WenUpper   int
-	BaoUpper   int
+	ChongLowerRatio float64
+	WenLowerRatio   float64
+	WenUpperRatio   float64
+	BaoUpperRatio   float64
+	ChongLowerAbs   int
 }
 
 func buildRecommendBands(rank int) recommendBands {
-	base := int(math.Max(800, math.Min(5000, float64(rank)*0.12)))
-	wenUpper := int(math.Max(1200, math.Min(8000, float64(rank)*0.18)))
-	baoUpper := int(math.Max(2500, math.Min(15000, float64(rank)*0.35)))
+	chongLowerAbs := int(math.Max(800, math.Min(6000, float64(rank)*0.18)))
 	return recommendBands{
-		ChongLower: -base,
-		WenUpper:   wenUpper,
-		BaoUpper:   baoUpper,
+		ChongLowerRatio: -0.18,
+		WenLowerRatio:   -0.05,
+		WenUpperRatio:   0.08,
+		BaoUpperRatio:   0.30,
+		ChongLowerAbs:   chongLowerAbs,
 	}
 }
 
-func classifyByRankDiff(rankDiff int, bands recommendBands) (string, bool) {
+func normalizedRankGap(minRank, userRank int) float64 {
+	if minRank <= 0 || userRank <= 0 {
+		return 0
+	}
+	return float64(minRank-userRank) / float64(minRank)
+}
+
+func buildBenchmarkRank(item model.RecommendItem) int {
+	ranks := []struct {
+		value  int
+		weight float64
+	}{
+		{value: item.RankLastYear, weight: 0.5},
+		{value: item.RankTwoYearsAgo, weight: 0.3},
+		{value: item.RankThreeYearsAgo, weight: 0.2},
+	}
+	var total float64
+	var weighted float64
+	for _, rank := range ranks {
+		if rank.value <= 0 {
+			continue
+		}
+		total += rank.weight
+		weighted += float64(rank.value) * rank.weight
+	}
+	if total > 0 {
+		return int(math.Round(weighted / total))
+	}
+	return item.MinRank
+}
+
+func classifyByRankDiff(rankDiff int, minRank int, bands recommendBands) (string, bool) {
+	ratio := normalizedRankGap(minRank, minRank-rankDiff)
 	switch {
-	case rankDiff < bands.ChongLower:
+	case ratio < bands.ChongLowerRatio && rankDiff < -bands.ChongLowerAbs:
 		return "", false
-	case rankDiff < 0:
+	case ratio < bands.WenLowerRatio:
 		return "chong", true
-	case rankDiff <= bands.WenUpper:
+	case ratio <= bands.WenUpperRatio:
 		return "wen", true
-	case rankDiff <= bands.BaoUpper:
+	case ratio <= bands.BaoUpperRatio:
 		return "bao", true
 	default:
 		return "", false
@@ -150,17 +195,99 @@ func trim(items []model.RecommendItem, size int) []model.RecommendItem {
 	return items[:size]
 }
 
-func estimateProbability(rankDiff int) float64 {
-	switch {
-	case rankDiff > 5000:
-		return 0.90
-	case rankDiff > 2000:
-		return 0.70
-	case rankDiff >= 0:
-		return 0.50
-	case rankDiff >= -1000:
-		return 0.35
+func bucketTargetGap(bucket string) float64 {
+	switch bucket {
+	case "chong":
+		return -0.08
+	case "bao":
+		return 0.16
 	default:
-		return 0.30
+		return 0.02
 	}
+}
+
+func compareBucketItems(left, right model.RecommendItem, userRank int, bucket string) bool {
+	leftFit := math.Abs(normalizedRankGap(buildBenchmarkRank(left), userRank) - bucketTargetGap(bucket))
+	rightFit := math.Abs(normalizedRankGap(buildBenchmarkRank(right), userRank) - bucketTargetGap(bucket))
+	if leftFit != rightFit {
+		return leftFit < rightFit
+	}
+	if left.Probability != right.Probability {
+		return left.Probability > right.Probability
+	}
+	if (left.MatchedMajor != "") != (right.MatchedMajor != "") {
+		return left.MatchedMajor != ""
+	}
+	if left.PlanCount != right.PlanCount {
+		return left.PlanCount > right.PlanCount
+	}
+	return absRankDiff(left.MinRank, userRank) < absRankDiff(right.MinRank, userRank)
+}
+
+func estimateProbability(item model.RecommendItem, rankDiff int) float64 {
+	benchmarkRank := buildBenchmarkRank(item)
+	ratio := normalizedRankGap(benchmarkRank, benchmarkRank-rankDiff)
+	probability := 0.5
+	switch {
+	case ratio >= 0.20:
+		probability = 0.92
+	case ratio >= 0.12:
+		probability = 0.85
+	case ratio >= 0.05:
+		probability = 0.76
+	case ratio >= -0.02:
+		probability = 0.64
+	case ratio >= -0.08:
+		probability = 0.48
+	case ratio >= -0.15:
+		probability = 0.34
+	default:
+		probability = 0.22
+	}
+	if item.MatchedMajor != "" {
+		probability += 0.03
+	}
+	if item.RankLastYear > 0 && item.RankTwoYearsAgo > 0 && item.RankThreeYearsAgo > 0 {
+		probability += 0.02
+	}
+	if item.PlanCount >= 5 {
+		probability += 0.02
+	}
+	if item.MajorCount <= 1 {
+		probability -= 0.02
+	}
+	return math.Max(0.05, math.Min(0.97, probability))
+}
+
+func buildProbabilityLabel(probability float64) string {
+	switch {
+	case probability >= 0.85:
+		return "保底把握较高，适合承担兜底角色"
+	case probability >= 0.68:
+		return "稳妥把握较强，适合作为主力志愿"
+	case probability >= 0.45:
+		return "有一定机会录取，适合作为冲稳之间的过渡"
+	default:
+		return "冲刺性质更强，建议少量放在前面尝试"
+	}
+}
+
+func buildHistoryRankSummary(item model.RecommendItem) string {
+	parts := make([]string, 0, 4)
+	if item.RankLastYear > 0 {
+		parts = append(parts, fmt.Sprintf("去年 %d", item.RankLastYear))
+	}
+	if item.RankTwoYearsAgo > 0 {
+		parts = append(parts, fmt.Sprintf("前年 %d", item.RankTwoYearsAgo))
+	}
+	if item.RankThreeYearsAgo > 0 {
+		parts = append(parts, fmt.Sprintf("三年前 %d", item.RankThreeYearsAgo))
+	}
+	if len(parts) == 0 {
+		return ""
+	}
+	if item.WeightedRank > 0 {
+		return fmt.Sprintf("该专业组近 3 年最低位次分别为%s，加权后参考位次约 %d。", strings.Join(parts, "、"), item.WeightedRank)
+	}
+	return fmt.Sprintf("该专业组近 3 年最低位次分别为%s。", strings.Join(parts, "、"))
 }

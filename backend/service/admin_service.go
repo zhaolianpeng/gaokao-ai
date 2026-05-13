@@ -36,6 +36,10 @@ func (s *AdminService) ShouldShowVIPEntry(ctx context.Context) (bool, error) {
 	return s.repo.ShouldShowVIPEntry(ctx)
 }
 
+func (s *AdminService) ShareGateConfig(ctx context.Context) (*model.ShareGateConfigResponse, error) {
+	return s.repo.GetShareGateConfig(ctx)
+}
+
 func (s *AdminService) Login(ctx context.Context, username, password string) (string, *model.AdminUser, error) {
 	user, err := s.repo.GetAdminUserAuthByUsername(ctx, strings.TrimSpace(username))
 	if err != nil {
