@@ -1,23 +1,23 @@
 <view class="container about-page">
   <view class="card about-hero">
     <view class="section-title">关于我们</view>
-    <view class="about-sub">这里集中说明产品定位、适用人群、联系方式，以及当前后端与网络诊断设置。</view>
+    <view class="about-sub">这里集中说明这款工具能帮你解决什么问题、适合哪些人使用，以及遇到问题时怎么联系和处理。</view>
   </view>
 
   <view class="card about-card">
     <view class="section-title section-title-small">协议与隐私</view>
-    <view class="about-copy">在使用手机号快捷登录、头像上传、资料保存等功能前，我们会明确告知收集信息的目的、方式和用途，并在你授权同意后才开始收集。</view>
+    <view class="about-copy">在使用登录、头像、资料保存等功能前，我们会先说明收集信息的目的、方式和用途，并在你明确同意后才开始处理相关信息。</view>
     <view class="about-field-card">
       <view class="about-label">当前授权状态</view>
       <view class="about-static-value">{{privacyConsentAgreed ? '已同意《用户服务协议》和《隐私政策》' : '未同意，系统不会采集登录、头像和档案信息'}}</view>
-      <button class="ghost-btn about-ghost-btn" bindtap="openServiceAgreement">查看《用户服务协议》</button>
-      <button class="ghost-btn about-ghost-btn" bindtap="openPrivacyPolicy">查看《隐私政策》</button>
-      <button class="primary-btn about-ghost-btn" wx:if="{{!privacyConsentAgreed}}" bindtap="agreePolicies">我已阅读并同意</button>
+      <button class="ghost-btn about-ghost-btn" bindtap="openServiceAgreement">先看服务说明</button>
+      <button class="ghost-btn about-ghost-btn" bindtap="openPrivacyPolicy">再看隐私说明</button>
+      <button class="primary-btn about-ghost-btn" wx:if="{{!privacyConsentAgreed}}" bindtap="agreePolicies">确认我已阅读</button>
     </view>
   </view>
 
   <view class="card about-card">
-    <view class="section-title section-title-small">产品定位</view>
+    <view class="section-title section-title-small">这款工具想帮你什么</view>
     <block wx:for="{{positioning}}" wx:key="title">
       <view class="about-item">
         <view class="about-item-title">{{item.title}}</view>
@@ -39,8 +39,8 @@
   </view>
 
   <view class="card about-card">
-    <view class="section-title section-title-small">这版重点做什么</view>
-    <view class="about-copy">围绕竞品最强势的几个点，这版优先做透明推荐、分层 AI 和适合家长共看的输出方式。</view>
+    <view class="section-title section-title-small">你能直接感受到的特点</view>
+    <view class="about-copy">我们更重视结果能不能看懂、能不能拿去和家长讨论、能不能直接辅助排表，而不是只给一个难理解的结论。</view>
     <block wx:for="{{differentiators}}" wx:key="title">
       <view class="about-item">
         <view class="row-between about-item-top">
@@ -53,8 +53,8 @@
   </view>
 
   <view class="card about-card">
-    <view class="section-title section-title-small">AI 响应策略</view>
-    <view class="about-copy">不把所有动作都塞进大模型。先快查，再快推，最后再做深度分析。</view>
+    <view class="section-title section-title-small">你会怎么使用它</view>
+    <view class="about-copy">不是一上来就看复杂分析，而是先查基础数据，再看 5 层推荐，最后按需要补充深度分析。</view>
     <view class="about-grid">
       <block wx:for="{{aiExperienceModes}}" wx:key="title">
         <view class="about-mode about-mode-{{item.tone}}">
@@ -66,41 +66,66 @@
   </view>
 
   <view class="card about-card">
-    <view class="section-title section-title-small">反馈与联系</view>
-    <view class="about-copy">把问题、建议或你希望新增的能力直接提交到后端，我们会按反馈内容继续迭代。</view>
+    <view class="section-title section-title-small">小程序怎么用最省时间</view>
+    <view class="about-copy">如果你是第一次使用，建议按下面这个顺序走，最容易看懂，也最适合和家长一起讨论。</view>
+    <block wx:for="{{usageGuide}}" wx:key="title">
+      <view class="about-item">
+        <view class="about-item-title">{{index + 1}}. {{item.title}}</view>
+        <view class="about-copy about-item-desc">{{item.desc}}</view>
+      </view>
+    </block>
+  </view>
+
+  <view class="card about-card">
+    <view class="section-title section-title-small">研发与技术背景</view>
+    <view class="about-copy">我们更重视数据链路、推荐解释和高峰期可用性，目标不是把话说复杂，而是把结果做扎实、做清楚。</view>
+    <block wx:for="{{techBackground}}" wx:key="title">
+      <view class="about-item">
+        <view class="row-between about-item-top">
+          <view class="about-item-title">{{item.title}}</view>
+          <view class="about-badge">{{item.badge}}</view>
+        </view>
+        <view class="about-copy about-item-desc">{{item.desc}}</view>
+      </view>
+    </block>
+  </view>
+
+  <view class="card about-card">
+    <view class="section-title section-title-small">问题反馈</view>
+    <view class="about-copy">如果你在使用里遇到问题，或者希望我们补充新的能力，可以直接在这里提交，我们会按反馈继续优化。</view>
     <view class="about-field-card">
       <view class="about-label">提交反馈</view>
-      <textarea class="textarea about-feedback-textarea" placeholder="例如：首页希望把批次线和位次做成更明显的双卡布局，或某个接口在真机上报错。" value="{{feedbackContent}}" bindinput="onFeedbackInput"></textarea>
-      <button class="primary-btn" loading="{{feedbackSubmitting}}" bindtap="submitFeedback">提交到后端</button>
+      <textarea class="textarea about-feedback-textarea" placeholder="例如：推荐结果哪里看不懂、哪块文案需要更直白，或某个页面使用时出现异常。" value="{{feedbackContent}}" bindinput="onFeedbackInput"></textarea>
+      <button class="primary-btn" loading="{{feedbackSubmitting}}" bindtap="submitFeedback">告诉我们你的问题</button>
       <view class="about-copy" wx:if="{{feedbackSuccessMessage}}">{{feedbackSuccessMessage}}</view>
     </view>
   </view>
 
   <view class="card about-card">
-    <view class="section-title section-title-small">后端与网络诊断</view>
-    <view class="about-copy">这里统一管理当前后端地址、健康检查和最近一次网络诊断，便于真机调试。</view>
+    <view class="section-title section-title-small">连接与诊断</view>
+    <view class="about-copy">如果页面出现加载异常、网络报错或需要协助排查，可以在这里查看当前连接状态和最近一次诊断记录。</view>
     <view class="about-field-card">
-      <view class="about-label">当前后端地址</view>
+      <view class="about-label">当前服务地址</view>
       <view class="about-static-value about-static-value-break">{{backendBaseUrl}}</view>
     </view>
     <view class="about-field-card">
-      <view class="about-label">切换后端地址</view>
+      <view class="about-label">切换服务地址</view>
       <input class="input login-input" placeholder="例如：https://api.succ.online" value="{{backendBaseUrlInput}}" bindinput="onBackendBaseUrlInput" />
-      <view class="about-copy">真机请求请优先使用已配置到微信合法域名的 HTTPS 域名，不要长期使用 IP 地址。</view>
+      <view class="about-copy">正常使用时建议保持默认地址。只有在排查网络问题时，才需要临时切换到其他地址。</view>
       <view class="about-preset-row">
         <button wx:for="{{backendPresets}}" wx:key="value" class="ghost-btn about-preset-btn" data-value="{{item.value}}" bindtap="useBackendPreset">{{item.label}}</button>
       </view>
-      <button class="primary-btn" bindtap="applyBackendBaseUrl">立即生效</button>
-      <button class="ghost-btn about-ghost-btn" bindtap="verifyBackendBaseUrl">检测 /healthz</button>
-      <button class="ghost-btn about-ghost-btn" bindtap="resetBackendBaseUrl">恢复推荐地址</button>
+      <button class="primary-btn" bindtap="applyBackendBaseUrl">切到这条线路</button>
+      <button class="ghost-btn about-ghost-btn" bindtap="verifyBackendBaseUrl">帮我检测连接</button>
+      <button class="ghost-btn about-ghost-btn" bindtap="resetBackendBaseUrl">恢复默认线路</button>
     </view>
     <view class="about-copy" wx:if="{{backendCheckMessage}}">{{backendCheckMessage}}</view>
     <view class="about-field-card">
       <view class="about-label">最近一次网络诊断</view>
       <view class="about-static-value about-static-value-break" wx:if="{{latestDiagnostic}}">{{latestDiagnostic.message}}</view>
-      <view class="about-copy" wx:if="{{!latestDiagnostic}}">当前还没有保存的网络错误记录。</view>
-      <button class="ghost-btn about-ghost-btn" bindtap="copyLatestDiagnostic" wx:if="{{latestDiagnostic}}">复制最近诊断</button>
-      <button class="ghost-btn about-ghost-btn" bindtap="openDiagnostics">打开完整网络诊断</button>
+      <view class="about-copy" wx:if="{{!latestDiagnostic}}">当前还没有保存的网络异常记录。</view>
+      <button class="ghost-btn about-ghost-btn" bindtap="copyLatestDiagnostic" wx:if="{{latestDiagnostic}}">复制这条排查信息</button>
+      <button class="ghost-btn about-ghost-btn" bindtap="openDiagnostics">查看完整排查记录</button>
       <button class="ghost-btn about-ghost-btn" bindtap="clearDiagnostics">清空诊断记录</button>
     </view>
   </view>

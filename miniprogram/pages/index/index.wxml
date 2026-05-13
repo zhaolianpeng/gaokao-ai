@@ -2,7 +2,7 @@
   <view class="hero">
     <view class="hero-badge">2026 数据看板版</view>
     <view class="hero-title">黑龙江高考志愿填报</view>
-    <view class="hero-sub">先看院校、专业组、招生计划、批次线和位次，再决定是否进入推荐和 AI 分析。</view>
+    <view class="hero-sub">先看院校、专业组、招生计划、批次线和位次，再决定怎么生成推荐方案、怎么和家长一起讨论。</view>
     <view class="hero-stat-row">
       <view class="hero-stat-item">
         <view class="hero-stat-value">{{dashboard.college_count}}</view>
@@ -17,10 +17,10 @@
         <view class="hero-stat-label">录取统计</view>
       </view>
     </view>
-    <view class="hero-note">覆盖黑龙江 2025-2022 批次线、一分一段与跨年录取数据。</view>
+    <view class="hero-note">覆盖黑龙江 2025-2022 批次线、一分一段与跨年录取数据，适合先判断梯度，再做方案。</view>
     <view class="hero-link-row">
       <view class="hero-link-btn" bindtap="openAboutPage">关于我们</view>
-      <button class="hero-link-btn hero-share-btn" open-type="share">转发小程序</button>
+      <button class="hero-link-btn hero-share-btn" open-type="share">转发给家长一起看</button>
     </view>
   </view>
 
@@ -71,9 +71,9 @@
       <view class="row-between">
         <view>
           <view class="section-title section-title-small">黑龙江批次线</view>
-          <view class="knowledge-sub">{{form.analysisYear}} 年 {{form.subject}} 常用批次线预览</view>
+          <view class="knowledge-sub">{{form.analysisYear}} 年 {{form.subject}} 常用批次线预览，先看自己大概在哪个层次。</view>
         </view>
-        <view class="link-btn" bindtap="openProvinceLinesPage">查看全部</view>
+        <view class="link-btn" bindtap="openProvinceLinesPage">看完整批次线</view>
       </view>
       <view class="tip" wx:if="{{lineLoading}}">加载中...</view>
       <view class="line-panel" wx:if="{{batchLineDashboard.length}}">
@@ -101,7 +101,7 @@
           <view class="section-title section-title-small">查分位次</view>
           <view class="knowledge-sub">填写分数或排名后，自动匹配 {{form.analysisYear}} 年 {{form.subject}} 一分一段并回填另一项</view>
         </view>
-        <view class="link-btn" bindtap="openScoreRankPage">进入查分页</view>
+        <view class="link-btn" bindtap="openScoreRankPage">去单独查位次</view>
       </view>
       <input class="input rank-quick-input" type="number" placeholder="先输入分数快速查位次" value="{{form.score}}" bindinput="onScoreInput" />
       <view class="tip" wx:if="{{rankLoading}}">查询中...</view>
@@ -170,9 +170,9 @@
   <view class="card layer-card">
     <view class="row-between knowledge-header">
       <view class="knowledge-copy">
-        <view class="section-title section-title-small">能力分层</view>
+        <view class="section-title section-title-small">服务说明</view>
       </view>
-      <view wx:if="{{showVipEntry}}" class="link-btn knowledge-link" bindtap="openVipPage">看 VIP</view>
+      <view wx:if="{{showVipEntry}}" class="link-btn knowledge-link" bindtap="openVipPage">看服务详情</view>
     </view>
     <block wx:for="{{serviceLayers}}" wx:key="label">
       <view class="layer-row">
@@ -189,9 +189,9 @@
     <view class="row-between knowledge-header">
       <view class="knowledge-copy">
         <view class="section-title section-title-small">报考资料库</view>
-        <view class="knowledge-sub">汇总黑龙江报考常用资料，涵盖提前批路径、特殊招生、政策机会和填报方法，方便你快速查看。</view>
+        <view class="knowledge-sub">汇总黑龙江报考常用资料，涵盖提前批路径、特殊招生、政策机会和填报方法，方便你和家长一起快速查看。</view>
       </view>
-      <view class="link-btn knowledge-link" bindtap="openMaterialsPage">去查看</view>
+      <view class="link-btn knowledge-link" bindtap="openMaterialsPage">去看资料</view>
     </view>
     <view class="knowledge-grid">
       <view class="knowledge-chip">提前批路径</view>
@@ -215,7 +215,7 @@
     <input class="input" placeholder="意向专业，如：计算机类" value="{{form.targetMajor}}" bindinput="onTargetMajorInput" />
     <textarea class="textarea" placeholder="补充偏好，例如：优先哈尔滨、尽量公办、接受组内调剂" value="{{form.notes}}" bindinput="onNotesInput"></textarea>
 
-    <button class="primary-btn" loading="{{loading}}" bindtap="onRecommend">生成黑龙江专业组方案</button>
+    <button class="primary-btn" loading="{{loading}}" bindtap="onRecommend">生成这份志愿方案</button>
   </view>
 
   <view class="card slim-card" wx:if="{{historyPreview.length}}">
@@ -224,7 +224,7 @@
       <view class="history-actions">
         <text class="history-count">收藏 {{favoriteCount}}</text>
         <text class="history-count">志愿表 {{applicationCount}}</text>
-        <view class="link-btn" bindtap="openHistoryPage">查看全部</view>
+        <view class="link-btn" bindtap="openHistoryPage">查看全部记录</view>
       </view>
     </view>
     <block wx:for="{{historyPreview}}" wx:key="id">

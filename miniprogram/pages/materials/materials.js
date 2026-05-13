@@ -30,7 +30,7 @@ Page({
       return
     }
     wx.navigateTo({
-      url: `/pages/material-detail/material-detail?id=${id}`
+      url: `/pages/material-detail/material-detail?id=${encodeURIComponent(String(id))}`
     })
   }
 })

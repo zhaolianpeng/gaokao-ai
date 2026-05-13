@@ -8,7 +8,7 @@
   <view class="hero">
     <view class="hero-badge">内置资料库</view>
     <view class="hero-title">报考资料</view>
-    <view class="hero-sub">把你整理的警校、军校、专项计划、综合评价和选校方法直接接进小程序，随时可查。</view>
+    <view class="hero-sub">把官方报考指南和实用整理资料放到同一个入口里，方便你和家长随时查、随时对照、随时讨论。</view>
   </view>
 
   <view class="card">

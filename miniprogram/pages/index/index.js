@@ -244,36 +244,36 @@ const HOME_DECISION_FLOW = [
     key: 'data',
     title: '先查数据',
     eta: '通常 1 秒内',
-    desc: '先把批次线、一分一段、院校库和专业组看清楚，再决定要不要进入推荐。'
+    desc: '先把批次线、一分一段、院校库和专业组看清楚，先知道自己大概处在哪个梯度。'
   },
   {
     key: 'recommend',
     title: '再出方案',
     eta: '通常 1-2 秒',
-    desc: '智能推荐先给出冲刺、较冲、稳妥、较保、保底 5 层梯度，方便你和家长快速比学校、比专业、比城市。'
+    desc: '智能推荐会先给出冲刺、较冲、稳妥、较保、保底 5 层梯度，方便你和家长快速比学校、比专业、比城市。'
   },
   {
     key: 'ai',
     title: '最后做 AI 深挖',
     eta: '通常 60-120 秒',
-    desc: '深度 AI 报告单独异步处理，适合做多轮讨论、风险解释和正式填报前复盘。'
+    desc: '深度 AI 报告单独异步处理，更适合多轮讨论、风险解释和正式填报前复盘。'
   }
 ]
 
 const HOME_SERVICE_LAYERS = [
   {
-    label: '免费先用',
+    label: '免费先看',
     badge: '零门槛',
     desc: '院校查询、专业组浏览、批次线、一分一段、5 层推荐、家长沟通摘要。'
   },
   {
     label: 'AI 深度分析',
     badge: '异步完成',
-    desc: '更适合需要解释推荐原因、比较多套路径、补齐风险提示的考生。'
+    desc: '更适合需要解释推荐原因、比较多套路径、补齐风险提示的家庭。'
   },
   {
-    label: 'VIP 高频决策',
-    badge: '重度用户',
+    label: '付费深度服务',
+    badge: '高频决策',
     desc: '适合需要长期保存多套方案、反复和家长老师沟通、集中填报的人。'
   }
 ]
@@ -301,13 +301,13 @@ Page({
     serviceLayers: HOME_SERVICE_LAYERS,
     showVipEntry: false,
     quickActions: [
-      { key: 'explore', title: '院校库', desc: '查学校、专业组、招生计划', action: 'openExplorePage' },
-      { key: 'province-lines', title: '黑龙江批次线', desc: '查看 2025-2022 批次线', action: 'openProvinceLinesPage' },
-      { key: 'score-rank', title: '一分一段', desc: '按分数查询全省位次', action: 'openScoreRankPage' },
-      { key: 'recommend', title: '智能推荐', desc: '按位次与线差生成 5 层方案', action: 'onRecommend' },
-      { key: 'agent', title: 'AI 智能体', desc: '输入需求生成报考分析', action: 'openAiAgentPage' },
-      { key: 'plan-list', title: '正式志愿表', desc: '查看已生成的填报清单', action: 'openPlanListPage' },
-      { key: 'materials', title: '资料库', desc: '特殊类型与政策资料', action: 'openMaterialsPage' }
+      { key: 'explore', title: '查学校和专业组', desc: '快速看学校、专业组和招生计划', action: 'openExplorePage' },
+      { key: 'province-lines', title: '看批次线', desc: '查看 2025-2022 常用批次线', action: 'openProvinceLinesPage' },
+      { key: 'score-rank', title: '查位次', desc: '按分数快速查询全省位次', action: 'openScoreRankPage' },
+      { key: 'recommend', title: '生成推荐方案', desc: '按位次与线差生成 5 层方案', action: 'onRecommend' },
+      { key: 'agent', title: '做深度分析', desc: '输入需求生成更细的报考分析', action: 'openAiAgentPage' },
+      { key: 'plan-list', title: '看正式志愿表', desc: '查看已整理好的填报清单', action: 'openPlanListPage' },
+      { key: 'materials', title: '看报考资料', desc: '特殊类型与政策资料汇总', action: 'openMaterialsPage' }
     ],
     form: {
       province: '黑龙江',

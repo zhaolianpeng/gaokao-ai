@@ -2,28 +2,28 @@
   <view class="card policy-card">
     <view class="section-title">用户服务协议</view>
     <view class="policy-meta">更新日期：2026-05-11</view>
-    <view class="policy-paragraph">欢迎使用黑龙江高报助手。在你注册、登录、完善档案、上传头像或使用推荐、AI 报告、支付等功能前，请认真阅读本协议。你勾选同意并继续使用相关功能，即表示你已理解并接受本协议全部内容。</view>
+    <view class="policy-paragraph">欢迎使用黑龙江高考志愿填报助手。在你使用登录、完善档案、生成推荐、查看深度分析或购买相关服务前，请先认真阅读本协议。你在页面上勾选同意并继续使用相关功能，即表示你已理解并接受本协议内容。</view>
 
     <view class="policy-heading">一、服务内容</view>
-    <view class="policy-paragraph">我们向用户提供高考志愿相关的信息查询、院校与专业组推荐、AI 分析、家长沟通卡片、报考档案管理、支付与售后支持等服务。具体功能以页面实际展示为准。</view>
+    <view class="policy-paragraph">我们向用户提供高考志愿相关的信息查询、院校与专业组推荐、5 层梯度分析、AI 深度分析、家长沟通摘要、正式志愿表整理、支付与售后支持等服务。具体功能以页面实际展示为准。</view>
 
     <view class="policy-heading">二、信息收集与使用前置说明</view>
-    <view class="policy-paragraph">为实现登录、档案保存、推荐分析、报告生成、支付履约和客服支持，我们可能收集昵称、手机号、头像、身份证号、学校、学年、班级、学号、分数、位次、意向专业、报考偏好等信息。我们会在收集前通过页面告知收集目的、方式和用途，并在你明确勾选同意《用户服务协议》和《隐私政策》后，才会开始收集和处理相关信息。</view>
+    <view class="policy-paragraph">为实现登录、档案保存、推荐分析、报告生成、支付履约和咨询支持，我们可能收集昵称、手机号、头像、学校、学年、班级、分数、位次、意向专业、报考偏好等信息。我们会在收集前通过页面说明收集目的、方式和用途，并在你明确勾选同意《用户服务协议》和《隐私政策》后，才开始收集和处理相关信息。</view>
 
     <view class="policy-heading">三、信息使用方式和用途</view>
     <view class="policy-list-item">1. 用于创建和维护你的报考档案，减少重复填写。</view>
-    <view class="policy-list-item">2. 用于生成 5 层推荐、AI 报告、正式志愿表和家长沟通内容。</view>
-    <view class="policy-list-item">3. 用于完成手机号快捷登录、账号识别、支付订单处理和售后服务。</view>
-    <view class="policy-list-item">4. 用于排查异常、优化产品体验和提升服务稳定性。</view>
+    <view class="policy-list-item">2. 用于生成 5 层推荐、AI 深度分析、正式志愿表和家长沟通内容。</view>
+    <view class="policy-list-item">3. 用于完成手机号快捷登录、账号识别、支付订单处理和咨询服务。</view>
+    <view class="policy-list-item">4. 用于排查异常、优化使用体验和提升服务稳定性。</view>
 
     <view class="policy-heading">四、用户承诺</view>
-    <view class="policy-paragraph">你应保证提交的信息真实、准确、完整，并妥善保管账号及设备。如因你提供的信息不真实、不完整或未经监护人同意使用服务而导致损失，由你自行承担相应责任。</view>
+    <view class="policy-paragraph">你应保证提交的信息真实、准确、完整，并妥善保管账号及设备。如因你提供的信息不真实、不完整，或未在监护人知情和同意下使用服务而导致损失，由你自行承担相应责任。</view>
 
     <view class="policy-heading">五、未成年人说明</view>
     <view class="policy-paragraph">如你为未成年人，请在监护人阅读并同意本协议及《隐私政策》后使用本服务，并在监护人指导下填写个人信息和完成支付行为。</view>
 
     <view class="policy-heading">六、服务调整与责任边界</view>
-    <view class="policy-paragraph">我们会持续优化服务内容，并可能基于业务调整更新功能、页面和规则。推荐与分析结果仅供志愿填报决策参考，不构成升学录取承诺或法律、医疗、财务等专业意见。</view>
+    <view class="policy-paragraph">我们会持续优化服务内容，并可能基于业务调整更新功能、页面和规则。页面中的推荐与分析结果仅供志愿填报决策参考，不构成升学录取承诺，也不替代学校官方招生信息和监护人、老师的最终判断。</view>
 
     <view class="policy-heading">七、协议更新与生效</view>
     <view class="policy-paragraph">当协议内容发生重要变更时，我们会通过页面展示、弹窗或其他合理方式提示。更新后的协议自公布之日起生效。若你继续使用需授权的信息采集功能，视为你已接受更新后的协议内容。</view>

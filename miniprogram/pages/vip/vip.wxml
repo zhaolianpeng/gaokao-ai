@@ -2,14 +2,14 @@
   <view class="vip-shell">
     <view class="card vip-hero-card">
       <view class="vip-badge">VIP 中心</view>
-      <view class="vip-title">按竞品主流价带，把套餐边界讲清楚</view>
-      <view class="vip-desc">基础查询和 5 层推荐继续免费开放。真正适合付费的，是需要深度 AI 解释、长期保存多套方案、反复和家长老师讨论的高频决策场景。购买前需要先完成手机号快捷登录，这样服务端才能绑定账号并创建支付订单。</view>
-      <button wx:if="{{!user}}" class="primary-btn vip-login-btn" bindtap="goLogin">先去登录</button>
+      <view class="vip-title">把服务边界和适用人群讲清楚</view>
+      <view class="vip-desc">基础查询和 5 层推荐继续免费开放。真正适合开通付费服务的，是需要深度解释、长期保存多套方案、反复和家长老师沟通的高频决策场景。开通前需要先完成手机号登录，方便绑定账号和服务记录。</view>
+      <button wx:if="{{!user}}" class="primary-btn vip-login-btn" bindtap="goLogin">先完成登录</button>
       <view wx:if="{{user}}" class="vip-user">当前账号：{{user.nickname}}{{user.phone ? '（' + user.phone + '）' : ''}}</view>
       <view class="vip-status {{canPay ? 'vip-status-ok' : 'vip-status-warn'}}">{{loginHint}}</view>
       <view class="vip-membership-card" wx:if="{{vipMembershipLoaded && user}}">
         <view class="vip-membership-head">
-          <view class="vip-membership-title">当前账号 VIP 信息</view>
+          <view class="vip-membership-title">当前账号服务状态</view>
           <view class="vip-membership-tag {{vipMembership && vipMembership.active ? 'vip-membership-tag-active' : 'vip-membership-tag-idle'}}">{{vipMembership && vipMembership.statusText ? vipMembership.statusText : '未开通'}}</view>
         </view>
         <block wx:if="{{vipMembership && vipMembership.productName}}">
@@ -18,13 +18,13 @@
           <view class="vip-membership-line">起始时间：{{vipMembership.startText || '—'}}</view>
           <view class="vip-membership-line">结束时间：{{vipMembership.endText || '—'}}</view>
         </block>
-        <view wx:else class="vip-membership-line">当前账号还没有已生效的 VIP 会员。</view>
+        <view wx:else class="vip-membership-line">当前账号还没有已生效的服务套餐。</view>
       </view>
     </view>
 
     <view class="card vip-product-card">
-      <view class="vip-product-title">市场价格带锚点</view>
-      <view class="vip-product-desc">主流高考报考产品的价格，大致落在这 4 个区间。当前页面直接把你的套餐放进这个坐标系里。</view>
+      <view class="vip-product-title">服务档位参考</view>
+      <view class="vip-product-desc">不同家庭的使用频次不同，先看清楚自己属于哪一类需求，再决定是否开通更合适。</view>
       <view class="vip-band-grid">
         <block wx:for="{{priceBands}}" wx:key="label">
           <view class="vip-band-card">
@@ -38,7 +38,7 @@
 
     <view class="card vip-product-card">
       <view class="vip-product-title">权益对比</view>
-      <view class="vip-product-desc">把“免费 / 轻量体验 / 标准决策 / 全周期”四层讲清楚，用户更容易知道自己该买哪档。</view>
+      <view class="vip-product-desc">把“免费 / 单次确认 / 集中填报 / 全程陪跑”几层讲清楚，更容易判断自己适合哪档服务。</view>
       <view class="vip-access-table">
         <view class="vip-access-head">
           <view class="vip-access-cell vip-access-feature">能力</view>
@@ -61,7 +61,7 @@
 
     <view class="card vip-product-card">
       <view class="vip-product-title">套餐建议</view>
-      <view class="vip-product-desc">套餐不是越贵越好，关键是和你的使用频次、决策周期、复盘需求匹配。</view>
+      <view class="vip-product-desc">套餐不是越贵越好，关键是和你的使用频次、决策周期以及家庭沟通需求匹配。</view>
     </view>
 
     <view class="card vip-product-card" wx:for="{{products}}" wx:key="id">
@@ -85,7 +85,7 @@
           <view class="vip-highlight-text">{{item}}</view>
         </view>
       </block>
-      <button class="primary-btn vip-buy-btn" data-product-id="{{item.id}}" bindtap="purchase" loading="{{loadingProductId === item.id}}">立即购买</button>
+      <button class="primary-btn vip-buy-btn" data-product-id="{{item.id}}" bindtap="purchase" loading="{{loadingProductId === item.id}}">开通这项服务</button>
     </view>
   </view>
 </view>

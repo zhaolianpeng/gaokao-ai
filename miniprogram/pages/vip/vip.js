@@ -2,29 +2,29 @@ const { request } = require('../../utils/request')
 const { getAuthUser } = require('../../utils/storage')
 
 const PRICE_BANDS = [
-  { label: '免费层', price: '￥0', desc: '先把查询、一分一段、5 层推荐和家长摘要用起来。' },
-  { label: '轻量体验', price: '低于 ￥100', desc: '适合只在关键节点确认 1-2 次深度解释。' },
-  { label: '主流会员', price: '￥98-198', desc: '竞品最常见的标准决策价带，适合集中填报。' },
-  { label: '全周期', price: '￥199-399', desc: '适合完整志愿期反复比较、复盘和长期保存。' }
+  { label: '基础使用', price: '￥0', desc: '先把查询、一分一段、5 层推荐和家长沟通摘要用起来。' },
+  { label: '单次确认', price: '低于 ￥100', desc: '适合在关键节点补 1-2 次更深入的解释。' },
+  { label: '集中填报', price: '￥98-198', desc: '适合出分后这段时间集中比较方案、反复沟通。' },
+  { label: '全程陪跑', price: '￥199-399', desc: '适合从预估到正式填报都想持续复盘的人。' }
 ]
 
 const PRODUCTS = [
   {
     id: 'vip_single',
     title: '单次深度报告',
-    desc: '适合临门一脚确认 1 次推荐解释，不想一次买长期会员。',
+    desc: '适合在关键节点确认 1 次推荐理由，不想一次购买长期服务。',
     badge: '入门',
-    anchorText: '对标轻量体验价带',
-    suitedFor: '适合只想看 1 次深度解释的考生',
+    anchorText: '适合先单次确认',
+    suitedFor: '适合只想补 1 次深度解释的考生或家长',
     highlights: ['1 次深度 AI 报告', '保学校/保专业/保城市三视角复盘', '适合考前关键节点确认'],
     amountFen: 1
   },
   {
     id: 'vip_day',
     title: '冲刺日卡',
-    desc: '按天集中体验，适合和家长、老师在一天内快速比多套方案。',
+    desc: '按天集中使用，适合和家长、老师在一天内快速比多套方案。',
     badge: '试用',
-    anchorText: '对标短期冲刺价带',
+    anchorText: '适合短时集中讨论',
     suitedFor: '适合 1 天内高强度比较多套志愿方案',
     highlights: ['短期集中看报告', '多轮沟通时更省时间', '适合出分后快速决策'],
     amountFen: 1
@@ -32,9 +32,9 @@ const PRODUCTS = [
   {
     id: 'vip_month',
     title: '填报月卡',
-    desc: '对应竞品主流会员价带，适合出分到正式填报这一整个阶段使用。',
+    desc: '适合从出分到正式填报这一整个阶段持续使用。',
     badge: '主推',
-    anchorText: '对标主流会员 ￥98-198',
+    anchorText: '适合集中填报阶段',
     suitedFor: '适合需要集中填报、反复比学校和专业的家庭',
     highlights: ['更适合高频深度 AI 分析', '多套方案长期保存', '和家长老师反复讨论更顺手'],
     amountFen: 1
@@ -44,7 +44,7 @@ const PRODUCTS = [
     title: '全程季卡',
     desc: '覆盖完整志愿准备周期，适合从预估到正式填报持续复盘。',
     badge: '全周期',
-    anchorText: '对标重度会员 ￥199-399',
+    anchorText: '适合全程陪跑',
     suitedFor: '适合完整志愿周期、多次改方案的人群',
     highlights: ['适合长期保存多套版本', '适合多轮深度 AI 解释', '覆盖预估、比对、定稿全流程'],
     amountFen: 1
@@ -87,7 +87,7 @@ const ACCESS_MATRIX = [
   { feature: '深度 AI 报告', free: '少量体验', lite: '单次确认', core: '集中使用', full: '全程高频' },
   { feature: '多套方案长期保存', free: '少量', lite: '1-2 套', core: '多套对比', full: '长期留存' },
   { feature: '反复和家长老师复盘', free: '基础', lite: '可做', core: '更省时间', full: '最适合' },
-  { feature: '适合场景', free: '先做基础判断', lite: '临门一脚', core: '集中填报', full: '全周期决策' }
+  { feature: '适合场景', free: '先做基础判断', lite: '关键节点确认', core: '集中填报', full: '全周期决策' }
 ]
 
 function buildOrderId(productId) {
@@ -214,15 +214,15 @@ Page({
 
   buildLoginHint(user) {
     if (!user) {
-      return '未检测到登录信息，请先完成手机号快捷登录。'
+      return '请先完成手机号登录，再开通需要长期保存和支付的服务。'
     }
     if (user.storageMode !== 'server') {
-      return '当前是体验模式账号，无法发起服务端支付。'
+      return '当前是体验模式账号，还不能直接购买付费服务。'
     }
     if (!user.id) {
-      return '当前账号缺少服务端用户ID，请重新登录。'
+      return '当前账号状态异常，请重新登录后再试。'
     }
-    return '已检测到服务端登录账号，可以直接购买。'
+    return '当前账号已可直接开通相关服务。'
   },
 
   goLogin() {
